@@ -76,15 +76,13 @@ main {
 
 /* Default Settings / Form Sections Mobile Clean-up */
 .view form,
-.settings-container,
-.modal-body {
+.settings-container {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-.view label,
-.modal-body label {
+.view label {
     display: block;
     margin-top: 6px;
     margin-bottom: 2px;
@@ -92,17 +90,13 @@ main {
 }
 
 .view input,
-.view select,
-.modal-body input,
-.modal-body select,
-.modal-body textarea {
+.view select {
     width: 100%;
     padding: 10px;
     box-sizing: border-box;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 16px;
-    /* Prevents auto-zoom on iOS */
 }
 
 .contact-card {
@@ -126,17 +120,21 @@ main {
     background: #f8f9fa;
     border: 1px solid #e9ecef;
     border-radius: 4px;
-    padding: 8px;
-    margin-top: 8px;
-    max-height: 120px;
+    padding: 10px;
+    margin-top: 6px;
+    margin-bottom: 6px;
+    max-height: 140px;
     overflow-y: auto;
     font-size: 13px;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .note-entry {
     border-bottom: 1px solid #dee2e6;
-    padding-bottom: 4px;
-    margin-bottom: 4px;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
 }
 
 .quick-add-note-box {
@@ -207,13 +205,13 @@ main {
 
 .modal-content {
     background-color: white;
-    width: 92%;
+    width: 94%;
     max-width: 500px;
-    height: 80vh;
-    max-height: 80vh;
+    height: 84vh;
+    max-height: 84vh;
     display: flex;
     flex-direction: column;
-    border-radius: 10px;
+    border-radius: 12px;
     position: relative;
     box-sizing: border-box;
     overflow: hidden;
@@ -249,7 +247,7 @@ main {
 }
 
 .modal-body {
-    flex: 1;
+    flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 15px 20px;
@@ -259,15 +257,34 @@ main {
     gap: 12px;
 }
 
-/* Explicitly give the modal map container a visible height so Leaflet renders */
+.modal-body label {
+    display: block;
+    margin-top: 6px;
+    margin-bottom: 2px;
+    font-weight: bold;
+}
+
+.modal-body input,
+.modal-body select,
+.modal-body textarea {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+/* Force Modal Leaflet Map to render properly with full height */
 .modal-body #map,
 .modal-map-container,
 #contact-map {
     width: 100% !important;
-    height: 180px !important;
-    min-height: 180px !important;
+    height: 200px !important;
+    min-height: 200px !important;
     border-radius: 6px;
     border: 1px solid #ccc;
+    display: block !important;
     flex-shrink: 0;
 }
 
