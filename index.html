@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Return Visits & Contacts</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Leaflet CSS for Map -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+  </head>
+  <body>
+    <div id="app-container">
+      <!-- Header -->
+      <header>
+        <h1>Return Visits & Contacts</h1>
+        <div id="filters-bar">
+          <!-- Dynamic filters injected via JavaScript -->
+        </div>
+      </header>
+
+      <!-- Main Content Area -->
+      <main>
+        <!-- Contacts List View -->
+        <section id="contacts-view" class="view active">
+          <button id="btn-add-contact">+ Add New Contact</button>
+          <div id="contacts-list"></div>
+        </section>
+
+        <!-- Map View -->
+        <section id="map-view" class="view">
+          <div id="map"></div>
+        </section>
+
+        <!-- Settings View -->
+        <section id="settings-view" class="view">
+          <h2>Initial Setup & Default Settings</h2>
+          <form id="settings-form">
+            <label
+              >States:
+              <input type="text" id="setting-state" placeholder="e.g. CA"
+            /></label>
+            <label
+              >Cities:
+              <input type="text" id="setting-city" placeholder="e.g. Newcastle"
+            /></label>
+            <label
+              >Areas:
+              <input type="text" id="setting-area" placeholder="e.g. Downtown"
+            /></label>
+            <button type="submit">Save Settings</button>
+          </form>
+        </section>
+      </main>
+
+      <!-- Locked Bottom Navigation Bar -->
+      <nav id="bottom-nav">
+        <button class="nav-btn" data-target="contacts-view">👥 Contacts</button>
+        <button class="nav-btn" data-target="map-view">🗺️ Map</button>
+        <button class="nav-btn" data-target="settings-view">⚙️ Settings</button>
+      </nav>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

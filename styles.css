@@ -1,0 +1,68 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+    color: #333;
+}
+
+#app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+header {
+    background: #004080;
+    color: white;
+    padding: 10px;
+    text-align: center;
+}
+
+main {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 70px;
+}
+
+.view {
+    display: none;
+    padding: 15px;
+}
+
+.view.active {
+    display: block;
+}
+
+#map {
+    height: 75vh;
+    width: 100%;
+    border-radius: 8px;
+}
+
+#bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background: white;
+    border-top: 1px solid #ccc;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 1000;
+}
+
+.nav-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: #555;
+}
+
+.nav-btn.active-tab {
+    color: #004080;
+    font-weight: bold;
+}
