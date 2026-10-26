@@ -368,6 +368,11 @@ document.addEventListener("DOMContentLoaded", () => {
         pickerMap.setView([lat, lng], 15);
       }
 
+      // Extra safety invalidateSize after rendering
+      setTimeout(() => {
+        if (pickerMap) pickerMap.invalidateSize();
+      }, 100);
+
       if (lat && lng) {
         const initialLatLng = [parseFloat(lat), parseFloat(lng)];
         if (pickerMarker) {
@@ -377,7 +382,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
       initialFormState = captureFormState();
-    }, 100);
+    }, 150);
   };
 
   btnOpenModal.addEventListener("click", () => {
