@@ -39,13 +39,13 @@ header {
 main {
     flex: 1;
     overflow-y: auto;
-    padding-bottom: 70px;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 90px;
 }
 
 .view {
     display: none;
     padding: 15px;
-    height: calc(100vh - 140px);
     box-sizing: border-box;
 }
 
@@ -55,6 +55,7 @@ main {
 
 #map-view {
     padding: 0;
+    height: calc(100vh - 140px);
 }
 
 #map {
@@ -71,6 +72,37 @@ main {
     cursor: pointer;
     font-size: 20px;
     margin-bottom: 15px;
+}
+
+/* Default Settings / Form Sections Mobile Clean-up */
+.view form,
+.settings-container,
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.view label,
+.modal-body label {
+    display: block;
+    margin-top: 6px;
+    margin-bottom: 2px;
+    font-weight: bold;
+}
+
+.view input,
+.view select,
+.modal-body input,
+.modal-body select,
+.modal-body textarea {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    /* Prevents auto-zoom on iOS */
 }
 
 .contact-card {
@@ -105,12 +137,6 @@ main {
     border-bottom: 1px solid #dee2e6;
     padding-bottom: 4px;
     margin-bottom: 4px;
-}
-
-.note-entry:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
 }
 
 .quick-add-note-box {
@@ -165,7 +191,7 @@ main {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
-/* Modal Styles - Flexbox Column Layout */
+/* Modal Layout - Perfect Mobile Scrolling & Pinned Footer */
 .modal {
     display: none;
     position: fixed;
@@ -175,21 +201,23 @@ main {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-content {
     background-color: white;
-    margin: 2vh auto;
     width: 92%;
     max-width: 500px;
-    height: 84vh;
-    max-height: 84vh;
+    height: 80vh;
+    max-height: 80vh;
     display: flex;
     flex-direction: column;
-    border-radius: 8px;
+    border-radius: 10px;
     position: relative;
     box-sizing: border-box;
     overflow: hidden;
+    margin: auto;
 }
 
 #close-modal {
@@ -202,7 +230,7 @@ main {
 }
 
 .modal-header {
-    padding: 15px 20px 10px 20px;
+    padding: 15px 20px;
     border-bottom: 1px solid #eee;
     background: #ffffff;
     flex-shrink: 0;
@@ -216,43 +244,26 @@ main {
 .modal-form-container {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
+    flex: 1;
     overflow: hidden;
 }
 
 .modal-body {
-    flex: 1 1 auto;
+    flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 15px 20px;
     box-sizing: border-box;
 }
 
-.modal-body label {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: bold;
-}
-
-.modal-body input,
-.modal-body select,
-.modal-body textarea {
-    width: 100%;
-    padding: 8px;
-    margin-top: 4px;
-    box-sizing: border-box;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
 .gps-row {
     display: flex;
-    gap: 5px;
+    gap: 8px;
     align-items: flex-end;
 }
 
 #btn-gps {
-    padding: 8px;
+    padding: 10px;
     background: #6c757d;
     color: white;
     border: none;
@@ -260,7 +271,7 @@ main {
     cursor: pointer;
 }
 
-/* Frozen Sticky Footer Action Bar Inside Modal */
+/* Sticky Footer Action Bar Inside Modal */
 .modal-sticky-footer {
     background: #ffffff;
     border-top: 1px solid #ddd;
@@ -270,14 +281,15 @@ main {
     box-sizing: border-box;
     flex-shrink: 0;
     z-index: 10;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.08);
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 #btn-save-contact {
     flex: 2;
     background: #28a745;
     color: white;
-    padding: 10px;
+    padding: 12px;
     border: none;
     font-size: 16px;
     font-weight: bold;
@@ -289,7 +301,7 @@ main {
     flex: 1;
     background: #6c757d;
     color: white;
-    padding: 10px;
+    padding: 12px;
     border: none;
     font-size: 16px;
     font-weight: bold;
@@ -297,7 +309,7 @@ main {
     cursor: pointer;
 }
 
-/* Bottom Navigation */
+/* Bottom Navigation Bar */
 #bottom-nav {
     position: fixed;
     bottom: 0;
@@ -310,6 +322,7 @@ main {
     justify-content: space-around;
     align-items: center;
     z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 .nav-btn {
