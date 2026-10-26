@@ -254,6 +254,21 @@ main {
     -webkit-overflow-scrolling: touch;
     padding: 15px 20px;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Explicitly give the modal map container a visible height so Leaflet renders */
+.modal-body #map,
+.modal-map-container,
+#contact-map {
+    width: 100% !important;
+    height: 180px !important;
+    min-height: 180px !important;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    flex-shrink: 0;
 }
 
 .gps-row {
