@@ -1,19 +1,902 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Bottom Navigation Switching
-  const navButtons = document.querySelectorAll(".nav-btn");
-  const views = document.querySelectorAll(".view");
+  // Settings State & Lists
+  let settings = JSON.parse(localStorage.getItem("return_visits_settings")) || {
+    state: "CA",
+    defaultCity: "Newcastle",
+    defaultArea: "Downtown",
+    cities: ["Newcastle", "Rocklin", "Roseville", "Auburn"],
+    areas: ["Downtown", "Rural", "North", "South"],
+  };
 
-  navButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const targetId = btn.getAttribute("data-target");
-      views.forEach((v) => v.classList.remove("active"));
-      navButtons.forEach((b) => b.classList.remove("active-tab"));
+  // Populate Settings View Form
+  document.getElementById("setting-state").value = settings.state;
+  document.getElementById("setting-default-city").value =
+    settings.defaultCity || "Newcastle";
+  document.getElementById("setting-default-area").value =
+    settings.defaultArea || "Downtown";
 
-      document.getElementById(targetId).classList.add("active");
-      btn.classList.add("active-tab");
+  // Populate All Dropdowns (Filters & Modal Selects)
+  const populateDropdowns = () => {
+    const citySelect = document.getElementById("contact-city-select");
+    const currentCityVal = citySelect.value;
+    citySelect.innerHTML = "";
+    settings.cities.forEach((city) => {
+      const opt = document.createElement("option");
+      opt.value = city;
+      opt.textContent = city;
+      citySelect.appendChild(opt);
     });
+    const addCityOpt = document.createElement("option");
+    addCityOpt.value = "__ADD_NEW__";
+    addCityOpt.textContent = "+ Add New City...";
+    citySelect.appendChild(addCityOpt);
+    if (settings.cities.includes(currentCityVal)) {
+      citySelect.value = currentCityVal;
+    }
+
+    const areaSelect = document.getElementById("contact-area-select");
+    const currentAreaVal = areaSelect.value;
+    areaSelect.innerHTML = "";
+    settings.areas.forEach((area) => {
+      const opt = document.createElement("option");
+      opt.value = area;
+      opt.textContent = area;
+      areaSelect.appendChild(opt);
+    });
+    const addAreaOpt = document.createElement("option");
+    addAreaOpt.value = "__ADD_NEW__";
+    addAreaOpt.textContent = "+ Add New Area...";
+    areaSelect.appendChild(addAreaOpt);
+    if (settings.areas.includes(currentAreaVal)) {
+      areaSelect.value = currentAreaVal;
+    }
+
+    const filterCity = document.getElementById("filter-city");
+    const currentCityFilter = filterCity.value;
+    filterCity.innerHTML = '<option value="">All Cities</option>';
+    settings.cities.forEach((city) => {
+      const opt = document.createElement("option");
+      opt.value = city;
+      opt.textContent = city;
+      filterCity.appendChild(opt);
+    });
+    filterCity.value = currentCityFilter;
+
+    const filterArea = document.getElementById("filter-area");
+    const currentAreaFilter = filterArea.value;
+    filterArea.innerHTML = '<option value="">All Areas</option>';
+    settings.areas.forEach((area) => {
+      const opt = document.createElement("option");
+      opt.value = area;
+      opt.textContent = area;
+      filterArea.appendChild(opt);
+    });
+    filterArea.value = currentAreaFilter;
+  };
+
+  populateDropdowns();
+
+  // Inline "Add New City" Handlers
+  const citySelect = document.getElementById("contact-city-select");
+  const newCityContainer = document.getElementById("new-city-container");
+  const inputNewCity = document.getElementById("input-new-city");
+
+  citySelect.addEventListener("change", (e) => {
+    if (e.target.value === "__ADD_NEW__") {
+      newCityContainer.style.display = "block";
+      inputNewCity.value = "";
+      inputNewCity.focus();
+    } else {
+      newCityContainer.style.display = "none";
+    }
   });
 
-  // Default to Contacts View
-  navButtons[0].click();
+  document.getElementById("btn-save-new-city").addEventListener("click", () => {
+    const val = inputNewCity.value.trim();
+    if (val) {
+      if (!settings.cities.includes(val)) {
+        settings.cities.push(val);
+        localStorage.setItem(
+          "return_visits_settings",
+          JSON.stringify(settings),
+        );
+      }
+      populateDropdowns();
+      citySelect.value = val;
+      newCityContainer.style.display = "none";
+    }
+  });
+
+  document
+    .getElementById("btn-cancel-new-city")
+    .addEventListener("click", () => {
+      newCityContainer.style.display = "none";
+      citySelect.value = settings.defaultCity || settings.cities[0];
+    });
+
+  // Inline "Add New Area" Handlers
+  const areaSelect = document.getElementById("contact-area-select");
+  const newAreaContainer = document.getElementById("new-area-container");
+  const inputNewArea = document.getElementById("input-new-area");
+
+  areaSelect.addEventListener("change", (e) => {
+    if (e.target.value === "__ADD_NEW__") {
+      newAreaContainer.style.display = "block";
+      inputNewArea.value = "";
+      inputNewArea.focus();
+    } else {
+      newAreaContainer.style.display = "none";
+    }
+  });
+
+  document.getElementById("btn-save-new-area").addEventListener("click", () => {
+    const val = inputNewArea.value.trim();
+    if (val) {
+      if (!settings.areas.includes(val)) {
+        settings.areas.push(val);
+        localStorage.setItem(
+          "return_visits_settings",
+          JSON.stringify(settings),
+        );
+      }
+      populateDropdowns();
+      areaSelect.value = val;
+      newAreaContainer.style.display = "none";
+    }
+  });
+
+  document
+    .getElementById("btn-cancel-new-area")
+    .addEventListener("click", () => {
+      newAreaContainer.style.display = "none";
+      areaSelect.value = settings.defaultArea || settings.areas[0];
+    });
+
+  // Settings View Buttons
+  document
+    .getElementById("btn-add-setting-city")
+    .addEventListener("click", () => {
+      const input = document.getElementById("setting-new-city");
+      const val = input.value.trim();
+      if (val && !settings.cities.includes(val)) {
+        settings.cities.push(val);
+        input.value = "";
+        localStorage.setItem(
+          "return_visits_settings",
+          JSON.stringify(settings),
+        );
+        populateDropdowns();
+        alert(`City "${val}" added successfully!`);
+      }
+    });
+
+  document
+    .getElementById("btn-add-setting-area")
+    .addEventListener("click", () => {
+      const input = document.getElementById("setting-new-area");
+      const val = input.value.trim();
+      if (val && !settings.areas.includes(val)) {
+        settings.areas.push(val);
+        input.value = "";
+        localStorage.setItem(
+          "return_visits_settings",
+          JSON.stringify(settings),
+        );
+        populateDropdowns();
+        alert(`Area "${val}" added successfully!`);
+      }
+    });
+
+  document.getElementById("settings-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    settings.state = document.getElementById("setting-state").value.trim();
+    settings.defaultCity = document
+      .getElementById("setting-default-city")
+      .value.trim();
+    settings.defaultArea = document
+      .getElementById("setting-default-area")
+      .value.trim();
+    localStorage.setItem("return_visits_settings", JSON.stringify(settings));
+    populateDropdowns();
+    alert("Master settings saved successfully!");
+  });
+
+  // Local Storage & Contacts State
+  let contacts =
+    JSON.parse(localStorage.getItem("return_visits_contacts")) || [];
+
+  // Helper: Calculate days between a timestamp and now
+  const calculateDaysSince = (dateInput) => {
+    if (!dateInput) return 0;
+    const targetDate = new Date(dateInput);
+    const now = new Date();
+    const diffTime = now - targetDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  };
+
+  // Helper: Determine Color & Status based on Days Since Newest Visit
+  const getContactStatus = (contact) => {
+    let latestDate = contact.createdAt;
+    if (contact.notesHistory && contact.notesHistory.length > 0) {
+      const sortedNotes = [...contact.notesHistory].sort(
+        (a, b) => new Date(b.rawDate || b.date) - new Date(a.rawDate || a.date),
+      );
+      latestDate = sortedNotes[0].rawDate || sortedNotes[0].date;
+    }
+    const days = calculateDaysSince(latestDate);
+    if (days > 90)
+      return { label: "Immediate", color: "#dc3545", class: "immediate", days };
+    if (days > 30)
+      return { label: "Urgent", color: "#ffc107", class: "urgent", days };
+    return { label: "Normal", color: "#28a745", class: "normal", days };
+  };
+
+  const toLocalDateTimeString = (dateObj) => {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}T${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}`;
+  };
+
+  // Initialize Main Leaflet Map
+  let map = null;
+  let mapMarkers = [];
+
+  const initMap = () => {
+    if (map) return;
+    map = L.map("map", { doubleClickZoom: false }).setView(
+      [38.8517, -121.1275],
+      13,
+    );
+    window.mapInstance = map;
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+
+    renderMapMarkers();
+  };
+
+  // Navigation & Dynamic Footer
+  let currentViewId = "contacts-view";
+  const navButtonsConfig = [
+    { id: "contacts-view", icon: "👥" },
+    { id: "map-view", icon: "🗺️" },
+    { id: "settings-view", icon: "⚙️" },
+  ];
+
+  const renderBottomNav = () => {
+    const navContainer = document.getElementById("bottom-nav");
+    navContainer.innerHTML = "";
+    navButtonsConfig.forEach((btnConfig) => {
+      if (btnConfig.id !== currentViewId) {
+        const btn = document.createElement("button");
+        btn.className = "nav-btn";
+        btn.textContent = btnConfig.icon;
+        btn.title = btnConfig.id.replace("-view", "");
+        btn.addEventListener("click", () => {
+          currentViewId = btnConfig.id;
+          document
+            .querySelectorAll(".view")
+            .forEach((v) => v.classList.remove("active"));
+          document.getElementById(currentViewId).classList.add("active");
+          renderBottomNav();
+
+          if (currentViewId === "map-view") {
+            if (!map) {
+              initMap();
+            } else {
+              setTimeout(() => {
+                map.invalidateSize();
+                renderMapMarkers();
+              }, 50);
+            }
+          }
+        });
+        navContainer.appendChild(btn);
+      }
+    });
+  };
+  renderBottomNav();
+
+  const saveContacts = () => {
+    localStorage.setItem("return_visits_contacts", JSON.stringify(contacts));
+    renderContacts();
+    if (map) renderMapMarkers();
+  };
+
+  // Modal Elements & Interactive Picker Map
+  const modal = document.getElementById("contact-modal");
+  const btnOpenModal = document.getElementById("btn-open-modal");
+  const closeModal = document.getElementById("close-modal");
+  const btnExitModal = document.getElementById("btn-exit-modal");
+  const contactForm = document.getElementById("contact-form");
+
+  let pickerMap = null;
+  let pickerMarker = null;
+
+  let initialFormState = "";
+  const captureFormState = () => {
+    const formEl = document.getElementById("contact-form");
+    const formData = new FormData(formEl);
+    let str = "";
+    for (let [key, val] of formData.entries()) {
+      str += key + "=" + val + "|";
+    }
+    return str;
+  };
+
+  const attemptExit = () => {
+    const currentState = captureFormState();
+    if (currentState !== initialFormState) {
+      const confirmExit = confirm("Changes were made, exit without saving?");
+      if (confirmExit) {
+        modal.style.display = "none";
+      }
+    } else {
+      modal.style.display = "none";
+    }
+  };
+
+  const openModalWithCoords = (lat, lng) => {
+    modal.style.display = "block";
+    newCityContainer.style.display = "none";
+    newAreaContainer.style.display = "none";
+
+    setTimeout(() => {
+      if (!pickerMap) {
+        pickerMap = L.map("modal-picker-map").setView([lat, lng], 15);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap",
+        }).addTo(pickerMap);
+
+        pickerMap.on("click", (e) => {
+          const clickedLat = e.latlng.lat.toFixed(6);
+          const clickedLng = e.latlng.lng.toFixed(6);
+          document.getElementById("contact-lat").value = clickedLat;
+          document.getElementById("contact-lng").value = clickedLng;
+
+          if (pickerMarker) {
+            pickerMarker.setLatLng(e.latlng);
+          } else {
+            pickerMarker = L.marker(e.latlng).addTo(pickerMap);
+          }
+        });
+      } else {
+        pickerMap.invalidateSize();
+        pickerMap.setView([lat, lng], 15);
+      }
+
+      if (lat && lng) {
+        const initialLatLng = [parseFloat(lat), parseFloat(lng)];
+        if (pickerMarker) {
+          pickerMarker.setLatLng(initialLatLng);
+        } else {
+          pickerMarker = L.marker(initialLatLng).addTo(pickerMap);
+        }
+      }
+      initialFormState = captureFormState();
+    }, 100);
+  };
+
+  btnOpenModal.addEventListener("click", () => {
+    contactForm.reset();
+    document.getElementById("contact-id").value = "";
+    document.getElementById("contact-city-select").value =
+      settings.defaultCity || settings.cities[0];
+    document.getElementById("contact-area-select").value =
+      settings.defaultArea || settings.areas[0];
+    document.getElementById("contact-state").value = settings.state;
+    document.getElementById("contact-lat").value = "38.851700";
+    document.getElementById("contact-lng").value = "-121.127500";
+    document.getElementById("new-log-timestamp").value = toLocalDateTimeString(
+      new Date(),
+    );
+    document.getElementById("modal-notes-history-container").innerHTML =
+      '<span style="color: #888;">No visit logs yet.</span>';
+    document.getElementById("modal-title").textContent = "Add Contact";
+    openModalWithCoords(38.8517, -121.1275);
+  });
+
+  closeModal.addEventListener("click", attemptExit);
+  btnExitModal.addEventListener("click", attemptExit);
+
+  // GPS Auto-population
+  document.getElementById("btn-gps").addEventListener("click", () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(6);
+          const lng = position.coords.longitude.toFixed(6);
+          document.getElementById("contact-lat").value = lat;
+          document.getElementById("contact-lng").value = lng;
+          if (pickerMap) {
+            const newLatLng = [parseFloat(lat), parseFloat(lng)];
+            pickerMap.setView(newLatLng, 16);
+            if (pickerMarker) pickerMarker.setLatLng(newLatLng);
+            else pickerMarker = L.marker(newLatLng).addTo(pickerMap);
+          }
+        },
+        () => {
+          alert("Unable to retrieve your location.");
+        },
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  });
+
+  // Save Contact Handler
+  contactForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = document.getElementById("contact-id").value;
+    const firstName = document.getElementById("contact-firstname").value.trim();
+    const lastName = document.getElementById("contact-lastname").value.trim();
+    const street = document.getElementById("contact-address").value.trim();
+    const city = document.getElementById("contact-city-select").value;
+    const state = document.getElementById("contact-state").value.trim();
+    const area = document.getElementById("contact-area-select").value;
+    const lat = document.getElementById("contact-lat").value.trim();
+    const lng = document.getElementById("contact-lng").value.trim();
+
+    const newNoteText = document.getElementById("contact-notes").value.trim();
+    const newNoteTimestampVal =
+      document.getElementById("new-log-timestamp").value;
+
+    const fullAddress = [street, city, state].filter(Boolean).join(", ");
+
+    let targetId = id;
+
+    if (id) {
+      const contact = contacts.find((c) => c.id == id);
+      if (contact) {
+        contact.firstName = firstName;
+        contact.lastName = lastName;
+        contact.address = fullAddress;
+        contact.city = city;
+        contact.state = state;
+        contact.area = area;
+        contact.lat = lat;
+        contact.lng = lng;
+
+        if (newNoteText) {
+          if (!contact.notesHistory) contact.notesHistory = [];
+          const logDate = newNoteTimestampVal
+            ? new Date(newNoteTimestampVal)
+            : new Date();
+          contact.notesHistory.push({
+            id: "log_" + Date.now(),
+            rawDate: logDate.toISOString(),
+            date: logDate.toLocaleString(),
+            text: newNoteText,
+          });
+        }
+      }
+    } else {
+      const logDate = newNoteTimestampVal
+        ? new Date(newNoteTimestampVal)
+        : new Date();
+      const notesHistory = newNoteText
+        ? [
+            {
+              id: "log_" + Date.now(),
+              rawDate: logDate.toISOString(),
+              date: logDate.toLocaleString(),
+              text: newNoteText,
+            },
+          ]
+        : [];
+
+      targetId = Date.now();
+      const newContact = {
+        id: targetId,
+        createdAt: new Date().toISOString(),
+        firstName,
+        lastName,
+        address: fullAddress,
+        city,
+        state,
+        area,
+        lat,
+        lng,
+        notesHistory,
+      };
+      contacts.push(newContact);
+      document.getElementById("contact-id").value = targetId;
+    }
+
+    saveContacts();
+
+    document.getElementById("contact-notes").value = "";
+    document.getElementById("new-log-timestamp").value = toLocalDateTimeString(
+      new Date(),
+    );
+    initialFormState = captureFormState();
+
+    editContact(targetId);
+    alert("Contact saved successfully!");
+  });
+
+  // Render Contacts List
+  const renderContacts = () => {
+    const listContainer = document.getElementById("contacts-list");
+    const searchTerm = document
+      .getElementById("search-input")
+      .value.toLowerCase();
+    const filterUrgency = document.getElementById("filter-urgency").value;
+    const filterCity = document.getElementById("filter-city").value;
+    const filterArea = document.getElementById("filter-area").value;
+    const sortMode = document.getElementById("sort-select").value;
+
+    let filtered = contacts.filter((c) => {
+      const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
+      const addr = (c.address || "").toLowerCase();
+      const notesMatch =
+        c.notesHistory &&
+        c.notesHistory.some((n) => n.text.toLowerCase().includes(searchTerm));
+      const textMatch =
+        fullName.includes(searchTerm) ||
+        addr.includes(searchTerm) ||
+        notesMatch;
+
+      const status = getContactStatus(c);
+      const urgencyMatch = !filterUrgency || status.label === filterUrgency;
+      const cityMatch = !filterCity || c.city === filterCity;
+      const areaMatch = !filterArea || c.area === filterArea;
+      return textMatch && urgencyMatch && cityMatch && areaMatch;
+    });
+
+    filtered.sort((a, b) => {
+      if (sortMode === "chronological-asc")
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortMode === "chronological-desc")
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortMode === "alphabetical")
+        return a.firstName.localeCompare(b.firstName);
+    });
+
+    listContainer.innerHTML = "";
+    if (filtered.length === 0) {
+      listContainer.innerHTML = "<p>No matching contacts found.</p>";
+      return;
+    }
+
+    filtered.forEach((contact) => {
+      const card = document.createElement("div");
+      const status = getContactStatus(contact);
+      let urgencyClass = "contact-card";
+      if (status.class === "urgent") urgencyClass += " urgent";
+      if (status.class === "immediate") urgencyClass += " immediate";
+      card.className = urgencyClass;
+
+      let historyHtml = '<div class="contact-notes-history">';
+      if (contact.notesHistory && contact.notesHistory.length > 0) {
+        const sortedNotes = [...contact.notesHistory].sort(
+          (a, b) =>
+            new Date(b.rawDate || b.date) - new Date(a.rawDate || a.date),
+        );
+        sortedNotes.forEach((note) => {
+          historyHtml += `
+                        <div class="note-entry">
+                            <small style="color: #6c757d; font-weight: bold;">${note.date}</small><br>
+                            <span>${note.text}</span>
+                        </div>
+                    `;
+        });
+      } else {
+        historyHtml +=
+          '<span style="color: #888;">No visit logs recorded yet.</span>';
+      }
+      historyHtml += "</div>";
+
+      card.innerHTML = `
+                <strong>${contact.firstName} ${contact.lastName}</strong><br>
+                <small>${contact.address || "No address provided"} ${contact.area ? `(${contact.area})` : ""}</small><br>
+                <span>Days Since Last Contact: <strong>${status.days} days</strong> (${status.label})</span>
+                ${historyHtml}
+                <div class="quick-add-note-box">
+                    <input type="text" id="quick-note-${contact.id}" placeholder="Add visit log...">
+                    <button onclick="addQuickNote(${contact.id})" title="Add Note">➕</button>
+                </div>
+                <div class="card-actions">
+                    <button class="btn-icon" onclick="editContact(${contact.id})" title="Edit Details">✏️</button>
+                    <button class="btn-icon delete" onclick="deleteContact(${contact.id})" title="Delete Contact">🗑️</button>
+                </div>
+            `;
+      listContainer.appendChild(card);
+    });
+  };
+
+  // Render Leaflet Map Markers with Dynamic Color-Coded Pins
+  const renderMapMarkers = () => {
+    if (!map) return;
+    mapMarkers.forEach((marker) => map.removeLayer(marker));
+    mapMarkers = [];
+
+    let validMarkers = [];
+
+    contacts.forEach((contact) => {
+      if (contact.lat && contact.lng) {
+        const latNum = parseFloat(contact.lat);
+        const lngNum = parseFloat(contact.lng);
+        const status = getContactStatus(contact);
+
+        const svgIcon = L.divIcon({
+          className: "custom-map-pin",
+          html: `<div style="background-color: ${status.color};"></div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
+        });
+
+        const marker = L.marker([latNum, lngNum], { icon: svgIcon }).addTo(map);
+
+        const popupContent = `
+                    <div>
+                        <b>${contact.firstName} ${contact.lastName}</b><br>
+                        ${contact.address}<br>
+                        City: ${contact.city || "N/A"} | Area: ${contact.area || "N/A"}<br>
+                        Days Since Contact: ${status.days} (${status.label})<br><br>
+                        <button onclick="editContact(${contact.id})" style="background: #004080; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;">✏️ Edit Details</button>
+                    </div>
+                `;
+        marker.bindPopup(popupContent);
+
+        mapMarkers.push(marker);
+        validMarkers.push([latNum, lngNum]);
+      }
+    });
+
+    if (validMarkers.length > 0) {
+      if (validMarkers.length === 1) {
+        map.setView(validMarkers[0], 16);
+      } else {
+        const bounds = L.latLngBounds(validMarkers);
+        map.fitBounds(bounds, { padding: [50, 50] });
+      }
+    }
+  };
+
+  // Global Action Handlers
+  window.addQuickNote = (id) => {
+    const input = document.getElementById(`quick-note-${id}`);
+    const text = input.value.trim();
+    if (!text) return;
+
+    const contact = contacts.find((c) => c.id == id);
+    if (contact) {
+      if (!contact.notesHistory) contact.notesHistory = [];
+      const now = new Date();
+      contact.notesHistory.push({
+        id: "log_" + Date.now(),
+        rawDate: now.toISOString(),
+        date: now.toLocaleString(),
+        text: text,
+      });
+      saveContacts();
+      input.value = "";
+    }
+  };
+
+  // Inline Visit Log Editor Functions
+  window.deleteVisitLog = (contactId, logId) => {
+    if (confirm("Are you sure you want to delete this visit log?")) {
+      const contact = contacts.find((c) => c.id == contactId);
+      if (contact && contact.notesHistory) {
+        contact.notesHistory = contact.notesHistory.filter(
+          (n) => n.id != logId,
+        );
+        saveContacts();
+        editContact(contactId);
+      }
+    }
+  };
+
+  window.editContact = (id) => {
+    const contact = contacts.find((c) => c.id == id);
+    if (!contact) return;
+    document.getElementById("contact-id").value = contact.id;
+    document.getElementById("contact-firstname").value = contact.firstName;
+    document.getElementById("contact-lastname").value = contact.lastName;
+    document.getElementById("contact-address").value = contact.address
+      ? contact.address.split(",")[0]
+      : "";
+    document.getElementById("contact-city-select").value =
+      contact.city || settings.cities[0];
+    document.getElementById("contact-state").value =
+      contact.state || settings.state;
+    document.getElementById("contact-area-select").value =
+      contact.area || settings.areas[0];
+    document.getElementById("contact-lat").value = contact.lat || "";
+    document.getElementById("contact-lng").value = contact.lng || "";
+    document.getElementById("contact-notes").value = "";
+    document.getElementById("new-log-timestamp").value = toLocalDateTimeString(
+      new Date(),
+    );
+
+    const historyContainer = document.getElementById(
+      "modal-notes-history-container",
+    );
+    historyContainer.innerHTML = "";
+    if (contact.notesHistory && contact.notesHistory.length > 0) {
+      const sortedNotes = [...contact.notesHistory].sort(
+        (a, b) => new Date(b.rawDate || b.date) - new Date(a.rawDate || a.date),
+      );
+      sortedNotes.forEach((note) => {
+        if (!note.id)
+          note.id =
+            "log_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+
+        const entry = document.createElement("div");
+        entry.className = "note-entry";
+        entry.style.padding = "6px 0";
+        entry.style.borderBottom = "1px solid #ddd";
+
+        // Default View Mode for Log Entry
+        const renderViewMode = () => {
+          entry.innerHTML = "";
+
+          const infoDiv = document.createElement("div");
+          infoDiv.style.marginBottom = "4px";
+          infoDiv.innerHTML = `<small style="color: #6c757d; font-weight: bold;">${note.date}</small><br><span>${note.text}</span>`;
+
+          const btnRow = document.createElement("div");
+          btnRow.style.display = "flex";
+          btnRow.style.gap = "6px";
+          btnRow.style.marginTop = "4px";
+
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "btn-icon";
+          editBtn.title = "Edit Log";
+          editBtn.textContent = "✏️ Edit";
+          editBtn.style.fontSize = "12px";
+          editBtn.style.padding = "4px 8px";
+          editBtn.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            renderEditMode();
+          });
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "btn-icon delete";
+          delBtn.title = "Delete Log";
+          delBtn.textContent = "🗑️ Delete";
+          delBtn.style.fontSize = "12px";
+          delBtn.style.padding = "4px 8px";
+          delBtn.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            window.deleteVisitLog(contact.id, note.id);
+          });
+
+          btnRow.appendChild(editBtn);
+          btnRow.appendChild(delBtn);
+
+          entry.appendChild(infoDiv);
+          entry.appendChild(btnRow);
+        };
+
+        // Inline Edit Mode for Log Entry
+        const renderEditMode = () => {
+          entry.innerHTML = "";
+
+          const editContainer = document.createElement("div");
+          editContainer.style.display = "flex";
+          editContainer.style.flexDirection = "column";
+          editContainer.style.gap = "6px";
+
+          const dateInput = document.createElement("input");
+          dateInput.type = "datetime-local";
+          const existingDate = note.rawDate
+            ? new Date(note.rawDate)
+            : new Date(note.date);
+          dateInput.value = toLocalDateTimeString(
+            isNaN(existingDate) ? new Date() : existingDate,
+          );
+          dateInput.style.padding = "6px";
+
+          const textArea = document.createElement("textarea");
+          textArea.rows = 2;
+          textArea.value = note.text;
+          textArea.style.padding = "6px";
+
+          const actionRow = document.createElement("div");
+          actionRow.style.display = "flex";
+          actionRow.style.gap = "6px";
+
+          const saveLogBtn = document.createElement("button");
+          saveLogBtn.type = "button";
+          saveLogBtn.textContent = "💾 Update Log";
+          saveLogBtn.style.background = "#28a745";
+          saveLogBtn.style.color = "white";
+          saveLogBtn.style.border = "none";
+          saveLogBtn.style.padding = "6px 12px";
+          saveLogBtn.style.borderRadius = "4px";
+          saveLogBtn.style.cursor = "pointer";
+
+          saveLogBtn.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const updatedText = textArea.value.trim();
+            if (!updatedText) {
+              alert("Note text cannot be empty.");
+              return;
+            }
+            const updatedDate = new Date(dateInput.value);
+            note.text = updatedText;
+            if (!isNaN(updatedDate)) {
+              note.rawDate = updatedDate.toISOString();
+              note.date = updatedDate.toLocaleString();
+            }
+            saveContacts();
+            editContact(contact.id); // Refresh history container
+          });
+
+          const cancelLogBtn = document.createElement("button");
+          cancelLogBtn.type = "button";
+          cancelLogBtn.textContent = "❌ Cancel";
+          cancelLogBtn.style.background = "#6c757d";
+          cancelLogBtn.style.color = "white";
+          cancelLogBtn.style.border = "none";
+          cancelLogBtn.style.padding = "6px 12px";
+          cancelLogBtn.style.borderRadius = "4px";
+          cancelLogBtn.style.cursor = "pointer";
+
+          cancelLogBtn.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            renderViewMode();
+          });
+
+          actionRow.appendChild(saveLogBtn);
+          actionRow.appendChild(cancelLogBtn);
+
+          editContainer.appendChild(dateInput);
+          editContainer.appendChild(textArea);
+          editContainer.appendChild(actionRow);
+
+          entry.appendChild(editContainer);
+        };
+
+        renderViewMode();
+        historyContainer.appendChild(entry);
+      });
+    } else {
+      historyContainer.innerHTML =
+        '<span style="color: #888;">No visit logs recorded yet.</span>';
+    }
+
+    document.getElementById("modal-title").textContent = "Edit Contact";
+    openModalWithCoords(
+      parseFloat(contact.lat) || 38.8517,
+      parseFloat(contact.lng) || -121.1275,
+    );
+  };
+
+  window.deleteContact = (id) => {
+    if (confirm("Are you sure you want to delete this contact?")) {
+      contacts = contacts.filter((c) => c.id != id);
+      saveContacts();
+    }
+  };
+
+  document
+    .getElementById("search-input")
+    .addEventListener("input", renderContacts);
+  document
+    .getElementById("filter-urgency")
+    .addEventListener("change", renderContacts);
+  document
+    .getElementById("filter-city")
+    .addEventListener("change", renderContacts);
+  document
+    .getElementById("filter-area")
+    .addEventListener("change", renderContacts);
+  document
+    .getElementById("sort-select")
+    .addEventListener("change", renderContacts);
+
+  renderContacts();
 });

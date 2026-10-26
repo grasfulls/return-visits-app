@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Return Visits & Contacts</title>
+    <title>My RVs</title>
     <link rel="stylesheet" href="styles.css" />
-    <!-- Leaflet CSS for Map -->
+    <!-- Leaflet CSS -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -13,19 +13,40 @@
   </head>
   <body>
     <div id="app-container">
-      <!-- Header -->
+      <!-- Header & Search/Filter Bar -->
       <header>
-        <h1>Return Visits & Contacts</h1>
+        <h1>My RVs</h1>
         <div id="filters-bar">
-          <!-- Dynamic filters injected via JavaScript -->
+          <input
+            type="text"
+            id="search-input"
+            placeholder="Search contacts..."
+          />
+          <select id="filter-urgency">
+            <option value="">All Statuses</option>
+            <option value="Normal">Normal</option>
+            <option value="Urgent">Urgent</option>
+            <option value="Immediate">Immediate</option>
+          </select>
+          <select id="filter-city">
+            <option value="">All Cities</option>
+          </select>
+          <select id="filter-area">
+            <option value="">All Areas</option>
+          </select>
+          <select id="sort-select">
+            <option value="chronological-asc">Oldest to Newest</option>
+            <option value="chronological-desc">Newest to Oldest</option>
+            <option value="alphabetical">By First Name</option>
+          </select>
         </div>
       </header>
 
       <!-- Main Content Area -->
       <main>
-        <!-- Contacts List View -->
+        <!-- Contacts View -->
         <section id="contacts-view" class="view active">
-          <button id="btn-add-contact">+ Add New Contact</button>
+          <button id="btn-open-modal" title="Add Contact">👥➕</button>
           <div id="contacts-list"></div>
         </section>
 
@@ -36,31 +57,234 @@
 
         <!-- Settings View -->
         <section id="settings-view" class="view">
-          <h2>Initial Setup & Default Settings</h2>
+          <h2>Default Settings & Management</h2>
           <form id="settings-form">
             <label
-              >States:
-              <input type="text" id="setting-state" placeholder="e.g. CA"
+              >Default State: <input type="text" id="setting-state" value="CA"
             /></label>
             <label
-              >Cities:
-              <input type="text" id="setting-city" placeholder="e.g. Newcastle"
+              >Default City:
+              <input type="text" id="setting-default-city" value="Newcastle"
             /></label>
             <label
-              >Areas:
-              <input type="text" id="setting-area" placeholder="e.g. Downtown"
+              >Add City to List:
+              <div style="display: flex; gap: 5px">
+                <input
+                  type="text"
+                  id="setting-new-city"
+                  placeholder="New City Name"
+                />
+                <button type="button" id="btn-add-setting-city">
+                  Add City
+                </button>
+              </div>
+            </label>
+            <label
+              >Default Area:
+              <input type="text" id="setting-default-area" value="Downtown"
             /></label>
-            <button type="submit">Save Settings</button>
+            <label
+              >Add Area to List:
+              <div style="display: flex; gap: 5px">
+                <input
+                  type="text"
+                  id="setting-new-area"
+                  placeholder="New Area Name"
+                />
+                <button type="button" id="btn-add-setting-area">
+                  Add Area
+                </button>
+              </div>
+            </label>
+            <button type="submit">Save Master Settings</button>
           </form>
         </section>
       </main>
 
-      <!-- Locked Bottom Navigation Bar -->
-      <nav id="bottom-nav">
-        <button class="nav-btn" data-target="contacts-view">👥 Contacts</button>
-        <button class="nav-btn" data-target="map-view">🗺️ Map</button>
-        <button class="nav-btn" data-target="settings-view">⚙️ Settings</button>
-      </nav>
+      <!-- Dynamic Footer Navigation -->
+      <nav id="bottom-nav"></nav>
+    </div>
+
+    <!-- Add/Edit Contact Modal -->
+    <div id="contact-modal" class="modal">
+      <div class="modal-content">
+        <span id="close-modal">&times;</span>
+        <div class="modal-header">
+          <h2 id="modal-title">Add Contact</h2>
+        </div>
+
+        <form id="contact-form" class="modal-form-container">
+          <div class="modal-body">
+            <input type="hidden" id="contact-id" />
+            <label
+              >First Name: <input type="text" id="contact-firstname" required
+            /></label>
+            <label
+              >Last Name: <input type="text" id="contact-lastname"
+            /></label>
+            <label
+              >Street Address:
+              <input
+                type="text"
+                id="contact-address"
+                placeholder="Street address"
+            /></label>
+
+            <label
+              >City:
+              <select id="contact-city-select"></select>
+            </label>
+            <div
+              id="new-city-container"
+              style="display: none; margin-bottom: 10px"
+            >
+              <div style="display: flex; gap: 5px">
+                <input
+                  type="text"
+                  id="input-new-city"
+                  placeholder="Type new city name..."
+                />
+                <button
+                  type="button"
+                  id="btn-save-new-city"
+                  style="
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                  "
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  id="btn-cancel-new-city"
+                  style="
+                    background: #6c757d;
+                    color: white;
+                    border: none;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                  "
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <label
+              >State: <input type="text" id="contact-state" value="CA"
+            /></label>
+
+            <label
+              >Area:
+              <select id="contact-area-select"></select>
+            </label>
+            <div
+              id="new-area-container"
+              style="display: none; margin-bottom: 10px"
+            >
+              <div style="display: flex; gap: 5px">
+                <input
+                  type="text"
+                  id="input-new-area"
+                  placeholder="Type new area name..."
+                />
+                <button
+                  type="button"
+                  id="btn-save-new-area"
+                  style="
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                  "
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  id="btn-cancel-new-area"
+                  style="
+                    background: #6c757d;
+                    color: white;
+                    border: none;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                  "
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <div class="gps-row">
+              <label>Latitude: <input type="text" id="contact-lat" /></label>
+              <label>Longitude: <input type="text" id="contact-lng" /></label>
+              <button type="button" id="btn-gps">📍 Get GPS</button>
+            </div>
+
+            <!-- Interactive Map Pin Picker inside Modal -->
+            <label style="margin-top: 10px"
+              >Click Map to Pin Exact Location:</label
+            >
+            <div
+              id="modal-picker-map"
+              style="
+                height: 180px;
+                width: 100%;
+                border-radius: 4px;
+                border: 1px solid #ccc;
+                margin-bottom: 10px;
+              "
+            ></div>
+
+            <label>Visit Logs (Click Edit to modify date/time/note):</label>
+            <div
+              id="modal-notes-history-container"
+              style="
+                margin-bottom: 10px;
+                max-height: 200px;
+                overflow-y: auto;
+                background: #f8f9fa;
+                border: 1px solid #ddd;
+                padding: 8px;
+                border-radius: 4px;
+              "
+            ></div>
+
+            <label>Add New Visit Log:</label>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px">
+              <input
+                type="datetime-local"
+                id="new-log-timestamp"
+                style="flex: 1"
+              />
+            </div>
+            <textarea
+              id="contact-notes"
+              rows="2"
+              placeholder="Note text for new visit..."
+            ></textarea>
+          </div>
+
+          <!-- Sticky Footer Action Bar Inside Modal Form -->
+          <div class="modal-sticky-footer">
+            <button type="submit" id="btn-save-contact" title="Save Contact">
+              💾 Save
+            </button>
+            <button type="button" id="btn-exit-modal" title="Exit / Cancel">
+              ❌ Exit
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- Leaflet JS -->
