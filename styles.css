@@ -179,10 +179,11 @@ main {
 
 .modal-content {
     background-color: white;
-    margin: 3vh auto;
-    width: 90%;
+    margin: 2vh auto;
+    width: 92%;
     max-width: 500px;
-    height: 88vh;
+    height: 84vh;
+    max-height: 84vh;
     display: flex;
     flex-direction: column;
     border-radius: 8px;
@@ -204,6 +205,7 @@ main {
     padding: 15px 20px 10px 20px;
     border-bottom: 1px solid #eee;
     background: #ffffff;
+    flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -214,13 +216,14 @@ main {
 .modal-form-container {
     display: flex;
     flex-direction: column;
-    flex: 1;
+    flex: 1 1 auto;
     overflow: hidden;
 }
 
 .modal-body {
-    flex: 1;
+    flex: 1 1 auto;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 15px 20px;
     box-sizing: border-box;
 }
@@ -265,6 +268,7 @@ main {
     display: flex;
     gap: 10px;
     box-sizing: border-box;
+    flex-shrink: 0;
     z-index: 10;
     box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
 }
