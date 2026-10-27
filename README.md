@@ -5,13 +5,14 @@ installed as a Progressive Web App (PWA).
 
 ## Before you start
 
-Choose one place for your regular use: a browser on one device, or the app
-added to that device's Home Screen. Browser and Home Screen copies may store
-separate contact data and do not automatically sync. Adding the app icon does
-not transfer contacts already stored in the browser. If you have already
-entered contacts, keep using that version or export an encrypted backup and
-restore it in the version you want to use. The app is free and has no online
-sync service; keeping multiple copies current requires manual backup/restore.
+For regular phone use, we recommend adding the app to your Home Screen; it opens
+like an app while keeping contacts locally on that device. The browser and Home
+Screen versions may store separate data and do not automatically sync. Adding
+the app icon does not transfer contacts already stored in the browser. If you
+have already entered contacts in a browser, either keep using that browser or
+export an encrypted backup and restore it in the Home Screen app before
+switching. The app is free and has no online sync service, so keeping multiple
+copies current requires manual backup/restore.
 
 ## Data and passphrase
 
