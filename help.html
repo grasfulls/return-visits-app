@@ -198,17 +198,41 @@
           contact, use the pencil/edit action on its contact card.
         </li>
         <li>
+          If you choose <strong>Exit</strong> or close the editor after making
+          changes, the app asks whether to leave without saving. Confirming
+          discards those changes; canceling keeps the editor open.
+        </li>
+        <li>
           Use the <strong>Map</strong> button in the bottom navigation to view
-          contacts that have map coordinates. To add or adjust a pin, edit a
-          contact and use the map in its form, device GPS (if permitted), or
-          <strong>Find Address on Map</strong>.
+          contacts that have map coordinates. Contacts without coordinates do
+          not have a pin on the map.
         </li>
       </ul>
       <p>
-        Map tiles and address lookup need an internet connection. If you choose
-        <strong>Find Address on Map</strong>, the address text is sent to
-        OpenStreetMap Nominatim to find a location. The app explains this beside
-        the address-search button.
+        To add or adjust a pin, edit the contact and use one of these options:
+      </p>
+      <ul>
+        <li>
+          <strong>Get GPS</strong> uses your device's current location. It does
+          not use the contact's typed address. Your browser may ask permission
+          to access location, and the device's location services must be on.
+        </li>
+        <li>
+          <strong>Find Address on Map</strong> searches for the street address,
+          city, and state entered for the contact. This requires internet
+          access, and the address text is sent to OpenStreetMap Nominatim for
+          lookup.
+        </li>
+        <li>
+          You can also tap the map to place the pin or drag the existing pin to
+          adjust it. Check that the pin is in the right place before choosing
+          <strong>Save</strong>; address searches may not identify the exact
+          entrance or building.
+        </li>
+      </ul>
+      <p>
+        Map tiles also need an internet connection. Coordinates are optional,
+        so you can save a contact without a pin and add coordinates later.
       </p>
 
       <h2>Find contacts and record visits</h2>
@@ -221,7 +245,11 @@
         </li>
         <li>
           Add a visit note from the contact card or while editing a contact.
-          Existing notes can be edited or deleted from the contact editor.
+          On the contact card, type the note into the "Add visit log..." box and
+          choose the plus button to save it with today's date and time. In the
+          contact editor, enter a note and choose Save; you can adjust its date
+          and time there. Existing notes can be edited or deleted from the
+          contact editor.
         </li>
         <li>
           Urgency is based on the most recent visit (or the contact's creation
@@ -240,7 +268,10 @@
         </li>
         <li>
           A list print includes each contact once, grouped under its most
-          specific location, and includes only its latest note.
+          specific location: Area, or Region if there is no Area, or City if
+          there is no Region or Area. Contacts without any of these are grouped
+          under "No location assigned." Each contact's list entry includes
+          only its latest note.
         </li>
         <li>
           To print one contact, open that saved contact and choose
@@ -296,7 +327,9 @@
         an encrypted backup using the instructions above. On a phone, you can
         optionally add the app to your Home Screen: in Safari on iPhone, use
         Share then Add to Home Screen; in Chrome on Android, choose Install app
-        or Add to Home screen.
+        or Add to Home screen. The app checks for updates when opened online.
+        If it was already open when an update was published, refresh the page or
+        close and reopen the app while connected to the internet.
       </p>
     </main>
 
