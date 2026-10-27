@@ -100,6 +100,17 @@ main {
     font-size: 16px;
 }
 
+#btn-export-backup {
+    align-self: flex-start;
+    background: #004080;
+    color: white;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
 textarea {
     min-height: 90px;
     resize: vertical;

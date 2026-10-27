@@ -1,12 +1,86 @@
-document.addEventListener("DOMContentLoaded", () => {
+const DEFAULT_SETTINGS = {
+  state: "CA",
+  defaultCity: "Newcastle",
+  defaultArea: "Downtown",
+  cities: ["Newcastle", "Rocklin", "Roseville", "Auburn"],
+  areas: ["Downtown", "Rural", "North", "South"],
+};
+
+const openAppDatabase = () =>
+  new Promise((resolve, reject) => {
+    const request = indexedDB.open("return-visits-app", 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore("appData", { keyPath: "key" });
+    };
+    request.onsuccess = () => {
+      request.result.onversionchange = () => request.result.close();
+      resolve(request.result);
+    };
+    request.onerror = () => reject(request.error);
+  });
+
+const readStoredValue = (database, key) =>
+  new Promise((resolve, reject) => {
+    const transaction = database.transaction("appData", "readonly");
+    const request = transaction.objectStore("appData").get(key);
+    request.onsuccess = () => resolve(request.result?.value);
+    request.onerror = () => reject(request.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+
+const writeStoredValue = (database, key, value) =>
+  new Promise((resolve, reject) => {
+    const transaction = database.transaction("appData", "readwrite");
+    transaction.objectStore("appData").put({ key, value });
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+
+const parseLegacyValue = (key) => {
+  const value = localStorage.getItem(key);
+  return value === null ? undefined : JSON.parse(value);
+};
+
+const initializeAppData = async () => {
+  const database = await openAppDatabase();
+  const [storedSettings, storedContacts] = await Promise.all([
+    readStoredValue(database, "settings"),
+    readStoredValue(database, "contacts"),
+  ]);
+  const settings =
+    storedSettings ??
+    parseLegacyValue("return_visits_settings") ??
+    DEFAULT_SETTINGS;
+  const contacts =
+    storedContacts ??
+    parseLegacyValue("return_visits_contacts") ??
+    [];
+
+  if (storedSettings === undefined) {
+    await writeStoredValue(database, "settings", settings);
+  }
+  if (storedContacts === undefined) {
+    await writeStoredValue(database, "contacts", contacts);
+  }
+
+  return { database, settings, contacts };
+};
+
+const showStorageError = (action, error) => {
+  console.error(`Unable to ${action}:`, error);
+  alert(
+    `Could not ${action}. Your changes may not have been saved. Please try again.`,
+  );
+};
+
+const initializeApp = async () => {
+  const { database, settings: savedSettings, contacts: savedContacts } =
+    await initializeAppData();
+
   // Settings State & Lists
-  let settings = JSON.parse(localStorage.getItem("return_visits_settings")) || {
-    state: "CA",
-    defaultCity: "Newcastle",
-    defaultArea: "Downtown",
-    cities: ["Newcastle", "Rocklin", "Roseville", "Auburn"],
-    areas: ["Downtown", "Rural", "North", "South"],
-  };
+  let settings = savedSettings;
+  const saveSettings = () => writeStoredValue(database, "settings", settings);
 
   // Populate Settings View Form
   document.getElementById("setting-state").value = settings.state;
@@ -91,21 +165,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  document.getElementById("btn-save-new-city").addEventListener("click", () => {
-    const val = inputNewCity.value.trim();
-    if (val) {
-      if (!settings.cities.includes(val)) {
-        settings.cities.push(val);
-        localStorage.setItem(
-          "return_visits_settings",
-          JSON.stringify(settings),
-        );
+  document
+    .getElementById("btn-save-new-city")
+    .addEventListener("click", async () => {
+      const val = inputNewCity.value.trim();
+      if (val) {
+        if (!settings.cities.includes(val)) {
+          settings.cities.push(val);
+          try {
+            await saveSettings();
+          } catch (error) {
+            showStorageError("save settings", error);
+            return;
+          }
+        }
+        populateDropdowns();
+        citySelect.value = val;
+        newCityContainer.style.display = "none";
       }
-      populateDropdowns();
-      citySelect.value = val;
-      newCityContainer.style.display = "none";
-    }
-  });
+    });
 
   document
     .getElementById("btn-cancel-new-city")
@@ -129,21 +207,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  document.getElementById("btn-save-new-area").addEventListener("click", () => {
-    const val = inputNewArea.value.trim();
-    if (val) {
-      if (!settings.areas.includes(val)) {
-        settings.areas.push(val);
-        localStorage.setItem(
-          "return_visits_settings",
-          JSON.stringify(settings),
-        );
+  document
+    .getElementById("btn-save-new-area")
+    .addEventListener("click", async () => {
+      const val = inputNewArea.value.trim();
+      if (val) {
+        if (!settings.areas.includes(val)) {
+          settings.areas.push(val);
+          try {
+            await saveSettings();
+          } catch (error) {
+            showStorageError("save settings", error);
+            return;
+          }
+        }
+        populateDropdowns();
+        areaSelect.value = val;
+        newAreaContainer.style.display = "none";
       }
-      populateDropdowns();
-      areaSelect.value = val;
-      newAreaContainer.style.display = "none";
-    }
-  });
+    });
 
   document
     .getElementById("btn-cancel-new-area")
@@ -155,16 +237,18 @@ document.addEventListener("DOMContentLoaded", () => {
   // Settings View Buttons
   document
     .getElementById("btn-add-setting-city")
-    .addEventListener("click", () => {
+    .addEventListener("click", async () => {
       const input = document.getElementById("setting-new-city");
       const val = input.value.trim();
       if (val && !settings.cities.includes(val)) {
         settings.cities.push(val);
         input.value = "";
-        localStorage.setItem(
-          "return_visits_settings",
-          JSON.stringify(settings),
-        );
+        try {
+          await saveSettings();
+        } catch (error) {
+          showStorageError("save settings", error);
+          return;
+        }
         populateDropdowns();
         alert(`City "${val}" added successfully!`);
       }
@@ -172,38 +256,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document
     .getElementById("btn-add-setting-area")
-    .addEventListener("click", () => {
+    .addEventListener("click", async () => {
       const input = document.getElementById("setting-new-area");
       const val = input.value.trim();
       if (val && !settings.areas.includes(val)) {
         settings.areas.push(val);
         input.value = "";
-        localStorage.setItem(
-          "return_visits_settings",
-          JSON.stringify(settings),
-        );
+        try {
+          await saveSettings();
+        } catch (error) {
+          showStorageError("save settings", error);
+          return;
+        }
         populateDropdowns();
         alert(`Area "${val}" added successfully!`);
       }
     });
 
-  document.getElementById("settings-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    settings.state = document.getElementById("setting-state").value.trim();
-    settings.defaultCity = document
-      .getElementById("setting-default-city")
-      .value.trim();
-    settings.defaultArea = document
-      .getElementById("setting-default-area")
-      .value.trim();
-    localStorage.setItem("return_visits_settings", JSON.stringify(settings));
-    populateDropdowns();
-    alert("Master settings saved successfully!");
-  });
+  document
+    .getElementById("settings-form")
+    .addEventListener("submit", async (e) => {
+      e.preventDefault();
+      settings.state = document.getElementById("setting-state").value.trim();
+      settings.defaultCity = document
+        .getElementById("setting-default-city")
+        .value.trim();
+      settings.defaultArea = document
+        .getElementById("setting-default-area")
+        .value.trim();
+      try {
+        await saveSettings();
+      } catch (error) {
+        showStorageError("save settings", error);
+        return;
+      }
+      populateDropdowns();
+      alert("Master settings saved successfully!");
+    });
 
-  // Local Storage & Contacts State
-  let contacts =
-    JSON.parse(localStorage.getItem("return_visits_contacts")) || [];
+  let contacts = savedContacts;
 
   // Helper: Calculate days between a timestamp and now
   const calculateDaysSince = (dateInput) => {
@@ -299,10 +390,16 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   renderBottomNav();
 
-  const saveContacts = () => {
-    localStorage.setItem("return_visits_contacts", JSON.stringify(contacts));
+  const saveContacts = async () => {
+    try {
+      await writeStoredValue(database, "contacts", contacts);
+    } catch (error) {
+      showStorageError("save contacts", error);
+      return false;
+    }
     renderContacts();
     if (map) renderMapMarkers();
+    return true;
   };
 
   // Modal Elements & Interactive Picker Map
@@ -433,7 +530,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Save Contact Handler
-  contactForm.addEventListener("submit", (e) => {
+  contactForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const id = document.getElementById("contact-id").value;
     const firstName = document.getElementById("contact-firstname").value.trim();
@@ -511,7 +608,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("contact-id").value = targetId;
     }
 
-    saveContacts();
+    if (!(await saveContacts())) return;
 
     document.getElementById("contact-notes").value = "";
     document.getElementById("new-log-timestamp").value = toLocalDateTimeString(
@@ -663,7 +760,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Global Action Handlers
-  window.addQuickNote = (id) => {
+  window.addQuickNote = async (id) => {
     const input = document.getElementById(`quick-note-${id}`);
     const text = input.value.trim();
     if (!text) return;
@@ -678,20 +775,20 @@ document.addEventListener("DOMContentLoaded", () => {
         date: now.toLocaleString(),
         text: text,
       });
-      saveContacts();
+      if (!(await saveContacts())) return;
       input.value = "";
     }
   };
 
   // Inline Visit Log Editor Functions
-  window.deleteVisitLog = (contactId, logId) => {
+  window.deleteVisitLog = async (contactId, logId) => {
     if (confirm("Are you sure you want to delete this visit log?")) {
       const contact = contacts.find((c) => c.id == contactId);
       if (contact && contact.notesHistory) {
         contact.notesHistory = contact.notesHistory.filter(
           (n) => n.id != logId,
         );
-        saveContacts();
+        if (!(await saveContacts())) return;
         editContact(contactId);
       }
     }
@@ -821,7 +918,7 @@ document.addEventListener("DOMContentLoaded", () => {
           saveLogBtn.style.borderRadius = "4px";
           saveLogBtn.style.cursor = "pointer";
 
-          saveLogBtn.addEventListener("click", (ev) => {
+          saveLogBtn.addEventListener("click", async (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
             const updatedText = textArea.value.trim();
@@ -835,8 +932,7 @@ document.addEventListener("DOMContentLoaded", () => {
               note.rawDate = updatedDate.toISOString();
               note.date = updatedDate.toLocaleString();
             }
-            saveContacts();
-            editContact(contact.id); // Refresh history container
+            if (await saveContacts()) editContact(contact.id);
           });
 
           const cancelLogBtn = document.createElement("button");
@@ -880,10 +976,10 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   };
 
-  window.deleteContact = (id) => {
+  window.deleteContact = async (id) => {
     if (confirm("Are you sure you want to delete this contact?")) {
       contacts = contacts.filter((c) => c.id != id);
-      saveContacts();
+      await saveContacts();
     }
   };
 
@@ -903,5 +999,45 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("sort-select")
     .addEventListener("change", renderContacts);
 
+  document
+    .getElementById("btn-export-backup")
+    .addEventListener("click", async () => {
+      try {
+        const [backupSettings, backupContacts] = await Promise.all([
+          readStoredValue(database, "settings"),
+          readStoredValue(database, "contacts"),
+        ]);
+        const backup = {
+          format: "return-visits-backup",
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          settings: backupSettings,
+          contacts: backupContacts,
+        };
+        const file = new Blob([JSON.stringify(backup, null, 2)], {
+          type: "application/json",
+        });
+        const downloadUrl = URL.createObjectURL(file);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = `return-visits-backup-${new Date()
+          .toISOString()
+          .slice(0, 10)}.json`;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      } catch (error) {
+        showStorageError("export backup", error);
+      }
+    });
+
   renderContacts();
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  initializeApp().catch((error) => {
+    console.error("Unable to start the app:", error);
+    alert(
+      "The app could not open its on-device database. Your existing browser data has not been deleted. Please reload and try again.",
+    );
+  });
 });
