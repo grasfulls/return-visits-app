@@ -163,8 +163,10 @@
       </p>
       <p>
         Return Visits keeps your contact records in the browser storage on the
-        device where you use the app. The app encrypts saved contacts and
-        settings with your passphrase. Your records do not automatically sync
+        device where you use the app. A passphrase is optional; if you turn one on in
+                Settings, the app encrypts saved contacts and
+                settings with it. Without a passphrase, records are stored unencrypted
+                in your browser. Your records do not automatically sync
         to another device, and the app does not use a user account or a central
         contact database. I do not maintain a list identifying who downloads
         or uses the app.
@@ -191,8 +193,11 @@
         The app stores the contact and visit information you enter, including
         names, email addresses, phone numbers, address and location details,
         map coordinates, and visit notes. It also stores your app settings.
-        Saved records are encrypted in your browser's IndexedDB storage using
-        a key derived from your passphrase. The app needs to decrypt the
+        Saved records are stored in your browser's IndexedDB storage. If you
+        have turned on a passphrase, they are encrypted using
+        a key derived from it; otherwise they are stored unencrypted and anyone
+        with access to the device and browser profile may be able to read them.
+        The app needs to decrypt the
         records in the browser while you are using them.
       </p>
       <p>
@@ -201,8 +206,9 @@
         does not create an account or provide a central contact database.
       </p>
       <p>
-        You can change the passphrase for the current app copy in Settings
-        after entering the existing passphrase. The app re-encrypts that
+        You can turn on or change the passphrase for the current app copy in
+        Settings (entering the existing passphrase when changing one). The app
+        re-encrypts that
         copy's saved contacts and settings locally. Other copies and backup
         files are not changed; existing backups continue to use the passphrase
         they were created with.
@@ -288,12 +294,14 @@
       <ul>
         <li>
           Backups and contact exports are created only when you choose the
-          relevant export action. The app downloads an encrypted file; it does
+          relevant export action. The app downloads a file (encrypted when a
+          passphrase is on; unencrypted otherwise); it does
           not automatically upload a backup.
         </li>
         <li>
           You choose where to save, store, or share exported files. Anyone who
-          obtains an encrypted file would also need its passphrase to decrypt
+          obtains an unencrypted backup can read it. Anyone who obtains an
+          encrypted file would also need its passphrase to decrypt
           it, so keep the passphrase separate from the file.
         </li>
         <li>
@@ -316,12 +324,12 @@
           internet connection.
         </li>
         <li>
-          Keep your passphrase private and make encrypted backups regularly.
+          If you turn on a passphrase, keep it private. Make backups regularly.
           The app cannot recover a forgotten passphrase.
         </li>
         <li>
           If you clear browser storage, remove the app, lose the device, or
-          forget the passphrase without a usable backup, your local records may
+          forget a passphrase you turned on without a usable backup, your local records may
           become unavailable.
         </li>
         <li>

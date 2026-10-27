@@ -31,17 +31,22 @@ when possible, since browser and Home Screen copies may keep separate data.
 ## Data and passphrase
 
 Contacts and settings are stored on the current browser and device in IndexedDB
-and encrypted with AES-GCM. On first use, create and confirm a passphrase of at
-least 8 characters. Enter the same passphrase whenever opening the app. There
-is no passphrase recovery; if it is forgotten, the encrypted data cannot be
-unlocked. Keep the passphrase safe and separate from any backup or contact file.
-To change it for the current browser or Home Screen copy, use **Settings →
-Change Passphrase** and verify the current passphrase first. The change does
-not affect other copies or previously exported backup files; those backups
-continue to require the passphrase they were created with.
+and, when a passphrase is turned on, encrypted with AES-GCM. A passphrase is
+optional: by default the app opens without one and stores data unencrypted. To
+turn it on, use **Settings → Turn On Passphrase** and choose a passphrase of at
+least 8 characters; it is then required whenever opening the app. There is no
+passphrase recovery; if it is forgotten, the encrypted data cannot be unlocked.
+Keep the passphrase safe and separate from any backup or contact file. Once on,
+use **Settings → Change Passphrase** and verify the current passphrase first.
+The change does not affect other copies or previously exported backup files;
+those backups continue to require the passphrase they were created with.
 
-Existing legacy browser data is encrypted and verified during migration before
-plaintext copies are removed. Data is not synchronized between browsers or
+Developers can require a passphrase on first use by setting
+`REQUIRE_PASSPHRASE_ON_FIRST_USE` to `true` in `app.js`.
+
+Existing legacy browser data is migrated without a passphrase, or encrypted and
+verified during migration if a passphrase is required, before plaintext copies
+are removed. Data is not synchronized between browsers or
 devices, and the app has no user account or server-side contact database.
 Clearing browser data or losing a device can remove its local records, so keep
 an encrypted backup.
@@ -136,12 +141,13 @@ Maps to open directions.
 
 ## Full backup and restore
 
-Choose **Settings → Export Data Backup** to download an encrypted JSON backup
-of all contacts and settings. The browser saves it to its usual download
+Choose **Settings → Export Data Backup** to download a JSON backup
+(encrypted when a passphrase is on) of all contacts and settings. The browser saves it to its usual download
 location—for example, **Files → Downloads** on iPhone or the browser’s
 **Downloads** location on other devices. The app cannot choose a save folder.
 
-To restore, select the backup and enter the passphrase used for it. Restore
+To restore, select the backup and, if it is encrypted, enter the passphrase used
+for it. Restore
 replaces the current local contacts and settings only after confirmation. On a
 new device, you can choose **Choose Backup to Restore** on the initial unlock
 screen; the restored backup’s passphrase becomes the passphrase for that
@@ -190,13 +196,13 @@ The app is published on GitHub Pages:
 
 **https://grasfulls.github.io/return-visits-app/**
 
-The app checks for updates when it opens and shows any update prompt after you
-unlock. If an update is ready, it prompts you to update now or later; an
+The app checks for updates when it opens and shows any update prompt once it has
+finished opening (after unlocking, if a passphrase is on). If an update is ready, it prompts you to update now or later; an
 exclamation mark also appears by Settings. To check or refresh manually, open
 **Settings → Check for Updates & Refresh** while online. Save or finish any
 open contact or Settings edits before refreshing. The app reloads its code
 while keeping the contacts and settings stored in that app copy on the device.
-After the reload, unlock with the same passphrase.
+After the reload, unlock with the same passphrase if one is turned on.
 
 The plain-language user guide is available from **Settings → Read the
 plain-language User Guide** or directly at

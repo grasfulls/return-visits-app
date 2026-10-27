@@ -7,6 +7,8 @@ const DEFAULT_SETTINGS = {
 };
 const ENCRYPTION_ITERATIONS = 310000;
 const ENCRYPTION_META_KEY = "encryption-meta";
+// Set to true to require a passphrase when no encryption has been set up yet.
+const REQUIRE_PASSPHRASE_ON_FIRST_USE = false;
 const APP_UPDATE_PENDING_KEY = "return_visits_app_update_pending";
 let appUpdateAvailable = false;
 let appReadyForUpdates = false;
@@ -529,6 +531,8 @@ const deriveEncryptionKey = async (passphrase, metadata) => {
 };
 
 const encryptValue = async (value, key) => {
+  // No key means passphrase protection is off; data is stored unencrypted.
+  if (!key) return value;
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
@@ -543,6 +547,7 @@ const encryptValue = async (value, key) => {
 };
 
 const decryptValue = async (encryptedValue, key) => {
+  if (!key) return encryptedValue;
   if (
     !encryptedValue ||
     encryptedValue.version !== 1 ||
@@ -770,7 +775,7 @@ const normalizeRegionData = (settings, contacts) => {
 };
 
 const decryptBackup = async (backup, passphrase) => {
-  if (passphrase.length < 8) {
+  if (passphrase !== null && passphrase.length < 8) {
     throw new Error("The backup passphrase must be at least 8 characters.");
   }
   if (
@@ -797,8 +802,11 @@ const decryptBackup = async (backup, passphrase) => {
     ) {
       throw new Error("The backup contents are invalid.");
     }
-    const metadata = createCryptoMetadata();
-    const encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+    const metadata = passphrase === null ? null : createCryptoMetadata();
+    const encryptionKey =
+      passphrase === null
+        ? null
+        : await deriveEncryptionKey(passphrase, metadata);
     const normalized = normalizeRegionData(
       backup.settings,
       backup.contacts,
@@ -820,6 +828,9 @@ const decryptBackup = async (backup, passphrase) => {
     };
   }
 
+  if (passphrase === null) {
+    throw new Error("This backup requires a passphrase.");
+  }
   const metadata = backup.encryption;
   if (
     backup.format !== "return-visits-encrypted-backup" ||
@@ -912,6 +923,26 @@ const createUnlockPrompt = (hasEncryption) => {
 const initializeAppData = async () => {
   const database = await openAppDatabase();
   const existingMetadata = await readStoredValue(database, ENCRYPTION_META_KEY);
+  if (!existingMetadata && !REQUIRE_PASSPHRASE_ON_FIRST_USE) {
+    const [storedSettings, storedContacts] = await Promise.all([
+      readStoredValue(database, "settings"),
+      readStoredValue(database, "contacts"),
+    ]);
+    const { settings, contacts } = normalizeRegionData(
+      storedSettings ??
+        parseLegacyValue("return_visits_settings") ??
+        DEFAULT_SETTINGS,
+      storedContacts ?? parseLegacyValue("return_visits_contacts") ?? [],
+    );
+    await writeStoredValues(database, [
+      ["settings", settings],
+      ["contacts", contacts],
+    ]);
+    localStorage.removeItem("return_visits_settings");
+    localStorage.removeItem("return_visits_contacts");
+    document.getElementById("unlock-screen").remove();
+    return { database, settings, contacts, encryptionKey: null, metadata: null };
+  }
   const prompt = createUnlockPrompt(Boolean(existingMetadata));
 
   return new Promise((resolve) => {
@@ -1988,6 +2019,22 @@ const initializeApp = async () => {
     await persistLocationChanges(previousState);
   };
 
+  const updatePassphraseSection = () => {
+    const protectedNow = Boolean(cryptoMetadata);
+    document.getElementById("passphrase-section-title").textContent =
+      protectedNow ? "Change Passphrase" : "Turn On Passphrase";
+    document.getElementById("passphrase-section-description").textContent =
+      protectedNow
+        ? "Enter your current passphrase and choose a new one with at least 8 characters. This changes the passphrase for this app copy only. Existing backup files keep the passphrase they were created with."
+        : "A passphrase is currently off. Turn it on to encrypt the data on this device; you will be asked for it each time you open the app. Use at least 8 characters. If you forget it, there is no recovery option.";
+    document.getElementById("current-passphrase-fields").hidden =
+      !protectedNow;
+    document.getElementById("current-passphrase").required = protectedNow;
+    document.getElementById("btn-change-passphrase").textContent =
+      protectedNow ? "Change Passphrase" : "Turn On Passphrase";
+  };
+  updatePassphraseSection();
+
   document
     .getElementById("change-passphrase-form")
     .addEventListener("submit", async (event) => {
@@ -2002,6 +2049,7 @@ const initializeApp = async () => {
       const submitButton = document.getElementById("btn-change-passphrase");
       const status = document.getElementById("change-passphrase-status");
       const appContainer = document.getElementById("app-container");
+      const wasProtected = Boolean(cryptoMetadata);
       let statusMessage = "";
       status.textContent = "";
       submitButton.disabled = true;
@@ -2014,7 +2062,7 @@ const initializeApp = async () => {
         if (newPassphrase.value !== confirmNewPassphrase.value) {
           throw new Error("The new passphrases do not match.");
         }
-        if (newPassphrase.value === currentPassphrase.value) {
+        if (cryptoMetadata && newPassphrase.value === currentPassphrase.value) {
           throw new Error(
             "Choose a new passphrase that differs from the current one.",
           );
@@ -2025,10 +2073,12 @@ const initializeApp = async () => {
         let storedEncryptedSettings;
         let storedEncryptedContacts;
         try {
-          const currentKey = await deriveEncryptionKey(
-            currentPassphrase.value,
-            cryptoMetadata,
-          );
+          const currentKey = cryptoMetadata
+            ? await deriveEncryptionKey(
+                currentPassphrase.value,
+                cryptoMetadata,
+              )
+            : null;
           [storedEncryptedSettings, storedEncryptedContacts] = await Promise.all([
             readStoredValue(database, "settings"),
             readStoredValue(database, "contacts"),
@@ -2079,9 +2129,11 @@ const initializeApp = async () => {
         );
         encryptionKey = newKey;
         cryptoMetadata = newMetadata;
-        statusMessage =
-          "Passphrase changed. Use the new passphrase next time you open this app copy.";
+        statusMessage = wasProtected
+          ? "Passphrase changed. Use the new passphrase next time you open this app copy."
+          : "Passphrase turned on. You will be asked for it each time you open this app. There is no recovery option if you forget it.";
         document.getElementById("change-passphrase-form").reset();
+        updatePassphraseSection();
       } catch (error) {
         console.error("Unable to change passphrase:", error);
         statusMessage =
@@ -3910,14 +3962,20 @@ const initializeApp = async () => {
   const downloadEncryptedBackup = async () => {
     try {
       const backup = {
-        format: "return-visits-encrypted-backup",
+        format: encryptionKey
+          ? "return-visits-encrypted-backup"
+          : "return-visits-backup",
         version: 1,
         exportedAt: new Date().toISOString(),
-        encryption: cryptoMetadata,
-        data: {
-          settings: await encryptValue(settings, encryptionKey),
-          contacts: await encryptValue(contacts, encryptionKey),
-        },
+        ...(encryptionKey
+          ? {
+              encryption: cryptoMetadata,
+              data: {
+                settings: await encryptValue(settings, encryptionKey),
+                contacts: await encryptValue(contacts, encryptionKey),
+              },
+            }
+          : { settings, contacts }),
       };
       const file = new Blob([JSON.stringify(backup, null, 2)], {
         type: "application/json",
@@ -4239,9 +4297,21 @@ const initializeApp = async () => {
 
       try {
         const backup = JSON.parse(await file.text());
-        const backupPassphrase = await requestBackupPassphrase();
-        if (backupPassphrase === null) return;
+        const plainMode = !encryptionKey;
+        const skipPassphrase =
+          plainMode && backup.format === "return-visits-backup";
+        const backupPassphrase = skipPassphrase
+          ? null
+          : await requestBackupPassphrase();
+        if (!skipPassphrase && backupPassphrase === null) return;
         const restored = await decryptBackup(backup, backupPassphrase);
+        if (plainMode) {
+          restored.encryptionKey = null;
+          restored.metadata = null;
+          restored.encryptedSettings = restored.settings;
+          restored.encryptedContacts = restored.contacts;
+          restored.wasLegacyPlaintext = false;
+        }
         if (
           restored.wasLegacyPlaintext &&
           !confirm(
@@ -4261,7 +4331,9 @@ const initializeApp = async () => {
         await writeStoredValues(database, [
           ["settings", restored.encryptedSettings],
           ["contacts", restored.encryptedContacts],
-          [ENCRYPTION_META_KEY, restored.metadata],
+          ...(restored.metadata
+            ? [[ENCRYPTION_META_KEY, restored.metadata]]
+            : []),
         ]);
         encryptionKey = restored.encryptionKey;
         cryptoMetadata = restored.metadata;

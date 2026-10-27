@@ -94,8 +94,8 @@
           </button>
         </div>
         <small>
-          Your data and backups are encrypted on this device. If you forget
-          your passphrase, there is no recovery option.
+          Your data is encrypted with this passphrase. If you forget it,
+          there is no recovery option.
         </small>
       </div>
     </section>
@@ -158,8 +158,8 @@
             <h2>Settings & Master Lists</h2>
             <p>
               Contacts and settings are stored on this device in this browser.
-              They are encrypted with your passphrase. Keep your passphrase
-              private and export encrypted backups regularly.
+              A passphrase is optional. If you turn one on below, your data is
+              encrypted with it; keep it private. Export backups regularly.
             </p>
             <p>
               <a class="user-guide-link" href="./help.html">
@@ -176,8 +176,8 @@
               The app checks for updates when it opens. If an update is ready,
               you can install it now or later. You can also check manually
               while online. Save or finish any open edits before refreshing;
-              after it reloads, unlock with your passphrase. Saved contacts
-              remain on this device.
+              after it reloads, unlock with your passphrase if you have turned
+              one on. Saved contacts remain on this device.
             </p>
             <p id="app-update-notice" role="status" aria-live="polite" hidden>
               An app update is ready. Choose Update Now to install it.
@@ -190,7 +190,7 @@
               ⬇️ Export Data Backup
             </button>
             <p>
-              The encrypted backup downloads to this device's usual download
+              The backup (encrypted if a passphrase is on) downloads to this device's usual download
               location. On iPhone, look in Files → Downloads; on other devices,
               check the browser's Downloads location.
             </p>
@@ -246,20 +246,22 @@
             </form>
 
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
-            <h3>Change Passphrase</h3>
-            <p>
+            <h3 id="passphrase-section-title">Change Passphrase</h3>
+            <p id="passphrase-section-description">
               Enter your current passphrase and choose a new one with at least
               8 characters. This changes the passphrase for this app copy only.
               Existing backup files keep the passphrase they were created with.
             </p>
             <form id="change-passphrase-form">
-              <label for="current-passphrase">Current passphrase</label>
-              <input
-                type="password"
-                id="current-passphrase"
-                autocomplete="current-password"
-                required
-              />
+              <div id="current-passphrase-fields">
+                <label for="current-passphrase">Current passphrase</label>
+                <input
+                  type="password"
+                  id="current-passphrase"
+                  autocomplete="current-password"
+                  required
+                />
+              </div>
               <label for="new-passphrase">New passphrase</label>
               <input
                 type="password"
@@ -720,7 +722,7 @@
       <p>
         A newer version is ready. Update now to refresh the app. Your saved
         contacts stay on this device; after refreshing, unlock with your
-        passphrase.
+                passphrase if you have turned one on.
       </p>
       <div class="restore-dialog-actions">
         <button type="button" id="btn-apply-app-update">Update now</button>

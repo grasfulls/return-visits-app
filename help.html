@@ -205,30 +205,35 @@
         <a href="#consolidate">Consolidate copies and remove unused data</a>.
       </p>
 
-      <h2>First time: create your passphrase</h2>
+      <h2>Passphrase (optional)</h2>
       <ul>
         <li>
-          The first time you open the app on a device and browser, create a
-          passphrase with at least 8 characters and enter it again to confirm.
-        </li>
-        <li>Use that same passphrase to unlock the app on that device and browser.</li>
-        <li>
-          Keep the passphrase somewhere safe. There is no passphrase recovery.
-          If you forget it, the app cannot unlock that device's encrypted
-          contacts.
+          A passphrase is not required. By default the app opens right away
+          and stores your contacts on this device without encryption.
         </li>
         <li>
-          Your passphrase unlocks the encrypted data on this device; it does not
-          sync or restore contacts by itself. To recover your contacts after
-          reinstalling the app or to move them to another device, you also need
-          an encrypted backup. See
+          To protect your data, open <strong>Settings → Turn On
+          Passphrase</strong> and choose a passphrase with at least 8
+          characters. Your saved data is then encrypted, and you will enter
+          the passphrase each time you open the app on that device and browser.
+        </li>
+        <li>
+          If you turn a passphrase on, keep it somewhere safe. There is no
+          passphrase recovery. If you forget it, the app cannot unlock that
+          device's encrypted contacts.
+        </li>
+        <li>
+          A passphrase does not sync or restore contacts by itself. To recover
+          your contacts after reinstalling the app or to move them to another
+          device, you need a backup. See
           <a href="#backup">Protect your information and make a backup</a>.
         </li>
       </ul>
 
       <h2>Change your passphrase</h2>
       <p>
-        After unlocking this copy of the app, open <strong>Settings</strong>,
+        If a passphrase is on, after unlocking this copy of the app, open
+        <strong>Settings</strong>,
         enter your current passphrase, then enter and confirm a new passphrase
         of at least 8 characters. The app re-encrypts this copy's saved
         contacts and settings with the new passphrase. This does not change
@@ -415,22 +420,23 @@
 
       <h2 id="backup">Protect your information and make a backup</h2>
       <p>
-        Your contacts and settings are encrypted and stored in this device's
-        browser. They are not uploaded to an account and are not automatically
+        Your contacts and settings are stored in this device's browser, and
+        are encrypted if you have turned on a passphrase. They are not uploaded to an account and are not automatically
         backed up. Clearing browser data, losing the device, or forgetting the
-        passphrase can make the local records unavailable. Make encrypted
+        passphrase (if one is on) can make the local records unavailable. Make
         backups regularly and keep them somewhere safe.
       </p>
       <ul>
         <li>
           In <strong>Settings</strong>, choose <strong>Export Data Backup</strong>.
-          The encrypted backup includes all contacts and settings and is
-          downloaded by your browser to its usual Downloads location.
+          The backup includes all contacts and settings, is encrypted if a
+          passphrase is on, and is downloaded by your browser to its usual Downloads location.
         </li>
         <li>
           To move your full collection to a new device, open the app there and
           choose <strong>Choose Backup to Restore</strong> on the first screen.
-          Select the backup and enter the passphrase used when it was created.
+          Select the backup and, if it is encrypted, enter the passphrase used
+          when it was created.
         </li>
         <li>
           Restoring a full backup replaces the contacts and settings currently
@@ -558,12 +564,12 @@
         phone, we recommend adding the app to your Home Screen: in Safari on
         iPhone, use Share then Add to Home Screen; in Chrome on Android, choose
         Install app or Add to Home screen. The app checks for updates when it
-        opens and prompts you after unlocking if an update is ready; an
+        opens and prompts you once it has opened if an update is ready; an
         exclamation mark also appears by Settings. To check or refresh manually, open
         <strong>Settings → Check for Updates &amp; Refresh</strong> while online.
         Save or finish any open contact or Settings edits first. The app reloads
         its code without removing the contacts and settings stored in that app
-        copy. After it reloads, unlock using the same passphrase.
+        copy. After it reloads, unlock using the same passphrase if you have turned one on.
       </p>
       <h2>Already using the app in your phone's browser?</h2>
       <p>
