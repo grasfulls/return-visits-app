@@ -20,6 +20,50 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <section id="unlock-screen" aria-labelledby="unlock-title">
+      <div class="unlock-card">
+        <h1 id="unlock-title">Unlock Return Visits</h1>
+        <p id="unlock-description"></p>
+        <form id="unlock-form">
+          <label for="encryption-passphrase">Passphrase</label>
+          <input
+            type="password"
+            id="encryption-passphrase"
+            autocomplete="current-password"
+            minlength="8"
+            required
+          />
+          <div id="confirm-passphrase-container">
+            <label for="confirm-encryption-passphrase">Confirm passphrase</label>
+            <input
+              type="password"
+              id="confirm-encryption-passphrase"
+              autocomplete="new-password"
+              minlength="8"
+            />
+          </div>
+          <p id="unlock-error" role="alert"></p>
+          <button type="submit" id="unlock-submit">Unlock</button>
+        </form>
+        <div class="unlock-restore">
+          <p>Moving to a new device? Restore an encrypted backup instead.</p>
+          <input
+            type="file"
+            id="initial-backup-file-input"
+            accept="application/json,.json"
+            hidden
+          />
+          <button type="button" id="btn-initial-restore">
+            Choose Backup to Restore
+          </button>
+        </div>
+        <small>
+          Your data and backups are encrypted on this device. If you forget
+          your passphrase, there is no recovery option.
+        </small>
+      </div>
+    </section>
+
     <div id="app-container">
       <header>
         <h1>Return Visits</h1>
@@ -67,10 +111,20 @@
             <h2>Settings & Master Lists</h2>
             <p>
               Contacts and settings are stored on this device in this browser.
-              Export a backup file regularly to keep a separate copy.
+              They are encrypted with your passphrase. Keep your passphrase
+              private and export encrypted backups regularly.
             </p>
             <button type="button" id="btn-export-backup">
               ⬇️ Export Data Backup
+            </button>
+            <label for="backup-file-input">Restore from encrypted backup</label>
+            <input
+              type="file"
+              id="backup-file-input"
+              accept="application/json,.json"
+            />
+            <button type="button" id="btn-restore-backup">
+              Restore Selected Backup
             </button>
             <form id="settings-form">
               <label>Default State:</label>
@@ -151,6 +205,24 @@
       <!-- Bottom Navigation Bar -->
       <nav id="bottom-nav"></nav>
     </div>
+
+    <dialog id="restore-passphrase-dialog">
+      <form id="restore-passphrase-form">
+        <h2>Unlock Backup</h2>
+        <p>Enter the passphrase used when this backup was created.</p>
+        <label for="restore-passphrase">Backup passphrase</label>
+        <input
+          type="password"
+          id="restore-passphrase"
+          autocomplete="current-password"
+          required
+        />
+        <div class="restore-dialog-actions">
+          <button type="submit">Decrypt Backup</button>
+          <button type="button" id="cancel-restore-passphrase">Cancel</button>
+        </div>
+      </form>
+    </dialog>
 
     <!-- Add/Edit Contact Modal -->
     <div id="contact-modal" class="modal">

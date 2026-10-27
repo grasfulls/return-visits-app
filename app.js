@@ -5,6 +5,8 @@ const DEFAULT_SETTINGS = {
   cities: ["Newcastle", "Rocklin", "Roseville", "Auburn"],
   areas: ["Downtown", "Rural", "North", "South"],
 };
+const ENCRYPTION_ITERATIONS = 310000;
+const ENCRYPTION_META_KEY = "encryption-meta";
 
 const openAppDatabase = () =>
   new Promise((resolve, reject) => {
@@ -37,34 +39,402 @@ const writeStoredValue = (database, key, value) =>
     transaction.onabort = () => reject(transaction.error);
   });
 
+const writeStoredValues = (database, entries) =>
+  new Promise((resolve, reject) => {
+    const transaction = database.transaction("appData", "readwrite");
+    const store = transaction.objectStore("appData");
+    entries.forEach(([key, value]) => store.put({ key, value }));
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+
+const deleteStoredValues = (database, keys) =>
+  new Promise((resolve, reject) => {
+    const transaction = database.transaction("appData", "readwrite");
+    const store = transaction.objectStore("appData");
+    keys.forEach((key) => store.delete(key));
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+
 const parseLegacyValue = (key) => {
   const value = localStorage.getItem(key);
   return value === null ? undefined : JSON.parse(value);
 };
 
+const bytesToBase64 = (bytes) => {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(
+      ...bytes.subarray(offset, offset + chunkSize),
+    );
+  }
+  return btoa(binary);
+};
+
+const base64ToBytes = (value) =>
+  Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+
+const createCryptoMetadata = () => ({
+  version: 1,
+  algorithm: "AES-GCM",
+  keyDerivation: "PBKDF2-SHA-256",
+  iterations: ENCRYPTION_ITERATIONS,
+  salt: bytesToBase64(crypto.getRandomValues(new Uint8Array(16))),
+});
+
+const deriveEncryptionKey = async (passphrase, metadata) => {
+  const material = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(passphrase),
+    "PBKDF2",
+    false,
+    ["deriveKey"],
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: base64ToBytes(metadata.salt),
+      iterations: metadata.iterations,
+      hash: "SHA-256",
+    },
+    material,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+};
+
+const encryptValue = async (value, key) => {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    new TextEncoder().encode(JSON.stringify(value)),
+  );
+  return {
+    version: 1,
+    iv: bytesToBase64(iv),
+    ciphertext: bytesToBase64(new Uint8Array(ciphertext)),
+  };
+};
+
+const decryptValue = async (encryptedValue, key) => {
+  if (
+    !encryptedValue ||
+    encryptedValue.version !== 1 ||
+    !encryptedValue.iv ||
+    !encryptedValue.ciphertext
+  ) {
+    throw new Error("Encrypted data is invalid or unsupported.");
+  }
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64ToBytes(encryptedValue.iv) },
+    key,
+    base64ToBytes(encryptedValue.ciphertext),
+  );
+  return JSON.parse(new TextDecoder().decode(plaintext));
+};
+
+const decryptBackup = async (backup, passphrase) => {
+  if (passphrase.length < 8) {
+    throw new Error("The backup passphrase must be at least 8 characters.");
+  }
+  if (
+    backup.format === "return-visits-backup" &&
+    backup.version === 1 &&
+    backup.settings &&
+    Array.isArray(backup.contacts)
+  ) {
+    if (
+      !Array.isArray(backup.settings.cities) ||
+      !Array.isArray(backup.settings.areas) ||
+      !backup.contacts.every(
+        (contact) =>
+          contact &&
+          (typeof contact.id === "number" ||
+            typeof contact.id === "string") &&
+          typeof contact.firstName === "string",
+      )
+    ) {
+      throw new Error("The backup contents are invalid.");
+    }
+    const metadata = createCryptoMetadata();
+    const encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+    return {
+      metadata,
+      encryptionKey,
+      settings: backup.settings,
+      contacts: backup.contacts,
+      encryptedSettings: await encryptValue(backup.settings, encryptionKey),
+      encryptedContacts: await encryptValue(backup.contacts, encryptionKey),
+      wasLegacyPlaintext: true,
+    };
+  }
+
+  const metadata = backup.encryption;
+  if (
+    backup.format !== "return-visits-encrypted-backup" ||
+    backup.version !== 1 ||
+    metadata?.version !== 1 ||
+    metadata.algorithm !== "AES-GCM" ||
+    metadata.keyDerivation !== "PBKDF2-SHA-256" ||
+    !Number.isInteger(metadata.iterations) ||
+    metadata.iterations < 100000 ||
+    metadata.iterations > 1000000 ||
+    !backup.data?.settings ||
+    !backup.data?.contacts ||
+    base64ToBytes(metadata.salt).length !== 16
+  ) {
+    throw new Error("This is not a supported encrypted backup file.");
+  }
+  const encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+  const [settings, contacts] = await Promise.all([
+    decryptValue(backup.data.settings, encryptionKey),
+    decryptValue(backup.data.contacts, encryptionKey),
+  ]);
+  if (
+    !settings ||
+    !Array.isArray(settings.cities) ||
+    !Array.isArray(settings.areas) ||
+    !Array.isArray(contacts) ||
+    !contacts.every(
+      (contact) =>
+        contact &&
+        (typeof contact.id === "number" || typeof contact.id === "string") &&
+        typeof contact.firstName === "string",
+    )
+  ) {
+    throw new Error("The backup contents are invalid.");
+  }
+  return {
+    metadata,
+    encryptionKey,
+    settings,
+    contacts,
+    encryptedSettings: backup.data.settings,
+    encryptedContacts: backup.data.contacts,
+    wasLegacyPlaintext: false,
+  };
+};
+
+const encryptStoredValue = async (database, storageKey, value, encryptionKey) =>
+  writeStoredValue(
+    database,
+    storageKey,
+    await encryptValue(value, encryptionKey),
+  );
+
+const createUnlockPrompt = (hasEncryption) => {
+  const screen = document.getElementById("unlock-screen");
+  const description = document.getElementById("unlock-description");
+  const confirmContainer = document.getElementById(
+    "confirm-passphrase-container",
+  );
+  const confirmInput = document.getElementById(
+    "confirm-encryption-passphrase",
+  );
+  const passphraseInput = document.getElementById("encryption-passphrase");
+  const submitButton = document.getElementById("unlock-submit");
+  const errorMessage = document.getElementById("unlock-error");
+
+  confirmContainer.hidden = hasEncryption;
+  confirmInput.required = !hasEncryption;
+  description.textContent = hasEncryption
+    ? "Enter your passphrase to decrypt and open your local contact database."
+    : "Create a passphrase to encrypt this device's contact database. Use at least 8 characters and keep it safe.";
+  submitButton.textContent = hasEncryption ? "Unlock" : "Encrypt and Continue";
+  screen.hidden = false;
+  return { screen, passphraseInput, confirmInput, submitButton, errorMessage };
+};
+
 const initializeAppData = async () => {
   const database = await openAppDatabase();
-  const [storedSettings, storedContacts] = await Promise.all([
-    readStoredValue(database, "settings"),
-    readStoredValue(database, "contacts"),
-  ]);
-  const settings =
-    storedSettings ??
-    parseLegacyValue("return_visits_settings") ??
-    DEFAULT_SETTINGS;
-  const contacts =
-    storedContacts ??
-    parseLegacyValue("return_visits_contacts") ??
-    [];
+  const existingMetadata = await readStoredValue(database, ENCRYPTION_META_KEY);
+  const prompt = createUnlockPrompt(Boolean(existingMetadata));
 
-  if (storedSettings === undefined) {
-    await writeStoredValue(database, "settings", settings);
-  }
-  if (storedContacts === undefined) {
-    await writeStoredValue(database, "contacts", contacts);
-  }
+  return new Promise((resolve) => {
+    const initialBackupInput = document.getElementById(
+      "initial-backup-file-input",
+    );
+    const initialRestoreButton = document.getElementById(
+      "btn-initial-restore",
+    );
+    initialRestoreButton.addEventListener("click", () =>
+      initialBackupInput.click(),
+    );
+    initialBackupInput.addEventListener("change", async () => {
+      const file = initialBackupInput.files[0];
+      if (!file) return;
+      initialRestoreButton.disabled = true;
+      prompt.errorMessage.textContent = "";
+      try {
+        const passphrase = prompt.passphraseInput.value;
+        if (!passphrase) {
+          throw new Error("Enter the backup passphrase before restoring.");
+        }
+        const backup = JSON.parse(await file.text());
+        const restored = await decryptBackup(backup, passphrase);
+        if (
+          restored.wasLegacyPlaintext &&
+          !confirm(
+            "This older backup is not encrypted. It will be encrypted with the passphrase you entered when restored. Continue?",
+          )
+        ) {
+          return;
+        }
+        const [storedSettings, storedContacts] = await Promise.all([
+          readStoredValue(database, "settings"),
+          readStoredValue(database, "contacts"),
+        ]);
+        if (
+          (existingMetadata ||
+            storedSettings !== undefined ||
+            storedContacts !== undefined ||
+            localStorage.getItem("return_visits_settings") !== null ||
+            localStorage.getItem("return_visits_contacts") !== null) &&
+          !confirm(
+            "Restoring this backup will replace the data currently stored on this device. Continue?",
+          )
+        ) {
+          return;
+        }
+        await writeStoredValues(database, [
+          ["settings", restored.encryptedSettings],
+          ["contacts", restored.encryptedContacts],
+          [ENCRYPTION_META_KEY, restored.metadata],
+        ]);
+        localStorage.removeItem("return_visits_settings");
+        localStorage.removeItem("return_visits_contacts");
+        localStorage.setItem("return_visits_last_backup_reminder", Date.now());
+        prompt.screen.remove();
+        resolve({
+          database,
+          settings: restored.settings,
+          contacts: restored.contacts,
+          encryptionKey: restored.encryptionKey,
+          metadata: restored.metadata,
+        });
+      } catch (error) {
+        console.error("Unable to restore encrypted backup during startup:", error);
+        prompt.errorMessage.textContent =
+          error.message === "Enter the backup passphrase before restoring."
+            ? error.message
+            : "Could not restore that backup. Check that the file is valid and the passphrase is correct.";
+      } finally {
+        initialBackupInput.value = "";
+        initialRestoreButton.disabled = false;
+      }
+    });
 
-  return { database, settings, contacts };
+    prompt.passphraseInput.focus();
+    document
+      .getElementById("unlock-form")
+      .addEventListener("submit", async (event) => {
+        event.preventDefault();
+        prompt.submitButton.disabled = true;
+        prompt.errorMessage.textContent = "";
+        try {
+          const passphrase = prompt.passphraseInput.value;
+          let metadata = existingMetadata;
+          let encryptionKey;
+          let settings;
+          let contacts;
+
+          if (metadata) {
+            encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+            const [encryptedSettings, encryptedContacts] = await Promise.all([
+              readStoredValue(database, "settings"),
+              readStoredValue(database, "contacts"),
+            ]);
+            [settings, contacts] = await Promise.all([
+              decryptValue(encryptedSettings, encryptionKey),
+              decryptValue(encryptedContacts, encryptionKey),
+            ]);
+            if (
+              !settings ||
+              !Array.isArray(settings.cities) ||
+              !Array.isArray(settings.areas) ||
+              !Array.isArray(contacts)
+            ) {
+              throw new Error("The encrypted database contents are invalid.");
+            }
+            localStorage.removeItem("return_visits_settings");
+            localStorage.removeItem("return_visits_contacts");
+          } else {
+            if (passphrase.length < 8) {
+              throw new Error("Use a passphrase with at least 8 characters.");
+            }
+            if (passphrase !== prompt.confirmInput.value) {
+              throw new Error("The passphrases do not match.");
+            }
+
+            const [storedSettings, storedContacts] = await Promise.all([
+              readStoredValue(database, "settings"),
+              readStoredValue(database, "contacts"),
+            ]);
+            settings =
+              storedSettings ??
+              parseLegacyValue("return_visits_settings") ??
+              DEFAULT_SETTINGS;
+            contacts =
+              storedContacts ??
+              parseLegacyValue("return_visits_contacts") ??
+              [];
+            metadata = createCryptoMetadata();
+            encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+            const encryptedSettings = await encryptValue(settings, encryptionKey);
+            const encryptedContacts = await encryptValue(contacts, encryptionKey);
+            await writeStoredValues(database, [
+              ["__migration_settings", encryptedSettings],
+              ["__migration_contacts", encryptedContacts],
+            ]);
+            const [verifiedSettings, verifiedContacts] = await Promise.all([
+              decryptValue(
+                await readStoredValue(database, "__migration_settings"),
+                encryptionKey,
+              ),
+              decryptValue(
+                await readStoredValue(database, "__migration_contacts"),
+                encryptionKey,
+              ),
+            ]);
+            if (
+              JSON.stringify(verifiedSettings) !== JSON.stringify(settings) ||
+              JSON.stringify(verifiedContacts) !== JSON.stringify(contacts)
+            ) {
+              throw new Error("Encrypted data verification did not match.");
+            }
+            await writeStoredValues(database, [
+              ["settings", encryptedSettings],
+              ["contacts", encryptedContacts],
+              [ENCRYPTION_META_KEY, metadata],
+            ]);
+            await deleteStoredValues(database, [
+              "__migration_settings",
+              "__migration_contacts",
+            ]);
+            localStorage.removeItem("return_visits_settings");
+            localStorage.removeItem("return_visits_contacts");
+          }
+
+          prompt.screen.remove();
+          resolve({ database, settings, contacts, encryptionKey, metadata });
+        } catch (error) {
+          console.error("Unable to unlock or encrypt local data:", error);
+          prompt.errorMessage.textContent = existingMetadata
+            ? "The passphrase was incorrect, or the encrypted data could not be read."
+            : error.message ||
+              "Could not encrypt existing data. The original data was preserved.";
+          prompt.passphraseInput.select();
+        } finally {
+          prompt.submitButton.disabled = false;
+        }
+      });
+  });
 };
 
 const showStorageError = (action, error) => {
@@ -75,12 +445,21 @@ const showStorageError = (action, error) => {
 };
 
 const initializeApp = async () => {
-  const { database, settings: savedSettings, contacts: savedContacts } =
+  const {
+    database,
+    settings: savedSettings,
+    contacts: savedContacts,
+    encryptionKey: initialEncryptionKey,
+    metadata: initialMetadata,
+  } =
     await initializeAppData();
+  let encryptionKey = initialEncryptionKey;
+  let cryptoMetadata = initialMetadata;
 
   // Settings State & Lists
   let settings = savedSettings;
-  const saveSettings = () => writeStoredValue(database, "settings", settings);
+  const saveSettings = () =>
+    encryptStoredValue(database, "settings", settings, encryptionKey);
 
   // Populate Settings View Form
   document.getElementById("setting-state").value = settings.state;
@@ -392,7 +771,7 @@ const initializeApp = async () => {
 
   const saveContacts = async () => {
     try {
-      await writeStoredValue(database, "contacts", contacts);
+      await encryptStoredValue(database, "contacts", contacts, encryptionKey);
     } catch (error) {
       showStorageError("save contacts", error);
       return false;
@@ -1108,38 +1487,153 @@ const initializeApp = async () => {
     .getElementById("sort-select")
     .addEventListener("change", renderContacts);
 
+  const downloadEncryptedBackup = async () => {
+    try {
+      const backup = {
+        format: "return-visits-encrypted-backup",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        encryption: cryptoMetadata,
+        data: {
+          settings: await encryptValue(settings, encryptionKey),
+          contacts: await encryptValue(contacts, encryptionKey),
+        },
+      };
+      const file = new Blob([JSON.stringify(backup, null, 2)], {
+        type: "application/json",
+      });
+      const downloadUrl = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `return-visits-backup-${new Date()
+        .toISOString()
+        .slice(0, 10)}.json`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      localStorage.setItem("return_visits_last_backup_reminder", Date.now());
+    } catch (error) {
+      showStorageError("export encrypted backup", error);
+    }
+  };
+
   document
     .getElementById("btn-export-backup")
+    .addEventListener("click", downloadEncryptedBackup);
+
+  const backupFileInput = document.getElementById("backup-file-input");
+  const restorePassphraseDialog = document.getElementById(
+    "restore-passphrase-dialog",
+  );
+  const restorePassphraseForm = document.getElementById(
+    "restore-passphrase-form",
+  );
+  const restorePassphraseInput = document.getElementById("restore-passphrase");
+
+  const requestBackupPassphrase = () =>
+    new Promise((resolve) => {
+      const finish = (passphrase) => {
+        restorePassphraseDialog.close();
+        restorePassphraseForm.removeEventListener("submit", onSubmit);
+        document
+          .getElementById("cancel-restore-passphrase")
+          .removeEventListener("click", onCancel);
+        restorePassphraseDialog.removeEventListener("cancel", onCancel);
+        restorePassphraseInput.value = "";
+        resolve(passphrase);
+      };
+      const onSubmit = (event) => {
+        event.preventDefault();
+        finish(restorePassphraseInput.value);
+      };
+      const onCancel = () => finish(null);
+
+      restorePassphraseForm.addEventListener("submit", onSubmit);
+      document
+        .getElementById("cancel-restore-passphrase")
+        .addEventListener("click", onCancel);
+      restorePassphraseDialog.addEventListener("cancel", onCancel);
+      restorePassphraseDialog.showModal();
+      restorePassphraseInput.focus();
+    });
+
+  document
+    .getElementById("btn-restore-backup")
     .addEventListener("click", async () => {
+      const file = backupFileInput.files[0];
+      if (!file) {
+        alert("Choose an encrypted backup file first.");
+        return;
+      }
+
       try {
-        const [backupSettings, backupContacts] = await Promise.all([
-          readStoredValue(database, "settings"),
-          readStoredValue(database, "contacts"),
+        const backup = JSON.parse(await file.text());
+        const backupPassphrase = await requestBackupPassphrase();
+        if (backupPassphrase === null) return;
+        const restored = await decryptBackup(backup, backupPassphrase);
+        if (
+          restored.wasLegacyPlaintext &&
+          !confirm(
+            "This older backup is not encrypted. It will be encrypted with its passphrase after import. Continue?",
+          )
+        ) {
+          return;
+        }
+        if (
+          !confirm(
+            `This will replace all ${contacts.length} current contacts with ${restored.contacts.length} contacts from the backup. Continue?`,
+          )
+        ) {
+          return;
+        }
+
+        await writeStoredValues(database, [
+          ["settings", restored.encryptedSettings],
+          ["contacts", restored.encryptedContacts],
+          [ENCRYPTION_META_KEY, restored.metadata],
         ]);
-        const backup = {
-          format: "return-visits-backup",
-          version: 1,
-          exportedAt: new Date().toISOString(),
-          settings: backupSettings,
-          contacts: backupContacts,
-        };
-        const file = new Blob([JSON.stringify(backup, null, 2)], {
-          type: "application/json",
-        });
-        const downloadUrl = URL.createObjectURL(file);
-        const link = document.createElement("a");
-        link.href = downloadUrl;
-        link.download = `return-visits-backup-${new Date()
-          .toISOString()
-          .slice(0, 10)}.json`;
-        link.click();
-        window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        encryptionKey = restored.encryptionKey;
+        cryptoMetadata = restored.metadata;
+        settings = restored.settings;
+        contacts = restored.contacts;
+        document.getElementById("setting-state").value = settings.state;
+        document.getElementById("setting-default-city").value =
+          settings.defaultCity || "Newcastle";
+        document.getElementById("setting-default-area").value =
+          settings.defaultArea || "Downtown";
+        populateDropdowns();
+        renderContacts();
+        if (map) renderMapMarkers();
+        localStorage.setItem("return_visits_last_backup_reminder", Date.now());
+        backupFileInput.value = "";
+        alert("Encrypted backup restored successfully.");
       } catch (error) {
-        showStorageError("export backup", error);
+        console.error("Unable to restore encrypted backup:", error);
+        alert(
+          "Could not restore that backup. Check that the file is valid and the passphrase is correct. Your current data was not replaced.",
+        );
       }
     });
 
   renderContacts();
+  const reminderKey = "return_visits_last_backup_reminder";
+  const lastReminder = Number(localStorage.getItem(reminderKey) || 0);
+  if (!lastReminder || Date.now() - lastReminder >= 30 * 24 * 60 * 60 * 1000) {
+    localStorage.setItem(reminderKey, Date.now());
+    window.setTimeout(() => {
+      if (
+        confirm(
+          "It's time for a backup. Open Settings to export an encrypted backup now?",
+        )
+      ) {
+        currentViewId = "settings-view";
+        document
+          .querySelectorAll(".view")
+          .forEach((view) => view.classList.remove("active"));
+        document.getElementById(currentViewId).classList.add("active");
+        renderBottomNav();
+      }
+    }, 500);
+  }
 };
 
 document.addEventListener("DOMContentLoaded", () => {

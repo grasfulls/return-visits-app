@@ -6,6 +6,97 @@ body {
     color: #333;
 }
 
+#unlock-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+    background: #f4f4f9;
+}
+
+.unlock-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+    box-sizing: border-box;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+}
+
+.unlock-card[hidden],
+#confirm-passphrase-container[hidden] {
+    display: none;
+}
+
+.unlock-card {
+    display: block;
+}
+
+.unlock-card h1 {
+    margin-top: 0;
+    color: #004080;
+}
+
+.unlock-card form,
+#confirm-passphrase-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.unlock-card label {
+    font-weight: bold;
+}
+
+.unlock-card input {
+    min-height: 44px;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+#unlock-submit {
+    min-height: 48px;
+    margin: 8px 0 14px;
+    border: none;
+    border-radius: 4px;
+    background: #004080;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#unlock-error {
+    color: #b00020;
+}
+
+#unlock-error:empty {
+    display: none;
+}
+
+.unlock-restore {
+    margin: 18px 0;
+    padding-top: 12px;
+    border-top: 1px solid #ddd;
+}
+
+.unlock-restore button {
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid #004080;
+    border-radius: 4px;
+    background: white;
+    color: #004080;
+    font-weight: bold;
+}
+
 #app-container {
     display: flex;
     flex-direction: column;
@@ -109,6 +200,64 @@ main {
     border-radius: 4px;
     cursor: pointer;
     font-size: 16px;
+}
+
+#backup-file-input {
+    margin-bottom: 12px;
+}
+
+#btn-restore-backup {
+    align-self: flex-start;
+    background: #6c757d;
+    color: white;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+#restore-passphrase-dialog {
+    width: calc(100% - 40px);
+    max-width: 420px;
+    border: none;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+#restore-passphrase-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+}
+
+#restore-passphrase-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#restore-passphrase-form h2,
+#restore-passphrase-form p {
+    margin: 0;
+}
+
+#restore-passphrase-form input {
+    min-height: 44px;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.restore-dialog-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.restore-dialog-actions button {
+    min-height: 44px;
+    flex: 1;
 }
 
 textarea {
