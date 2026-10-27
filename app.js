@@ -9,10 +9,12 @@ const ENCRYPTION_ITERATIONS = 310000;
 const ENCRYPTION_META_KEY = "encryption-meta";
 const APP_UPDATE_PENDING_KEY = "return_visits_app_update_pending";
 let appUpdateAvailable = false;
+let appReadyForUpdates = false;
 let appUpdatePromptDismissed = false;
 let appUpdatePromptTimer = null;
 let getAppRefreshBlockMessage = () => "";
 let appUpdatePromptHandler = () => {
+  if (!appReadyForUpdates) return;
   const dialog = document.getElementById("app-update-dialog");
   if (!appUpdateAvailable || appUpdatePromptDismissed || dialog.open) return;
   appUpdatePromptTimer = window.setTimeout(() => {
@@ -64,7 +66,6 @@ document.addEventListener("app-update-available", () => {
   }
   appUpdatePromptHandler?.();
 });
-if (appUpdateAvailable) appUpdatePromptHandler();
 const US_STATE_ABBREVIATIONS = {
   alabama: "AL",
   alaska: "AK",
@@ -2824,7 +2825,6 @@ const initializeApp = async () => {
     }, 750);
   };
   appUpdatePromptHandler = showAppUpdatePrompt;
-  if (appUpdateAvailable) showAppUpdatePrompt();
 
   document
     .getElementById("btn-check-updates")
@@ -4310,10 +4310,15 @@ const initializeApp = async () => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  initializeApp().catch((error) => {
-    console.error("Unable to start the app:", error);
-    alert(
-      "The app could not open its on-device database. Your existing browser data has not been deleted. Please reload and try again.",
-    );
-  });
+  initializeApp()
+    .then(() => {
+      appReadyForUpdates = true;
+      if (appUpdateAvailable) appUpdatePromptHandler();
+    })
+    .catch((error) => {
+      console.error("Unable to start the app:", error);
+      alert(
+        "The app could not open its on-device database. Your existing browser data has not been deleted. Please reload and try again.",
+      );
+    });
 });
