@@ -316,9 +316,9 @@ const initializeApp = async () => {
       latestDate = sortedNotes[0].rawDate || sortedNotes[0].date;
     }
     const days = calculateDaysSince(latestDate);
-    if (days > 90)
+    if (days >= 15)
       return { label: "Immediate", color: "#dc3545", class: "immediate", days };
-    if (days > 30)
+    if (days >= 8)
       return { label: "Urgent", color: "#ffc107", class: "urgent", days };
     return { label: "Normal", color: "#28a745", class: "normal", days };
   };
