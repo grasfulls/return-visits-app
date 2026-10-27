@@ -3,6 +3,16 @@
 A client-side contact and return-visit tracker that can be used in a browser or
 installed as a Progressive Web App (PWA).
 
+## Before you start
+
+Choose one place for your regular use: a browser on one device, or the app
+added to that device's Home Screen. Browser and Home Screen copies may store
+separate contact data and do not automatically sync. Adding the app icon does
+not transfer contacts already stored in the browser. If you have already
+entered contacts, keep using that version or export an encrypted backup and
+restore it in the version you want to use. The app is free and has no online
+sync service; keeping multiple copies current requires manual backup/restore.
+
 ## Data and passphrase
 
 Contacts and settings are stored on the current browser and device in IndexedDB
@@ -125,6 +135,10 @@ contacts. Installing the app does not transfer data already stored in the
 browser. To move contacts, export an encrypted backup in the source version and
 restore it in the destination version. Keep the source copy until the restored
 contacts are confirmed; later changes do not sync between the copies.
+The app is free to use and has no online sync service. For simpler day-to-day
+use, choose one browser or Home Screen app on one device as your regular copy;
+maintaining multiple copies requires manual backup/restore, and restoring a
+full backup replaces the destination copy's contacts and settings.
 
 The service worker caches the same-origin app shell and updates cached files
 when they are next requested online. Maps and address searches still need
