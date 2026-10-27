@@ -120,6 +120,12 @@ PWA installation is optional. On iPhone, open the site in Safari, tap **Share**,
 then **Add to Home Screen**. On Android, open it in Chrome and choose **Install
 app** or **Add to Home screen**.
 
+The browser version and Home Screen app do not automatically sync local
+contacts. Installing the app does not transfer data already stored in the
+browser. To move contacts, export an encrypted backup in the source version and
+restore it in the destination version. Keep the source copy until the restored
+contacts are confirmed; later changes do not sync between the copies.
+
 The service worker caches the same-origin app shell and updates cached files
 when they are next requested online. Maps and address searches still need
 internet access. Changes go live after they are pushed to GitHub and the Pages
