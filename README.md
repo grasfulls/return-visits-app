@@ -53,9 +53,11 @@ region, area, map coordinates, email, and phone. Email and phone are optional;
 email accepts addresses such as `name@someemail`, and U.S. phone numbers are
 formatted as `(555) 123-4567`. City, Region, and Area are each single optional
 values, so a contact can be saved with partial details and completed later. A
-Region belongs to one City, and an Area belongs to one Region. Each contact has
-a stable unique ID, so different people can share the same name. Contact cards
-show available phone and email details along with the address, location
+Region belongs to one City, and an Area belongs to one Region. The contact
+form's Area list always offers **+ Add New Area...**, even when other areas are
+available for the selected City and Region. Each contact has a stable unique
+ID, so different people can share the same name. Contact cards show available
+phone and email details along with the address, location
 hierarchy, urgency, and visit history; they include actions to edit, export,
 delete, and navigate to a contact. Navigate opens Google Maps directions using
 saved coordinates when available, or the contact address otherwise. Visit

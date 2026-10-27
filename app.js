@@ -839,6 +839,7 @@ const initializeApp = async () => {
     settings.defaultCity || "Newcastle";
 
   // Populate All Dropdowns (Filters & Modal Selects)
+  let selectedContactArea = "";
   const populateDropdowns = () => {
     const citySelect = document.getElementById("contact-city-select");
     const currentCityVal = citySelect.value;
@@ -906,8 +907,13 @@ const initializeApp = async () => {
           option.textContent = area.name;
           contactArea.appendChild(option);
         });
+      const addAreaOption = document.createElement("option");
+      addAreaOption.value = "__ADD_NEW__";
+      addAreaOption.textContent = "+ Add New Area...";
+      contactArea.appendChild(addAreaOption);
       contactArea.disabled = !city || !contactRegion.value;
       contactArea.value = selectedArea;
+      selectedContactArea = contactArea.value;
     };
     populateContactRegionArea(contactRegion.value, contactArea.value);
 
@@ -1034,13 +1040,81 @@ const initializeApp = async () => {
   const contactRegionSelect = document.getElementById("contact-region-select");
   const contactAreaSelect = document.getElementById("contact-area-select");
   citySelect.addEventListener("change", () => {
+    document.getElementById("new-contact-area-container").hidden = true;
     if (citySelect.value !== "__ADD_NEW__") {
       dropdownHelpers.populateContactRegionArea("", "");
     }
   });
   contactRegionSelect.addEventListener("change", () => {
+    document.getElementById("new-contact-area-container").hidden = true;
     dropdownHelpers.populateContactRegionArea(contactRegionSelect.value, "");
   });
+  contactAreaSelect.addEventListener("change", () => {
+    const newAreaContainer = document.getElementById(
+      "new-contact-area-container",
+    );
+    if (contactAreaSelect.value === "__ADD_NEW__") {
+      contactAreaSelect.value = selectedContactArea;
+      newAreaContainer.hidden = false;
+      const newAreaInput = document.getElementById("input-new-contact-area");
+      newAreaInput.value = "";
+      newAreaInput.focus();
+      return;
+    }
+    selectedContactArea = contactAreaSelect.value;
+    newAreaContainer.hidden = true;
+  });
+  document
+    .getElementById("btn-save-new-contact-area")
+    .addEventListener("click", async () => {
+      const input = document.getElementById("input-new-contact-area");
+      const name = input.value.trim();
+      const city = citySelect.value;
+      const region = contactRegionSelect.value;
+      if (!name) {
+        alert("Enter a name for the new area.");
+        input.focus();
+        return;
+      }
+      if (!city || !region) {
+        alert("Choose a city and region before adding an area.");
+        return;
+      }
+      const existingArea = settings.areas.find(
+        (area) =>
+          area.city === city &&
+          area.region === region &&
+          area.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (existingArea) {
+        dropdownHelpers.populateContactRegionArea(region, existingArea.name);
+        document.getElementById("new-contact-area-container").hidden = true;
+        alert("That area already exists in this region and city.");
+        return;
+      }
+
+      const newArea = { name, region, city };
+      settings.areas.push(newArea);
+      try {
+        await saveSettings();
+      } catch (error) {
+        settings.areas.pop();
+        showStorageError("save settings", error);
+        return;
+      }
+      populateDropdowns();
+      citySelect.value = city;
+      dropdownHelpers.populateContactRegionArea(region, name);
+      document.getElementById("new-contact-area-container").hidden = true;
+      input.value = "";
+    });
+  document
+    .getElementById("btn-cancel-new-contact-area")
+    .addEventListener("click", () => {
+      document.getElementById("new-contact-area-container").hidden = true;
+      document.getElementById("input-new-contact-area").value = "";
+      contactAreaSelect.value = selectedContactArea;
+    });
   document
     .getElementById("setting-area-city")
     .addEventListener("change", () =>

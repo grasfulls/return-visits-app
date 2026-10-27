@@ -515,6 +515,22 @@
             <select id="contact-area-select" disabled>
               <option value="">Choose an area (optional)</option>
             </select>
+            <div id="new-contact-area-container" hidden>
+              <label for="input-new-contact-area">New area name:</label>
+              <input
+                type="text"
+                id="input-new-contact-area"
+                placeholder="Enter new area name..."
+              />
+              <div class="new-contact-area-actions">
+                <button type="button" id="btn-save-new-contact-area">
+                  Add Area
+                </button>
+                <button type="button" id="btn-cancel-new-contact-area">
+                  Cancel
+                </button>
+              </div>
+            </div>
 
             <div class="gps-row">
               <label>Latitude: <input type="text" id="contact-lat" /></label>
