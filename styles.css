@@ -653,6 +653,29 @@ textarea {
 .navigate-contact {
     color: inherit;
     text-decoration: none;
+    display: inline-flex;
+    width: 38px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+}
+
+.navigate-contact svg,
+.navigate-map-link svg {
+    display: block;
+    width: 22px;
+    height: 22px;
+}
+
+.navigate-map-link {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    color: #004080;
+    vertical-align: middle;
 }
 
 .btn-icon.delete {

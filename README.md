@@ -110,10 +110,12 @@ City Pin** to look up the entered address, city, and state, or **Use Device
 Location** to request the device's current location. A partial street name can
 return several possible matches; choose from the street-name choices, which
 omit house numbers and ZIP codes, to fill in the street and place the pin.
-Common suffixes such as Avenue and Court are saved as Ave and Ct. If the full
-address is not found, the app also searches by the street name without the
-leading house number. A city-only lookup places an approximate pin near the
-city. Typing or saving address details does not automatically create a pin.
+Common street suffixes are displayed in abbreviated form, including for
+contacts saved before this formatting was added (for example, Avenue as Av,
+Road as Rd, Court as Ct, and Lane as Ln). If the full address is not found,
+the app also searches by the street name without the leading house number. A
+city-only lookup places an approximate pin near the city. Typing or saving
+address details does not automatically create a pin.
 Device location requires browser permission and
 its accuracy can vary. Refine a pin in the contact form by tapping the map,
 dragging the pin, or editing the coordinates. Pins can also be dragged in Map

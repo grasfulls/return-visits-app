@@ -92,30 +92,163 @@ const normalizeUsState = (value) => {
 };
 
 const STREET_SUFFIX_ABBREVIATIONS = {
-  avenue: "Ave",
+  alley: "Aly",
+  annex: "Anx",
+  arcade: "Arc",
+  avenue: "Av",
+  ave: "Av",
+  av: "Av",
+  bayou: "Byu",
+  beach: "Bch",
+  bend: "Bnd",
+  bluff: "Blf",
+  bottom: "Btm",
   boulevard: "Blvd",
+  branch: "Br",
+  bridge: "Brg",
+  brook: "Brk",
+  burg: "Bg",
+  bypass: "Byp",
+  camp: "Cp",
+  canyon: "Cyn",
+  cape: "Cpe",
+  causeway: "Cswy",
+  center: "Ctr",
+  centre: "Ctr",
   circle: "Cir",
+  cliff: "Clf",
+  club: "Clb",
+  common: "Cmn",
+  corner: "Cor",
+  course: "Crse",
   court: "Ct",
+  creek: "Crk",
+  crescent: "Cres",
+  crossing: "Xing",
+  dale: "Dl",
+  dam: "Dm",
+  divide: "Dv",
   drive: "Dr",
-  expressway: "Expy",
+  estate: "Est",
+  extension: "Ext",
+  fall: "Fl",
+  ferry: "Fry",
+  field: "Fld",
+  flat: "Flt",
+  ford: "Frd",
+  forest: "Frst",
+  forge: "Frg",
+  fork: "Frk",
+  fort: "Ft",
   freeway: "Fwy",
+  garden: "Gdn",
+  gateway: "Gtwy",
+  glen: "Gln",
+  green: "Grn",
+  grove: "Grv",
+  harbor: "Hbr",
+  haven: "Hvn",
+  heights: "Hts",
   highway: "Hwy",
-  lane: "Ln",
+  hill: "Hl",
+  hollow: "Holw",
+  inlet: "Inlt",
+  island: "Is",
+  junction: "Jct",
+  key: "Ky",
+  knoll: "Knl",
+  lake: "Lk",
+  landing: "Lndg",
+  light: "Lgt",
+  loaf: "Lf",
+  lock: "Lck",
+  lodge: "Ldg",
+  manor: "Mnr",
+  meadow: "Mdw",
+  mill: "Ml",
+  mission: "Msn",
+  mount: "Mt",
+  mountain: "Mtn",
+  neck: "Nck",
+  orchard: "Orch",
+  oval: "Oval",
+  overpass: "Opas",
+  park: "Pk",
   parkway: "Pkwy",
-  place: "Pl",
+  pass: "Pass",
+  passage: "Psge",
+  path: "Path",
+  pike: "Pike",
+  pine: "Pnes",
+  plain: "Pln",
+  plaza: "Plz",
+  point: "Pt",
+  port: "Prt",
+  prairie: "Pr",
+  radial: "Radl",
+  ramp: "Ramp",
+  ranch: "Rnch",
+  rapid: "Rpd",
+  rest: "Rst",
+  ridge: "Rdg",
+  river: "Riv",
   road: "Rd",
+  route: "Rte",
+  row: "Row",
+  rue: "Rue",
+  run: "Run",
+  shoal: "Shl",
+  shore: "Shr",
+  skyway: "Skwy",
+  spring: "Spg",
+  spur: "Spur",
+  square: "Sq",
+  station: "Sta",
+  stravenue: "Stra",
+  stream: "Strm",
   street: "St",
+  summit: "Smt",
   terrace: "Ter",
+  throughway: "Trwy",
+  trace: "Trce",
+  track: "Trak",
+  trafficway: "Trfy",
   trail: "Trl",
+  trailer: "Trlr",
+  tunnel: "Tunl",
+  turnpike: "Tpke",
+  underpass: "Upas",
+  union: "Un",
+  valley: "Vly",
+  viaduct: "Via",
+  view: "Vw",
+  village: "Vlg",
+  ville: "Vl",
+  vista: "Vis",
+  walk: "Walk",
+  wall: "Wall",
+  way: "Way",
+  wells: "Wls",
+  expressway: "Expy",
+  lane: "Ln",
+  place: "Pl",
 };
+const STREET_DIRECTIONS = new Set(["N", "S", "E", "W", "NE", "NW", "SE", "SW"]);
 
 const normalizeStreetName = (value) => {
   const street = toTitleCase(value);
   const words = street.split(/\s+/);
-  const lastWord = words[words.length - 1];
-  if (lastWord) {
-    words[words.length - 1] =
-      STREET_SUFFIX_ABBREVIATIONS[lastWord.toLowerCase()] || lastWord;
+  const finalWord = words[words.length - 1];
+  const suffixIndex = STREET_DIRECTIONS.has(finalWord?.toUpperCase())
+    ? words.length - 2
+    : words.length - 1;
+  const suffix = words[suffixIndex];
+  if (suffix) {
+    const match = suffix.match(/^([a-z]+)([.,]?)$/i);
+    if (match) {
+      words[suffixIndex] =
+        STREET_SUFFIX_ABBREVIATIONS[match[1].toLowerCase()] || suffix;
+    }
   }
   return words.join(" ");
 };
@@ -143,6 +276,15 @@ const getStreetAddress = (contact) => {
   return parts.join(", ");
 };
 
+const getFormattedContactAddress = (contact) =>
+  [
+    normalizeStreetName(getStreetAddress(contact)),
+    contact.city,
+    normalizeUsState(contact.state),
+  ]
+    .filter(Boolean)
+    .join(", ");
+
 const getNavigationUrl = (contact) => {
   const latitude = Number(contact.lat);
   const longitude = Number(contact.lng);
@@ -163,16 +305,7 @@ const getNavigationUrl = (contact) => {
     latitude <= 90 &&
     longitude >= -180 &&
     longitude <= 180;
-  const address = String(
-    contact.address ||
-      [
-        contact.streetAddress || getStreetAddress(contact),
-        contact.city,
-        contact.state,
-      ]
-        .filter(Boolean)
-        .join(", "),
-  ).trim();
+  const address = getFormattedContactAddress(contact);
   const destination = hasCoordinates ? `${latitude},${longitude}` : address;
   if (!destination) return "";
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
@@ -183,7 +316,8 @@ const getContactShareText = (contact) => {
   const lines = [fullName];
   if (contact.phone) lines.push(`Phone: ${contact.phone}`);
   if (contact.email) lines.push(`Email: ${contact.email}`);
-  if (contact.address) lines.push(`Address: ${contact.address}`);
+  const address = getFormattedContactAddress(contact);
+  if (address) lines.push(`Address: ${address}`);
   const navigationUrl = getNavigationUrl(contact);
   if (navigationUrl) lines.push(`Directions: ${navigationUrl}`);
   return lines.join("\n");
@@ -2910,7 +3044,7 @@ const initializeApp = async () => {
       card.innerHTML = `
                 <strong>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</strong><br>
                 <small class="contact-record-id">Contact ID: ${escapeHtml(contact.id)}</small><br>
-                <small>${escapeHtml(contact.address || "No address provided")} (${escapeHtml(getContactLocationSummary(contact))})</small><br>
+                <small>${escapeHtml(getFormattedContactAddress(contact) || "No address provided")} (${escapeHtml(getContactLocationSummary(contact))})</small><br>
                 ${contact.phone ? `<small>Phone: ${escapeHtml(contact.phone)}</small><br>` : ""}
                 ${contact.email ? `<small>Email: ${escapeHtml(contact.email)}</small><br>` : ""}
                 <span>Days Since Last Contact: <strong>${status.days} days</strong> (${status.label})</span>
@@ -2921,7 +3055,7 @@ const initializeApp = async () => {
                 </div>
                 <div class="card-actions">
                     <button class="btn-icon" onclick="editContact(${contact.id})" title="Edit Details">✏️</button>
-                    ${navigationUrl ? `<a class="btn-icon navigate-contact" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">🧭 Navigate</a>` : ""}
+                    ${navigationUrl ? `<a class="btn-icon navigate-contact" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}" title="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2" fill="currentColor"/><path d="M6 16V9a4 4 0 0 1 4-4h8m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></a>` : ""}
                     <button class="btn-icon" data-share-contact="${escapeHtml(contact.id)}" aria-label="Share ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">Share</button>
                     <button class="btn-icon" data-export-contact="${escapeHtml(contact.id)}" title="Export this contact" aria-label="Export ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">⬇️</button>
                     <button class="btn-icon delete" onclick="deleteContact(${contact.id})" title="Delete Contact">🗑️</button>
@@ -2980,7 +3114,8 @@ const initializeApp = async () => {
   const printContactEntry = (contact) => {
     const latestNote = getSortedVisitNotes(contact)[0];
     const streetAddress =
-      contact.streetAddress || getStreetAddress(contact) || "No street address recorded";
+      normalizeStreetName(getStreetAddress(contact)) ||
+      "No street address recorded";
     const fullName = `${contact.firstName} ${contact.lastName}`.trim();
     return `
       <article class="print-contact-entry">
@@ -3122,7 +3257,8 @@ const initializeApp = async () => {
     const selectedNotes = includeAllNotes ? notes : notes.slice(0, 1);
     const fullName = `${contact.firstName} ${contact.lastName}`.trim();
     const streetAddress =
-      contact.streetAddress || getStreetAddress(contact) || "No street address recorded";
+      normalizeStreetName(getStreetAddress(contact)) ||
+      "No street address recorded";
     const cityState = [contact.city, contact.state].filter(Boolean).join(", ");
     const location = getContactLocationSummary(contact);
     const notesMarkup = selectedNotes.length
@@ -3190,12 +3326,12 @@ const initializeApp = async () => {
         const popupContent = `
                     <div>
                         <b>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</b><br>
-                        ${escapeHtml(contact.address)}<br>
+                        ${escapeHtml(getFormattedContactAddress(contact))}<br>
                         ${contact.phone ? `Phone: ${escapeHtml(contact.phone)}<br>` : ""}
                         ${contact.email ? `Email: ${escapeHtml(contact.email)}<br>` : ""}
                         Location: ${escapeHtml(getContactLocationSummary(contact))}<br>
                         Days Since Contact: ${status.days} (${status.label})<br><br>
-                        ${navigationUrl ? `<a href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer">🧭 Navigate</a><br><br>` : ""}
+                        ${navigationUrl ? `<a class="navigate-map-link" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}" title="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2" fill="currentColor"/><path d="M6 16V9a4 4 0 0 1 4-4h8m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></a><br><br>` : ""}
                         Drag this pin to move it. The new location saves automatically.<br><br>
                         <button onclick="editContact(${contact.id})" style="background: #004080; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;">✏️ Edit Details</button>
                     </div>
