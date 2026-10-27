@@ -478,6 +478,11 @@ textarea {
     font-size: 16px;
 }
 
+.navigate-contact {
+    color: inherit;
+    text-decoration: none;
+}
+
 .btn-icon.delete {
     background: #fed7d7;
 }

@@ -182,11 +182,11 @@
       <h2>Information stored on your device</h2>
       <p>
         The app stores the contact and visit information you enter, including
-        names, address and location details, map coordinates, and visit notes.
-        It also stores your app settings. Saved records are encrypted in your
-        browser's IndexedDB storage using a key derived from your passphrase.
-        The app needs to decrypt the records in the browser while you are using
-        them.
+        names, email addresses, phone numbers, address and location details,
+        map coordinates, and visit notes. It also stores your app settings.
+        Saved records are encrypted in your browser's IndexedDB storage using
+        a key derived from your passphrase. The app needs to decrypt the
+        records in the browser while you are using them.
       </p>
       <p>
         The app does not automatically upload or synchronize your contact
@@ -213,6 +213,13 @@
           text and selected city and state are also sent to Nominatim. Do not
           use these search features if you do not want this location
           information sent to the lookup service.
+        </li>
+        <li>
+          <strong>Navigation:</strong> If you choose Navigate on a contact
+          card or map pin, the app opens Google Maps directions using the
+          contact's saved coordinates or address. That destination is sent to
+          Google Maps. Do not use the navigation link if you do not want that
+          location information sent to Google.
         </li>
         <li>
           <strong>Map display:</strong> When you open or use a map, your browser

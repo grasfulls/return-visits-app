@@ -31,6 +31,41 @@ const getStreetAddress = (contact) => {
   return parts.join(", ");
 };
 
+const getNavigationUrl = (contact) => {
+  const latitude = Number(contact.lat);
+  const longitude = Number(contact.lng);
+  const hasLatitude =
+    contact.lat !== undefined &&
+    contact.lat !== null &&
+    String(contact.lat).trim() !== "";
+  const hasLongitude =
+    contact.lng !== undefined &&
+    contact.lng !== null &&
+    String(contact.lng).trim() !== "";
+  const hasCoordinates =
+    hasLatitude &&
+    hasLongitude &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180;
+  const address = String(
+    contact.address ||
+      [
+        contact.streetAddress || getStreetAddress(contact),
+        contact.city,
+        contact.state,
+      ]
+        .filter(Boolean)
+        .join(", "),
+  ).trim();
+  const destination = hasCoordinates ? `${latitude},${longitude}` : address;
+  if (!destination) return "";
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+};
+
 const openAppDatabase = () =>
   new Promise((resolve, reject) => {
     const request = indexedDB.open("return-visits-app", 1);
@@ -250,6 +285,10 @@ const decryptContactTransfer = async (transfer, passphrase) => {
     ["city", "region", "area", "state", "streetAddress"].some(
       (field) =>
         contact[field] !== undefined && typeof contact[field] !== "string",
+    ) ||
+    ["email", "phone"].some(
+      (field) =>
+        contact[field] !== undefined && typeof contact[field] !== "string",
     )
   ) {
     throw new Error("The contact file contents are invalid.");
@@ -271,6 +310,8 @@ const decryptContactTransfer = async (transfer, passphrase) => {
       contact.areas?.[0] ||
       contact.areaAssignments?.[0]?.name ||
       "",
+    email: contact.email || "",
+    phone: contact.phone || "",
     areaAssignments: contact.areaAssignments || [],
     notesHistory: contact.notesHistory || [],
   };
@@ -430,7 +471,12 @@ const decryptBackup = async (backup, passphrase) => {
           contact &&
           (typeof contact.id === "number" ||
             typeof contact.id === "string") &&
-          typeof contact.firstName === "string",
+          typeof contact.firstName === "string" &&
+          ["email", "phone"].every(
+            (field) =>
+              contact[field] === undefined ||
+              typeof contact[field] === "string",
+          ),
       )
     ) {
       throw new Error("The backup contents are invalid.");
@@ -488,7 +534,12 @@ const decryptBackup = async (backup, passphrase) => {
       (contact) =>
         contact &&
         (typeof contact.id === "number" || typeof contact.id === "string") &&
-        typeof contact.firstName === "string",
+        typeof contact.firstName === "string" &&
+        ["email", "phone"].every(
+          (field) =>
+            contact[field] === undefined ||
+            typeof contact[field] === "string",
+        ),
     )
   ) {
     throw new Error("The backup contents are invalid.");
@@ -1385,6 +1436,45 @@ const initializeApp = async () => {
   const closeModal = document.getElementById("close-modal");
   const btnExitModal = document.getElementById("btn-exit-modal");
   const contactForm = document.getElementById("contact-form");
+  const contactModalBody = contactForm.querySelector(".modal-body");
+  const phoneInput = document.getElementById("contact-phone");
+
+  const formatPhoneNumber = (value) => {
+    let digits = value.replace(/\D/g, "");
+    if (digits.length === 11 && digits.startsWith("1")) {
+      digits = digits.slice(1);
+    }
+    if (digits.length > 10) return digits;
+    if (digits.length <= 3) return digits ? `(${digits}` : "";
+    if (digits.length <= 6) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    }
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  };
+
+  phoneInput.addEventListener("input", () => {
+    const value = phoneInput.value;
+    const start = phoneInput.selectionStart ?? value.length;
+    const end = phoneInput.selectionEnd ?? start;
+    const digitsBefore = value.slice(0, start).replace(/\D/g, "").length;
+    const digitsThrough = value.slice(0, end).replace(/\D/g, "").length;
+    const formatted = formatPhoneNumber(value);
+    const positionAfterDigits = (digitCount) => {
+      if (digitCount === 0) return 0;
+      let position = 0;
+      let digitsFound = 0;
+      while (position < formatted.length && digitsFound < digitCount) {
+        if (/\d/.test(formatted[position])) digitsFound += 1;
+        position += 1;
+      }
+      return position;
+    };
+    phoneInput.value = formatted;
+    phoneInput.setSelectionRange(
+      positionAfterDigits(digitsBefore),
+      positionAfterDigits(digitsThrough),
+    );
+  });
 
   let pickerMap = null;
   let pickerMarker = null;
@@ -1642,11 +1732,13 @@ const initializeApp = async () => {
   };
 
   const openModalWithCoords = (lat, lng) => {
+    contactModalBody.scrollTop = 0;
     modal.style.display = "flex";
     newCityContainer.style.display = "none";
 
     return new Promise((resolve) => {
       setTimeout(() => {
+        contactModalBody.scrollTop = 0;
         if (!pickerMap) {
           pickerMap = L.map("modal-picker-map").setView(
             lat !== null && lng !== null ? [lat, lng] : defaultMapCenter,
@@ -1678,6 +1770,7 @@ const initializeApp = async () => {
           pickerMap.removeLayer(pickerMarker);
           pickerMarker = null;
         }
+        contactModalBody.scrollTop = 0;
         initialFormState = captureFormState();
         updatePrintContactAvailability();
         resolve();
@@ -1777,6 +1870,8 @@ const initializeApp = async () => {
     const id = document.getElementById("contact-id").value;
     const firstName = document.getElementById("contact-firstname").value.trim();
     const lastName = document.getElementById("contact-lastname").value.trim();
+    const email = document.getElementById("contact-email").value.trim();
+    const phone = phoneInput.value.trim();
     const street = document.getElementById("contact-address").value.trim();
     const city = document.getElementById("contact-city-select").value;
     const region = contactRegionSelect.value;
@@ -1786,6 +1881,16 @@ const initializeApp = async () => {
     const lng = document.getElementById("contact-lng").value.trim();
     const latitude = Number(lat);
     const longitude = Number(lng);
+    if (email && !/^[^\s@]+@[^\s@]+$/.test(email)) {
+      alert("Enter an email address in the format name@example.com.");
+      document.getElementById("contact-email").focus();
+      return;
+    }
+    if (phone && !/^\(\d{3}\) \d{3}-\d{4}$/.test(phone)) {
+      alert("Enter a 10-digit phone number in the format (555) 123-4567.");
+      phoneInput.focus();
+      return;
+    }
     if (city === "__ADD_NEW__") {
       alert("Add or choose a city, or leave City blank, before saving.");
       return;
@@ -1834,6 +1939,8 @@ const initializeApp = async () => {
       if (contact) {
         contact.firstName = firstName;
         contact.lastName = lastName;
+        contact.email = email;
+        contact.phone = phone;
         contact.address = fullAddress;
         contact.streetAddress = street;
         contact.city = city;
@@ -1882,6 +1989,8 @@ const initializeApp = async () => {
         createdAt: new Date().toISOString(),
         firstName,
         lastName,
+        email,
+        phone,
         address: fullAddress,
         streetAddress: street,
         city,
@@ -1931,6 +2040,8 @@ const initializeApp = async () => {
         c.notesHistory.some((n) => n.text.toLowerCase().includes(searchTerm));
       const textMatch =
         fullName.includes(searchTerm) ||
+        (c.email || "").toLowerCase().includes(searchTerm) ||
+        (c.phone || "").includes(searchTerm) ||
         addr.includes(searchTerm) ||
         areasMatch ||
         notesMatch;
@@ -1998,6 +2109,7 @@ const initializeApp = async () => {
     filtered.forEach((contact) => {
       const card = document.createElement("div");
       const status = getContactStatus(contact);
+      const navigationUrl = getNavigationUrl(contact);
       let urgencyClass = "contact-card";
       if (status.class === "urgent") urgencyClass += " urgent";
       if (status.class === "immediate") urgencyClass += " immediate";
@@ -2027,6 +2139,8 @@ const initializeApp = async () => {
                 <strong>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</strong><br>
                 <small class="contact-record-id">Contact ID: ${escapeHtml(contact.id)}</small><br>
                 <small>${escapeHtml(contact.address || "No address provided")} (${escapeHtml(getContactLocationSummary(contact))})</small><br>
+                ${contact.phone ? `<small>Phone: ${escapeHtml(contact.phone)}</small><br>` : ""}
+                ${contact.email ? `<small>Email: ${escapeHtml(contact.email)}</small><br>` : ""}
                 <span>Days Since Last Contact: <strong>${status.days} days</strong> (${status.label})</span>
                 ${historyHtml}
                 <div class="quick-add-note-box">
@@ -2035,6 +2149,7 @@ const initializeApp = async () => {
                 </div>
                 <div class="card-actions">
                     <button class="btn-icon" onclick="editContact(${contact.id})" title="Edit Details">✏️</button>
+                    ${navigationUrl ? `<a class="btn-icon navigate-contact" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">🧭 Navigate</a>` : ""}
                     <button class="btn-icon" data-export-contact="${escapeHtml(contact.id)}" title="Export this contact" aria-label="Export ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">⬇️</button>
                     <button class="btn-icon delete" onclick="deleteContact(${contact.id})" title="Delete Contact">🗑️</button>
                 </div>
@@ -2096,6 +2211,8 @@ const initializeApp = async () => {
         <h3>${escapeHtml(fullName)}</h3>
         <p class="print-contact-id">Contact ID: ${escapeHtml(contact.id)}</p>
         <p class="print-contact-address">${escapeHtml(streetAddress)}</p>
+        ${contact.phone ? `<p>Phone: ${escapeHtml(contact.phone)}</p>` : ""}
+        ${contact.email ? `<p>Email: ${escapeHtml(contact.email)}</p>` : ""}
         <div class="print-latest-note">
           <strong>Most recent note:</strong>
           ${
@@ -2255,6 +2372,8 @@ const initializeApp = async () => {
           <h2>${escapeHtml(fullName)}</h2>
           <p>${escapeHtml(streetAddress)}</p>
           ${cityState ? `<p>${escapeHtml(cityState)}</p>` : ""}
+          ${contact.phone ? `<p>Phone: ${escapeHtml(contact.phone)}</p>` : ""}
+          ${contact.email ? `<p>Email: ${escapeHtml(contact.email)}</p>` : ""}
           <p class="print-single-location">${escapeHtml(location)}</p>
           <p class="print-contact-id">Contact ID: ${escapeHtml(contact.id)}</p>
           <section class="print-notes">
@@ -2291,12 +2410,16 @@ const initializeApp = async () => {
           icon: svgIcon,
           draggable: true,
         }).addTo(map);
+        const navigationUrl = getNavigationUrl(contact);
         const popupContent = `
                     <div>
                         <b>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</b><br>
                         ${escapeHtml(contact.address)}<br>
+                        ${contact.phone ? `Phone: ${escapeHtml(contact.phone)}<br>` : ""}
+                        ${contact.email ? `Email: ${escapeHtml(contact.email)}<br>` : ""}
                         Location: ${escapeHtml(getContactLocationSummary(contact))}<br>
                         Days Since Contact: ${status.days} (${status.label})<br><br>
+                        ${navigationUrl ? `<a href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer">🧭 Navigate</a><br><br>` : ""}
                         Drag this pin to move it. The new location saves automatically.<br><br>
                         <button onclick="editContact(${contact.id})" style="background: #004080; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;">✏️ Edit Details</button>
                     </div>
@@ -2387,6 +2510,8 @@ const initializeApp = async () => {
     recordIdLabel.hidden = false;
     document.getElementById("contact-firstname").value = contact.firstName;
     document.getElementById("contact-lastname").value = contact.lastName;
+    document.getElementById("contact-email").value = contact.email || "";
+    phoneInput.value = contact.phone || "";
     document.getElementById("contact-address").value =
       getStreetAddress(contact);
     document.getElementById("contact-city-select").value = contact.city || "";

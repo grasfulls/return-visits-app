@@ -35,14 +35,18 @@ an encrypted backup.
 ## Contacts and visit logs
 
 Add contacts with a required first name and optional last name, address, city,
-region, area, and map coordinates. City, Region, and Area are each single
-optional values, so a contact can be saved with partial details and completed
-later. A Region belongs to one City, and an Area belongs to one Region. Phone
-and email fields are not currently available. Each contact has a stable unique
-ID, so different people can share the same name. Contact cards show the
-address, location hierarchy, urgency, and visit history; they include actions
-to edit, export, and delete a contact. Visit logs can be added from the contact
-form or quickly from a card, and existing logs can be edited or deleted.
+region, area, map coordinates, email, and phone. Email and phone are optional;
+email accepts addresses such as `name@someemail`, and U.S. phone numbers are
+formatted as `(555) 123-4567`. City, Region, and Area are each single optional
+values, so a contact can be saved with partial details and completed later. A
+Region belongs to one City, and an Area belongs to one Region. Each contact has
+a stable unique ID, so different people can share the same name. Contact cards
+show available phone and email details along with the address, location
+hierarchy, urgency, and visit history; they include actions to edit, export,
+delete, and navigate to a contact. Navigate opens Google Maps directions using
+saved coordinates when available, or the contact address otherwise. Visit
+logs can be added from the contact form or quickly from a card, and existing
+logs can be edited or deleted.
 
 On the contacts page, **Print Visible Contacts** prints exactly the contacts
 shown by the current search and filters. It confirms the number first, groups
@@ -54,10 +58,11 @@ disabled while changes are unsaved. Print layouts omit app controls. Printing
 uses the browser/device print dialog, where you can choose a printer or save as
 PDF if that option is available.
 
-Search matches names, addresses, and visit notes. The list can be filtered by
-urgency, city, region, and area, and sorted newest first, oldest first, or
-alphabetically by first name. In the contact form, Region is available only
-after choosing a City, and Area is available only after choosing a Region.
+Search matches names, email addresses, phone numbers, addresses, and visit
+notes. The list can be filtered by urgency, city, region, and area, and sorted
+newest first, oldest first, or alphabetically by first name. In the contact
+form, Region is available only after choosing a City, and Area is available
+only after choosing a Region.
 Settings lets you create regions under cities and areas under regions. Filters
 follow the same hierarchy. During migration from the earlier multiple-area
 format, a contact keeps its first listed area and drops other area assignments;
@@ -88,6 +93,8 @@ Address and cross-street text are sent to OpenStreetMap Nominatim only when
 you choose the corresponding search button. Leaflet map assets, map tiles, and
 address searches require internet access. The app shell may work offline after
 it has been cached, but the map and address search are not available offline.
+Choosing Navigate sends that contact's saved coordinates or address to Google
+Maps to open directions.
 
 ## Full backup and restore
 
