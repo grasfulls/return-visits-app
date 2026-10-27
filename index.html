@@ -159,7 +159,8 @@
             <p>
               Contacts and settings are stored on this device in this browser.
               A passphrase is optional. If you turn one on below, your data is
-              encrypted with it; keep it private. Export backups regularly.
+              encrypted with it; keep it private. You can turn it off again in
+              this section. Export backups regularly.
             </p>
             <p>
               <a class="user-guide-link" href="./help.html">
@@ -283,6 +284,28 @@
               </button>
               <p id="change-passphrase-status" role="status" aria-live="polite"></p>
             </form>
+
+            <div id="turn-off-passphrase-section">
+              <h3>Turn Off Passphrase</h3>
+              <p>
+                Stop requiring a passphrase on this device. Enter your current
+                passphrase to decrypt your data. It will then be stored without
+                encryption, and you can turn the passphrase on again later.
+              </p>
+              <form id="turn-off-passphrase-form">
+                <label for="turn-off-current-passphrase">Current passphrase</label>
+                <input
+                  type="password"
+                  id="turn-off-current-passphrase"
+                  autocomplete="current-password"
+                  required
+                />
+                <button type="submit" id="btn-turn-off-passphrase">
+                  Turn Off Passphrase
+                </button>
+                <p id="turn-off-passphrase-status" role="status" aria-live="polite"></p>
+              </form>
+            </div>
 
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
 

@@ -37,7 +37,9 @@ turn it on, use **Settings → Turn On Passphrase** and choose a passphrase of a
 least 8 characters; it is then required whenever opening the app. There is no
 passphrase recovery; if it is forgotten, the encrypted data cannot be unlocked.
 Keep the passphrase safe and separate from any backup or contact file. Once on,
-use **Settings → Change Passphrase** and verify the current passphrase first.
+use **Settings → Change Passphrase** and verify the current passphrase first. To stop requiring
+one, use **Settings → Turn Off Passphrase** (the current passphrase is needed
+once to decrypt the data); it can be turned on again later.
 The change does not affect other copies or previously exported backup files;
 those backups continue to require the passphrase they were created with.
 

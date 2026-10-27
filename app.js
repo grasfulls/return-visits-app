@@ -429,6 +429,7 @@ const replaceStoredValuesIfUnchanged = (
   database,
   expectedEntries,
   replacementEntries,
+  deleteKeys = [],
 ) =>
   new Promise((resolve, reject) => {
     const transaction = database.transaction("appData", "readwrite");
@@ -451,6 +452,7 @@ const replaceStoredValuesIfUnchanged = (
           replacementEntries.forEach(([replacementKey, value]) =>
             store.put({ key: replacementKey, value }),
           );
+          deleteKeys.forEach((key) => store.delete(key));
         }
       };
       request.onerror = () => transaction.abort();
@@ -2032,8 +2034,88 @@ const initializeApp = async () => {
     document.getElementById("current-passphrase").required = protectedNow;
     document.getElementById("btn-change-passphrase").textContent =
       protectedNow ? "Change Passphrase" : "Turn On Passphrase";
+    document.getElementById("turn-off-passphrase-section").hidden =
+      !protectedNow;
   };
   updatePassphraseSection();
+
+  document
+    .getElementById("turn-off-passphrase-form")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const currentInput = document.getElementById("turn-off-current-passphrase");
+      const submitButton = document.getElementById("btn-turn-off-passphrase");
+      const status = document.getElementById("turn-off-passphrase-status");
+      const appContainer = document.getElementById("app-container");
+      let statusMessage = "";
+      status.textContent = "";
+      submitButton.disabled = true;
+      appContainer.inert = true;
+
+      try {
+        if (
+          !confirm(
+            "Turn off the passphrase? Your data on this device will be stored without encryption, and the app will open without asking for a passphrase. You can turn it on again later.",
+          )
+        ) {
+          return;
+        }
+        let currentSettings;
+        let currentContacts;
+        let storedEncryptedSettings;
+        let storedEncryptedContacts;
+        try {
+          const currentKey = await deriveEncryptionKey(
+            currentInput.value,
+            cryptoMetadata,
+          );
+          [storedEncryptedSettings, storedEncryptedContacts] = await Promise.all([
+            readStoredValue(database, "settings"),
+            readStoredValue(database, "contacts"),
+          ]);
+          [currentSettings, currentContacts] = await Promise.all([
+            decryptValue(storedEncryptedSettings, currentKey),
+            decryptValue(storedEncryptedContacts, currentKey),
+          ]);
+        } catch (error) {
+          console.error("Unable to verify current passphrase:", error);
+          throw new Error(
+            "The passphrase is incorrect, or the saved data could not be decrypted. Your data was not changed.",
+          );
+        }
+
+        await replaceStoredValuesIfUnchanged(
+          database,
+          [
+            ["settings", storedEncryptedSettings],
+            ["contacts", storedEncryptedContacts],
+            [ENCRYPTION_META_KEY, cryptoMetadata],
+          ],
+          [
+            ["settings", currentSettings],
+            ["contacts", currentContacts],
+          ],
+          [ENCRYPTION_META_KEY],
+        );
+        encryptionKey = null;
+        cryptoMetadata = null;
+        statusMessage =
+          "Passphrase turned off. The app will open without asking for one. Backups you export now will not be encrypted.";
+        document.getElementById("turn-off-passphrase-form").reset();
+        updatePassphraseSection();
+      } catch (error) {
+        console.error("Unable to turn off passphrase:", error);
+        statusMessage =
+          error.message === "Saved data changed during the passphrase update."
+            ? "Your data changed during the update. No changes were made; please try again."
+            : error.message ||
+              "Could not turn off the passphrase. Your saved data was not changed.";
+      } finally {
+        appContainer.inert = false;
+        submitButton.disabled = false;
+        status.textContent = statusMessage;
+      }
+    });
 
   document
     .getElementById("change-passphrase-form")
