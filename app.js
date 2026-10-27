@@ -3110,7 +3110,7 @@ const initializeApp = async () => {
                 ${historyHtml}
                 <div class="quick-add-note-box">
                     <input type="text" id="quick-note-${contact.id}" placeholder="Add visit log...">
-                    <button onclick="addQuickNote(${contact.id})" title="Add Note">➕</button>
+                    <button onclick="addQuickNote(${contact.id})" title="Add Note" aria-label="Add visit note">+</button>
                 </div>
                 <div class="card-actions">
                     <button class="btn-icon" onclick="editContact(${contact.id})" title="Edit Details">✏️</button>
