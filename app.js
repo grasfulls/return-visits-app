@@ -508,7 +508,7 @@ const initializeApp = async () => {
   };
 
   const openModalWithCoords = (lat, lng) => {
-    modal.style.display = "block";
+    modal.style.display = "flex";
     newCityContainer.style.display = "none";
     newAreaContainer.style.display = "none";
 
@@ -570,10 +570,10 @@ const initializeApp = async () => {
     await openModalWithCoords(null, null);
     try {
       const [lat, lng] = await getDeviceCoordinates();
-      if (modal.style.display === "block") setPickerLocation(lat, lng);
+      if (modal.style.display === "flex") setPickerLocation(lat, lng);
     } catch (error) {
       console.warn("Unable to use device location:", error);
-      if (modal.style.display === "block") {
+      if (modal.style.display === "flex") {
         alert(
           "Device location is unavailable. Enter an address and use Find Address on Map, or tap/drag the pin to set a location.",
         );

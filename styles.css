@@ -214,10 +214,14 @@ textarea {
     left: 0;
     top: 0;
     width: 100%;
-    height: 100%;
+    height: 100vh;
+    height: 100dvh;
     background-color: rgba(0, 0, 0, 0.5);
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    padding: max(8px, env(safe-area-inset-top)) 0
+        max(8px, env(safe-area-inset-bottom));
 }
 
 .modal-content {
@@ -268,7 +272,7 @@ textarea {
     flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 15px 20px 140px 20px;
+    padding: 15px 20px 24px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -376,6 +380,11 @@ textarea {
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
+#btn-save-contact,
+#btn-exit-modal {
+    min-height: 48px;
+}
+
 #btn-save-contact {
     flex: 2;
     background: #28a745;
@@ -398,6 +407,14 @@ textarea {
     font-weight: bold;
     border-radius: 4px;
     cursor: pointer;
+}
+
+@media (max-width: 600px) {
+    .modal-content {
+        height: 100%;
+        max-height: none;
+        margin: 0 auto;
+    }
 }
 
 /* Bottom Navigation Bar */
