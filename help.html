@@ -284,7 +284,11 @@
           Use the <strong>Map</strong> button in the bottom navigation to view
           contacts that match the current search and filters and have map
           coordinates. Changing the search or filters also updates the map.
-          Contacts without coordinates do not have a pin on the map.
+          Contacts without coordinates do not have a pin on the map. If no
+          visible contacts have coordinates, the map centers approximately on
+          the Default City and State saved in Settings. While the Map is open
+          without pins, that city and state are sent to OpenStreetMap Nominatim
+          for the lookup.
         </li>
       </ul>
       <p>

@@ -2084,12 +2084,91 @@ const initializeApp = async () => {
   // Initialize Main Leaflet Map
   let map = null;
   let mapMarkers = [];
+  let lastDefaultCityCenterQuery = null;
+  const defaultCityCoordinates = new Map();
+  const pendingDefaultCityLookups = new Map();
+  const getDefaultCityQuery = () =>
+    [settings.defaultCity.trim(), settings.state.trim(), "USA"]
+      .filter(Boolean)
+      .join(", ");
+
+  const centerMapOnDefaultCity = async () => {
+    if (!map || mapMarkers.length > 0) return;
+    const city = settings.defaultCity.trim();
+    const state = settings.state.trim();
+    if (!city) return;
+
+    const query = getDefaultCityQuery();
+    if (query === lastDefaultCityCenterQuery) return;
+    const status = document.getElementById("map-location-status");
+    const cachedLocation = defaultCityCoordinates.get(query);
+    if (cachedLocation) {
+      map.setView(cachedLocation, 13);
+      lastDefaultCityCenterQuery = query;
+      status.textContent = `No contact pins to show. The map is centered near ${city}${state ? `, ${state}` : ""}.`;
+      return;
+    }
+
+    status.textContent = `Locating the default city, ${city}${state ? `, ${state}` : ""}...`;
+    try {
+      let lookup = pendingDefaultCityLookups.get(query);
+      if (!lookup) {
+        lookup = (async () => {
+          const url = new URL("https://nominatim.openstreetmap.org/search");
+          url.search = new URLSearchParams({
+            q: query,
+            format: "jsonv2",
+            limit: "1",
+          }).toString();
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(
+              `Default city lookup failed with status ${response.status}.`,
+            );
+          }
+          const results = await response.json();
+          const latitude = Number(results[0]?.lat);
+          const longitude = Number(results[0]?.lon);
+          if (
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude) ||
+            latitude < -90 ||
+            latitude > 90 ||
+            longitude < -180 ||
+            longitude > 180
+          ) {
+            return null;
+          }
+          const location = [latitude, longitude];
+          defaultCityCoordinates.set(query, location);
+          return location;
+        })();
+        pendingDefaultCityLookups.set(query, lookup);
+      }
+      const location = await lookup;
+      if (mapMarkers.length > 0 || query !== getDefaultCityQuery()) return;
+      if (!location) {
+        status.textContent = `Couldn't locate ${city}${state ? `, ${state}` : ""}. Choose Find Address or City Pin on a contact to locate an address.`;
+        return;
+      }
+
+      map.setView(location, 13);
+      lastDefaultCityCenterQuery = query;
+      status.textContent = `No contact pins to show. The map is centered near ${city}${state ? `, ${state}` : ""}.`;
+    } catch (error) {
+      if (mapMarkers.length > 0 || query !== getDefaultCityQuery()) return;
+      console.error("Unable to locate the default city on the map:", error);
+      status.textContent = `Couldn't locate ${city}${state ? `, ${state}` : ""}. Check your connection or use Find Address or City Pin on a contact.`;
+    } finally {
+      pendingDefaultCityLookups.delete(query);
+    }
+  };
 
   const initMap = () => {
     if (map) return;
     map = L.map("map", { doubleClickZoom: false }).setView(
-      [38.8517, -121.1275],
-      13,
+      [39.8283, -98.5795],
+      4,
     );
     window.mapInstance = map;
 
@@ -2097,7 +2176,7 @@ const initializeApp = async () => {
       maxZoom: 19,
       attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
-
+    renderMapMarkers();
     renderMapMarkers();
   };
 
@@ -3424,6 +3503,7 @@ const initializeApp = async () => {
     });
 
     if (validMarkers.length > 0) {
+      lastDefaultCityCenterQuery = null;
       const contactsWithoutPins = visibleContacts.length - validMarkers.length;
       if (validMarkers.length === 1) {
         map.setView(validMarkers[0], 16);
@@ -3441,6 +3521,10 @@ const initializeApp = async () => {
     } else {
       document.getElementById("map-location-status").textContent =
         "No matching contacts to show. Change the search or filters, or add map coordinates to a contact.";
+    }
+
+    if (currentViewId === "map-view" && mapMarkers.length === 0) {
+      centerMapOnDefaultCity();
     }
   };
 

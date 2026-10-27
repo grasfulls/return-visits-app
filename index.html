@@ -219,6 +219,11 @@
 
               <label>Default City:</label>
               <input type="text" id="setting-default-city" />
+              <small>
+                When the Map has no visible contact pins, it centers near this
+                city. Its name and state are looked up with OpenStreetMap
+                Nominatim while the Map is open.
+              </small>
 
               <button
                 type="submit"
@@ -591,6 +596,8 @@
             <small>
               Address and cross-street lookups send the entered location text
               to OpenStreetMap Nominatim only when you choose a lookup button.
+              While the Map is open without contact pins, its default city and
+              state are also sent to Nominatim to center the map.
               Device location uses this device's location and may be
               approximate. You can always adjust the pin.
             </small>

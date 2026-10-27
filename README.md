@@ -121,13 +121,16 @@ its accuracy can vary. Refine a pin in the contact form by tapping the map,
 dragging the pin, or editing the coordinates. Pins can also be dragged in Map
 view; those changes save automatically. The map shows pins only for contacts
 matching the current search and filters, and indicates when matching contacts
-have no saved coordinates.
+have no saved coordinates. Whenever the Map is open with no visible contact
+pins, it centers approximately on the Default City and State from Settings.
 
 Address text (including partial street-name and city searches) and cross-street
-text are sent to OpenStreetMap Nominatim only when you choose the corresponding
-search button. Leaflet map assets, map tiles, and address searches require
-internet access. The app shell may work offline after it has been cached, but
-the map and address search are not available offline.
+text are sent to OpenStreetMap Nominatim when you choose the corresponding
+search button. Whenever the Map is open with no visible contact pins, the saved
+default City and State are also sent to Nominatim to center the map. Leaflet
+map assets, map tiles, and location searches require internet access. The app
+shell may work offline after it has been cached, but the map and address
+search are not available offline.
 Choosing Navigate sends that contact's saved coordinates or address to Google
 Maps to open directions.
 

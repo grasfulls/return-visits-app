@@ -177,7 +177,11 @@
         name without its leading house number and/or the selected city and
         state. A city-only lookup searches the selected city and state. If you
         choose Search Near Cross-Street, that cross-street or intersection text
-        is also sent to Nominatim. Typing or saving does not trigger a lookup.
+        is also sent to Nominatim.
+        Whenever the Map is open and no visible contacts have coordinates, the
+        default city and state in Settings are sent to Nominatim to center the
+        map approximately. Entering or saving contact details does not run the
+        contact-address search.
         Map images and the mapping software are also loaded from external
         providers.
       </p>
@@ -215,9 +219,12 @@
           and state. A city-only lookup searches the selected city and state.
           If you choose Search Near Cross-Street, the cross-street or
           intersection text and selected city and state are also sent to
-          Nominatim. Typing or saving contact details does not trigger a lookup.
-          Do not use these search features if you do not want this location
-          information sent to the lookup service.
+          Nominatim. Whenever the Map is open and no visible contacts have
+          coordinates, the default city and state in Settings are also sent to
+          Nominatim to center the map approximately. Entering or saving contact
+          details does not run the contact-address search. Do not use
+          these lookup features or the Map without contact pins if you do not
+          want this location information sent to Nominatim.
         </li>
         <li>
           <strong>Navigation:</strong> If you choose Navigate on a contact
