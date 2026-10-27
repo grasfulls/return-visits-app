@@ -119,6 +119,19 @@ Share a Contact**, select the file, enter its sharing passphrase, and confirm
 the import. It adds a new contact without replacing existing contacts and
 stores it encrypted using the recipient device’s passphrase.
 
+## Stop using the app and remove data
+
+Browser and Home Screen app copies may store data separately, so removing one
+copy may not remove another. To remove the Safari browser copy on iPhone or
+iPad, go to **iOS Settings → Safari → Advanced → Website Data** and delete
+`grasfulls.github.io`. To remove a separate Home Screen app copy, touch and
+hold its icon, choose **Remove App**, then **Delete App**. In Chrome on
+Android, use the site's **Clear data** or **Clear & reset** setting, or find it
+under **Settings → Site settings → All sites**. Menu names may vary by
+version. Repeat for every browser and device used. Downloaded backups,
+exported contact files, PDFs, and printed pages are separate; delete those
+wherever you saved or shared them.
+
 ## Install and updates
 
 The app is published on GitHub Pages:
