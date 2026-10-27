@@ -1390,6 +1390,16 @@ const initializeApp = async () => {
 
   const setPickerLocation = (lat, lng, zoom = 16) => {
     const location = [Number(lat), Number(lng)];
+    if (
+      !Number.isFinite(location[0]) ||
+      !Number.isFinite(location[1]) ||
+      location[0] < -90 ||
+      location[0] > 90 ||
+      location[1] < -180 ||
+      location[1] > 180
+    ) {
+      throw new Error("The pin coordinates are outside the valid range.");
+    }
     document.getElementById("contact-lat").value = location[0].toFixed(6);
     document.getElementById("contact-lng").value = location[1].toFixed(6);
     if (pickerMarker) {
@@ -1402,9 +1412,50 @@ const initializeApp = async () => {
           movedTo.lat.toFixed(6);
         document.getElementById("contact-lng").value =
           movedTo.lng.toFixed(6);
+        updatePrintContactAvailability();
       });
     }
     pickerMap.setView(location, zoom);
+    updatePrintContactAvailability();
+  };
+
+  const locationStatus = document.getElementById("location-status");
+  const setLocationStatus = (message) => {
+    locationStatus.textContent = message;
+  };
+
+  const updatePickerLocationFromCoordinates = () => {
+    const latitude = document.getElementById("contact-lat").value.trim();
+    const longitude = document.getElementById("contact-lng").value.trim();
+    if (!latitude && !longitude) {
+      if (pickerMarker) {
+        pickerMap.removeLayer(pickerMarker);
+        pickerMarker = null;
+      }
+      setLocationStatus("Pin cleared. Choose a location or place it on the map.");
+      return;
+    }
+    if (!latitude || !longitude) {
+      setLocationStatus("Enter both latitude and longitude to set the pin.");
+      return;
+    }
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ) {
+      setLocationStatus("Enter valid coordinates before setting the pin.");
+      return;
+    }
+    setPickerLocation(lat, lng);
+    setLocationStatus(
+      "Pin updated from the entered coordinates. You can move it on the map.",
+    );
   };
 
   const findAddressOnMap = async () => {
@@ -1412,12 +1463,15 @@ const initializeApp = async () => {
     const city = document.getElementById("contact-city-select").value;
     const state = document.getElementById("contact-state").value.trim();
     if (!street) {
-      alert("Enter a street address before searching for it on the map.");
+      setLocationStatus(
+        "Enter a street address before looking up its location.",
+      );
       return;
     }
 
     const query = [street, city, state, "USA"].filter(Boolean).join(", ");
     btnFindAddress.disabled = true;
+    setLocationStatus("Looking up the entered address...");
     try {
       const url = new URL("https://nominatim.openstreetmap.org/search");
       url.search = new URLSearchParams({
@@ -1431,14 +1485,19 @@ const initializeApp = async () => {
       }
       const results = await response.json();
       if (results.length === 0) {
-        alert("No matching address was found. Check the address or place the pin manually.");
+        setLocationStatus(
+          "No matching address was found. Check it or place the pin manually.",
+        );
         return;
       }
       setPickerLocation(results[0].lat, results[0].lon);
+      setLocationStatus(
+        "Pin placed from the address lookup. Check its position and move it on the map if needed.",
+      );
     } catch (error) {
       console.error("Unable to find address on map:", error);
-      alert(
-        "Address lookup failed. Check your internet connection, then try again or place the pin manually.",
+      setLocationStatus(
+        "Address lookup failed. Check your connection, then try again or place the pin manually.",
       );
     } finally {
       btnFindAddress.disabled = false;
@@ -1534,6 +1593,7 @@ const initializeApp = async () => {
 
   btnOpenModal.addEventListener("click", async () => {
     contactForm.reset();
+    setLocationStatus("");
     document.getElementById("contact-id").value = "";
     document.getElementById("contact-record-id").hidden = true;
     printContactButton.hidden = true;
@@ -1555,28 +1615,57 @@ const initializeApp = async () => {
 
   btnFindAddress.addEventListener("click", findAddressOnMap);
 
+  document
+    .getElementById("contact-lat")
+    .addEventListener("change", updatePickerLocationFromCoordinates);
+  document
+    .getElementById("contact-lng")
+    .addEventListener("change", updatePickerLocationFromCoordinates);
+
   closeModal.addEventListener("click", attemptExit);
   btnExitModal.addEventListener("click", attemptExit);
 
-  // GPS Auto-population
   document.getElementById("btn-gps").addEventListener("click", () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          if (pickerMap) {
-            setPickerLocation(
-              position.coords.latitude,
-              position.coords.longitude,
-            );
-          }
-        },
-        () => {
-          alert("Unable to retrieve your location.");
-        },
-      );
-    } else {
-      alert("Geolocation is not supported by your browser.");
+    if (!navigator.geolocation) {
+      setLocationStatus("Device location is not supported by this browser.");
+      return;
     }
+    const gpsButton = document.getElementById("btn-gps");
+    gpsButton.disabled = true;
+    setLocationStatus("Getting a fresh device location...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        try {
+          setPickerLocation(
+            position.coords.latitude,
+            position.coords.longitude,
+          );
+          const accuracy = Math.round(position.coords.accuracy);
+          setLocationStatus(
+            Number.isFinite(accuracy)
+              ? `Pin placed from device location (estimated accuracy: ${accuracy} m). You can move it on the map.`
+              : "Pin placed from device location. You can move it on the map.",
+          );
+        } catch (error) {
+          console.error("Invalid device location coordinates:", error);
+          setLocationStatus(
+            "The device returned invalid coordinates. Try the address lookup or place the pin manually.",
+          );
+        } finally {
+          gpsButton.disabled = false;
+        }
+      },
+      (error) => {
+        console.error("Unable to get device location:", error);
+        setLocationStatus(
+          error.code === error.PERMISSION_DENIED
+            ? "Location permission was denied. Allow location access or set the pin from the address or map."
+            : "Could not get a device location. Check location services or set the pin from the address or map.",
+        );
+        gpsButton.disabled = false;
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
+    );
   });
 
   // Save Contact Handler

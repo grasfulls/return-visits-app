@@ -73,10 +73,13 @@ there are no logs:
 
 ## Location and privacy
 
-Map coordinates are optional. To add or update them, use device GPS, enter an
-address and select **Find Address on Map**, tap the map, or drag the pin.
-Device location requires browser permission. The map shows pins only for
-contacts matching the current search and filters.
+Map coordinates are optional. In the contact form, choose **Set Pin from
+Entered Address** to look up the entered address, city, and state, or **Use
+Device Location** to request the device's current location. Device location
+requires browser permission and its accuracy can vary. Whichever method you
+choose, refine the pin by tapping the map, dragging the pin, or editing the
+coordinates. The map shows pins only for contacts matching the current search
+and filters.
 
 Address text is sent to OpenStreetMap Nominatim only when you choose **Find
 Address on Map**. Leaflet map assets, map tiles, and address searches require

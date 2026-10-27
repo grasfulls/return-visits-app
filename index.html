@@ -382,13 +382,6 @@
 
             <label>Street Address:</label>
             <input type="text" id="contact-address" />
-            <button type="button" id="btn-find-address">
-              📍 Find Address on Map
-            </button>
-            <small>
-              Address searches are sent to OpenStreetMap Nominatim. Tap the map
-              or drag the pin to adjust its location.
-            </small>
 
             <label>City (optional):</label>
             <select id="contact-city-select"></select>
@@ -446,17 +439,30 @@
             <div class="gps-row">
               <label>Latitude: <input type="text" id="contact-lat" /></label>
               <label>Longitude: <input type="text" id="contact-lng" /></label>
-              <button type="button" id="btn-gps">📍 Get GPS</button>
             </div>
             <small>
-              Map coordinates are optional. You can save the contact now and
-              add or update the location later.
+              Map coordinates are optional. Choose how to place the pin below,
+              then tap the map, drag the pin, or enter coordinates to adjust it.
             </small>
 
+            <label style="margin-top: 10px">Choose how to set the pin:</label>
+            <div class="location-source-actions">
+              <button type="button" id="btn-find-address">
+                📍 Set Pin from Entered Address
+              </button>
+              <button type="button" id="btn-gps">
+                📍 Use Device Location
+              </button>
+            </div>
+            <small>
+              Address lookup sends the entered address, city, and state to
+              OpenStreetMap Nominatim. Device location uses this device's
+              location and may be approximate. You can always adjust the pin.
+            </small>
+            <p id="location-status" role="status" aria-live="polite"></p>
+
             <!-- Interactive Map Pin Picker inside Modal -->
-            <label style="margin-top: 10px"
-              >Tap Map or Drag Pin to Adjust Location:</label
-            >
+            <label style="margin-top: 10px">Adjust the pin on the map:</label>
             <div
               id="modal-picker-map"
               style="
