@@ -583,6 +583,7 @@ const encryptStoredValue = async (database, storageKey, value, encryptionKey) =>
 const createUnlockPrompt = (hasEncryption) => {
   const screen = document.getElementById("unlock-screen");
   const description = document.getElementById("unlock-description");
+  document.getElementById("first-use-notice").hidden = hasEncryption;
   const confirmContainer = document.getElementById(
     "confirm-passphrase-container",
   );

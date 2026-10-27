@@ -1,7 +1,14 @@
 # Return Visits App
 
-A client-side contact and return-visit tracker that can be used in a browser or
-installed as a Progressive Web App (PWA).
+Return Visits is free to use, with no app fees or subscription. It is
+intentionally a simple tool for maintaining contact details and tracking
+return visits—not a full-featured contact-management app. It may have fewer
+features or be less reliable than paid products. The app is provided as-is.
+Your internet or mobile provider may charge for data, and third-party services
+have their own terms.
+
+It is a client-side contact and return-visit tracker that can be used in a
+browser or installed as a Progressive Web App (PWA).
 
 ## Before you start
 
@@ -13,6 +20,13 @@ have already entered contacts in a browser, either keep using that browser or
 export an encrypted backup and restore it in the Home Screen app before
 switching. The app is free and has no online sync service, so keeping multiple
 copies current requires manual backup/restore.
+
+On iPhone, open the site in Safari, tap **Share → Add to Home Screen**, then
+launch the Home Screen copy. If a link opens inside another app, use that app's
+menu to choose **Open in Safari**; the website cannot choose the browser for
+you. On Android, open the site in Chrome and choose **Install app** or
+**Add to Home screen** from the browser menu. Do this before entering contacts
+when possible, since browser and Home Screen copies may keep separate data.
 
 ## Data and passphrase
 
