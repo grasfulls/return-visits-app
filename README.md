@@ -53,6 +53,9 @@ region, area, map coordinates, email, and phone. Email and phone are optional;
 email accepts addresses such as `name@someemail`, and U.S. phone numbers are
 formatted as `(555) 123-4567`. City, Region, and Area are each single optional
 values, so a contact can be saved with partial details and completed later. A
+street address and newly entered location names are automatically capitalized
+when you leave the field or save. Recognized U.S. state names are saved as
+their standard two-letter abbreviations; two-letter state codes are uppercased.
 Region belongs to one City, and an Area belongs to one Region. The contact
 form's Area list always offers **+ Add New Area...**, even when other areas are
 available for the selected City and Region. Each contact has a stable unique
@@ -105,11 +108,13 @@ there are no logs:
 Map coordinates are optional. In the contact form, choose **Find Address or
 City Pin** to look up the entered address, city, and state, or **Use Device
 Location** to request the device's current location. A partial street name can
-return several possible matches; choose the right street to fill its full name
-and place the pin. If the full address is not found, the app also searches by
-the street name without the leading house number. A city-only lookup places an
-approximate pin near the city. Typing or saving address details does not
-automatically create a pin. Device location requires browser permission and
+return several possible matches; choose from the street-name choices, which
+omit house numbers and ZIP codes, to fill in the street and place the pin.
+Common suffixes such as Avenue and Court are saved as Ave and Ct. If the full
+address is not found, the app also searches by the street name without the
+leading house number. A city-only lookup places an approximate pin near the
+city. Typing or saving address details does not automatically create a pin.
+Device location requires browser permission and
 its accuracy can vary. Refine a pin in the contact form by tapping the map,
 dragging the pin, or editing the coordinates. Pins can also be dragged in Map
 view; those changes save automatically. The map shows pins only for contacts

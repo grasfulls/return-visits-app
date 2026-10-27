@@ -294,14 +294,19 @@
         instead to request the phone's current location. GPS uses the device's
         location, not the contact's address, and its accuracy can vary. The
         form shows the GPS-reported accuracy when available. Typing or saving
-        an address does not run a lookup or create a pin automatically.
+        an address does not run a lookup or create a pin automatically. Street
+        addresses and newly entered location names are capitalized when you
+        leave the field or save. Recognized U.S. state names are saved as
+        standard two-letter abbreviations, and state codes are uppercased.
       </p>
       <ul>
         <li>
           If a partial street address has multiple possible matches, choose the
-          correct street from the list; selecting a match fills in its full
-          street name and places a pin. If the full address is not found, the
-          app also searches by the street name without its leading house number.
+          correct street from the street-name list; choices omit house numbers
+          and ZIP codes. Selecting a match fills in the street name using
+          abbreviations such as Ave and Ct, and places a pin. If the full
+          address is not found, the app also searches by the street name
+          without its leading house number.
           You can choose a city without entering a street to place an
           approximate city pin. If you need a more precise result, enter a
           nearby cross-street or intersection and search again. These searches

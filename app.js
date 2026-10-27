@@ -7,6 +7,118 @@ const DEFAULT_SETTINGS = {
 };
 const ENCRYPTION_ITERATIONS = 310000;
 const ENCRYPTION_META_KEY = "encryption-meta";
+const US_STATE_ABBREVIATIONS = {
+  alabama: "AL",
+  alaska: "AK",
+  arizona: "AZ",
+  arkansas: "AR",
+  california: "CA",
+  colorado: "CO",
+  connecticut: "CT",
+  delaware: "DE",
+  florida: "FL",
+  georgia: "GA",
+  hawaii: "HI",
+  idaho: "ID",
+  illinois: "IL",
+  indiana: "IN",
+  iowa: "IA",
+  kansas: "KS",
+  kentucky: "KY",
+  louisiana: "LA",
+  maine: "ME",
+  maryland: "MD",
+  massachusetts: "MA",
+  michigan: "MI",
+  minnesota: "MN",
+  mississippi: "MS",
+  missouri: "MO",
+  montana: "MT",
+  nebraska: "NE",
+  nevada: "NV",
+  "new hampshire": "NH",
+  "new jersey": "NJ",
+  "new mexico": "NM",
+  "new york": "NY",
+  "north carolina": "NC",
+  "north dakota": "ND",
+  ohio: "OH",
+  oklahoma: "OK",
+  oregon: "OR",
+  pennsylvania: "PA",
+  "rhode island": "RI",
+  "south carolina": "SC",
+  "south dakota": "SD",
+  tennessee: "TN",
+  texas: "TX",
+  utah: "UT",
+  vermont: "VT",
+  virginia: "VA",
+  washington: "WA",
+  "west virginia": "WV",
+  wisconsin: "WI",
+  wyoming: "WY",
+  "district of columbia": "DC",
+  "puerto rico": "PR",
+  "u.s. virgin islands": "VI",
+  "virgin islands": "VI",
+  guam: "GU",
+  "american samoa": "AS",
+  "northern mariana islands": "MP",
+};
+
+const toTitleCase = (value) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/(^|[\s-])([a-z])/g, (_, separator, letter) =>
+      `${separator}${letter.toUpperCase()}`,
+    )
+    .replace(/(^|[\s-])([a-z])'([a-z])/gi, (_, separator, first, following) =>
+      `${separator}${first.toUpperCase()}'${following.toUpperCase()}`,
+    )
+    .replace(/\b(Nw|Ne|Sw|Se|N|S|E|W)\b/g, (direction) =>
+      direction.toUpperCase(),
+    );
+
+const normalizeUsState = (value) => {
+  const state = String(value ?? "").trim().replace(/\s+/g, " ");
+  if (!state) return "";
+  const normalized = state.toLowerCase().replace(/\./g, "");
+  const fullName = US_STATE_ABBREVIATIONS[normalized];
+  if (fullName) return fullName;
+  if (/^[a-z]{2}$/i.test(normalized)) return normalized.toUpperCase();
+  return toTitleCase(state);
+};
+
+const STREET_SUFFIX_ABBREVIATIONS = {
+  avenue: "Ave",
+  boulevard: "Blvd",
+  circle: "Cir",
+  court: "Ct",
+  drive: "Dr",
+  expressway: "Expy",
+  freeway: "Fwy",
+  highway: "Hwy",
+  lane: "Ln",
+  parkway: "Pkwy",
+  place: "Pl",
+  road: "Rd",
+  street: "St",
+  terrace: "Ter",
+  trail: "Trl",
+};
+
+const normalizeStreetName = (value) => {
+  const street = toTitleCase(value);
+  const words = street.split(/\s+/);
+  const lastWord = words[words.length - 1];
+  if (lastWord) {
+    words[words.length - 1] =
+      STREET_SUFFIX_ABBREVIATIONS[lastWord.toLowerCase()] || lastWord;
+  }
+  return words.join(" ");
+};
 
 const escapeHtml = (value) =>
   String(value ?? "").replace(/[&<>"']/g, (character) => {
@@ -830,13 +942,14 @@ const initializeApp = async () => {
 
   // Settings State & Lists
   let settings = savedSettings;
+  settings.state = normalizeUsState(settings.state);
   const saveSettings = () =>
     encryptStoredValue(database, "settings", settings, encryptionKey);
 
   // Populate Settings View Form
   document.getElementById("setting-state").value = settings.state;
   document.getElementById("setting-default-city").value =
-    settings.defaultCity || "Newcastle";
+    toTitleCase(settings.defaultCity || "Newcastle");
 
   // Populate All Dropdowns (Filters & Modal Selects)
   let selectedContactArea = "";
@@ -1125,7 +1238,7 @@ const initializeApp = async () => {
   .getElementById("btn-save-new-contact-region")
   .addEventListener("click", async () => {
     const input = document.getElementById("input-new-contact-region");
-    const name = input.value.trim();
+    const name = toTitleCase(input.value);
     const city = citySelect.value;
     if (!name) {
       alert("Enter a name for the new region.");
@@ -1174,7 +1287,7 @@ const initializeApp = async () => {
   .getElementById("btn-save-new-contact-area")
     .addEventListener("click", async () => {
       const input = document.getElementById("input-new-contact-area");
-      const name = input.value.trim();
+      const name = toTitleCase(input.value);
       const city = citySelect.value;
       const region = contactRegionSelect.value;
       if (!name) {
@@ -1230,6 +1343,14 @@ const initializeApp = async () => {
   // Inline "Add New City" Handlers
   const newCityContainer = document.getElementById("new-city-container");
   const inputNewCity = document.getElementById("input-new-city");
+  inputNewCity.addEventListener("blur", () => {
+    inputNewCity.value = toTitleCase(inputNewCity.value);
+  });
+  document
+    .getElementById("setting-new-city")
+    .addEventListener("blur", (event) => {
+      event.currentTarget.value = toTitleCase(event.currentTarget.value);
+    });
 
   citySelect.addEventListener("change", (e) => {
     if (e.target.value === "__ADD_NEW__") {
@@ -1244,7 +1365,7 @@ const initializeApp = async () => {
   document
     .getElementById("btn-save-new-city")
     .addEventListener("click", async () => {
-      const val = inputNewCity.value.trim();
+      const val = toTitleCase(inputNewCity.value);
       if (val) {
         const existingCity = settings.cities.find(
           (city) => city.toLowerCase() === val.toLowerCase(),
@@ -1279,7 +1400,7 @@ const initializeApp = async () => {
     .getElementById("btn-add-setting-city")
     .addEventListener("click", async () => {
       const input = document.getElementById("setting-new-city");
-      const val = input.value.trim();
+      const val = toTitleCase(input.value);
       const existingCity = settings.cities.find(
         (city) => city.toLowerCase() === val.toLowerCase(),
       );
@@ -1303,7 +1424,7 @@ const initializeApp = async () => {
     .getElementById("btn-add-setting-area")
     .addEventListener("click", async () => {
       const input = document.getElementById("setting-new-area");
-      const val = input.value.trim();
+      const val = toTitleCase(input.value);
       const city = document.getElementById("setting-area-city").value;
       const region = document.getElementById("setting-area-region").value;
       if (!city || !region) {
@@ -1339,7 +1460,7 @@ const initializeApp = async () => {
     .addEventListener("click", async () => {
       const input = document.getElementById("setting-new-region");
       const city = document.getElementById("setting-region-city").value;
-      const region = input.value.trim();
+      const region = toTitleCase(input.value);
       if (
         city &&
         region &&
@@ -1372,10 +1493,10 @@ const initializeApp = async () => {
     .getElementById("settings-form")
     .addEventListener("submit", async (e) => {
       e.preventDefault();
-      settings.state = document.getElementById("setting-state").value.trim();
-      settings.defaultCity = document
-        .getElementById("setting-default-city")
-        .value.trim();
+      settings.state = normalizeUsState(settingStateInput.value);
+      settingStateInput.value = settings.state;
+      settings.defaultCity = toTitleCase(settingDefaultCityInput.value);
+      settingDefaultCityInput.value = settings.defaultCity;
       const existingCity = settings.cities.find(
         (city) =>
           city.toLowerCase() === settings.defaultCity.toLowerCase(),
@@ -1469,7 +1590,7 @@ const initializeApp = async () => {
   };
 
   const renameLocation = async (type, location, proposedName) => {
-    const name = proposedName.trim();
+    const name = toTitleCase(proposedName);
     if (!name) {
       alert("A location name cannot be blank.");
       return false;
@@ -1921,8 +2042,27 @@ const initializeApp = async () => {
   const contactForm = document.getElementById("contact-form");
   const contactModalBody = contactForm.querySelector(".modal-body");
   const phoneInput = document.getElementById("contact-phone");
+  const streetAddressInput = document.getElementById("contact-address");
+  const contactStateInput = document.getElementById("contact-state");
+  const settingStateInput = document.getElementById("setting-state");
+  const settingDefaultCityInput = document.getElementById(
+    "setting-default-city",
+  );
   const contactShareDialog = document.getElementById("contact-share-dialog");
   const contactShareTitle = document.getElementById("contact-share-title");
+
+  streetAddressInput.addEventListener("blur", () => {
+    streetAddressInput.value = normalizeStreetName(streetAddressInput.value);
+  });
+  contactStateInput.addEventListener("blur", () => {
+    contactStateInput.value = normalizeUsState(contactStateInput.value);
+  });
+  settingStateInput.addEventListener("blur", () => {
+    settingStateInput.value = normalizeUsState(settingStateInput.value);
+  });
+  settingDefaultCityInput.addEventListener("blur", () => {
+    settingDefaultCityInput.value = toTitleCase(settingDefaultCityInput.value);
+  });
 
   const setShareLink = (elementId, href) => {
     document.getElementById(elementId).href = href;
@@ -2041,20 +2181,31 @@ const initializeApp = async () => {
     addressMatchResults.replaceChildren();
     addressMatchResults.hidden = true;
   };
+  const getStreetMatchLabel = (result) =>
+    result.address?.road
+      ? normalizeStreetName(result.address.road)
+      : result.display_name;
+  const getUniqueStreetMatches = (results) => {
+    const streetMatches = results.filter((result) => result.address?.road);
+    if (streetMatches.length === 0) return results;
+    const uniqueStreets = new Map();
+    streetMatches.forEach((result) => {
+      const streetName = normalizeStreetName(result.address.road);
+      const key = streetName.toLowerCase();
+      if (!uniqueStreets.has(key)) uniqueStreets.set(key, result);
+    });
+    return Array.from(uniqueStreets.values());
+  };
   const selectAddressMatch = (result, enteredStreet) => {
     const latitude = Number(result.lat);
     const longitude = Number(result.lon);
     setPickerLocation(latitude, longitude);
     const address = result.address || {};
-    const houseNumber =
-      address.house_number || enteredStreet.match(/^\d+[A-Za-z]?\b/)?.[0];
+    const houseNumber = enteredStreet.match(/^\d+[A-Za-z]?\b/)?.[0];
     if (address.road) {
-      document.getElementById("contact-address").value = [
-        houseNumber,
-        address.road,
-      ]
-        .filter(Boolean)
-        .join(" ");
+      streetAddressInput.value = normalizeStreetName(
+        [houseNumber, address.road].filter(Boolean).join(" "),
+      );
     }
     updatePrintContactAvailability();
     crossStreetSearch.hidden = true;
@@ -2074,7 +2225,7 @@ const initializeApp = async () => {
     results.forEach((result) => {
       const option = document.createElement("button");
       option.type = "button";
-      option.textContent = result.display_name;
+      option.textContent = getStreetMatchLabel(result);
       option.addEventListener("click", () =>
         selectAddressMatch(result, enteredStreet),
       );
@@ -2125,9 +2276,11 @@ const initializeApp = async () => {
       );
       return;
     }
-    const street = document.getElementById("contact-address").value.trim();
+    const street = normalizeStreetName(streetAddressInput.value);
     const city = document.getElementById("contact-city-select").value;
-    const state = document.getElementById("contact-state").value.trim();
+    const state = normalizeUsState(contactStateInput.value);
+    streetAddressInput.value = street;
+    contactStateInput.value = state;
     if ((!street && !city) || city === "__ADD_NEW__") {
       setLocationStatus(
         "Enter a street address or choose a city before looking up its location.",
@@ -2174,7 +2327,7 @@ const initializeApp = async () => {
         return;
       }
 
-      const addressResults = await lookup(query);
+      const addressResults = getUniqueStreetMatches(await lookup(query));
       if (addressResults.length > 1) {
         crossStreetSearch.hidden = true;
         showAddressMatches(addressResults, street);
@@ -2189,8 +2342,10 @@ const initializeApp = async () => {
           "Couldn't match that house number. Searching for streets with a similar name...",
         );
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        const streetResults = await lookup(
-          [streetOnly, city, state, "USA"].filter(Boolean).join(", "),
+        const streetResults = getUniqueStreetMatches(
+          await lookup(
+            [streetOnly, city, state, "USA"].filter(Boolean).join(", "),
+          ),
         );
         if (streetResults.length > 1) {
           crossStreetSearch.hidden = true;
@@ -2258,7 +2413,8 @@ const initializeApp = async () => {
       .getElementById("contact-cross-street")
       .value.trim();
     const city = document.getElementById("contact-city-select").value;
-    const state = document.getElementById("contact-state").value.trim();
+    const state = normalizeUsState(contactStateInput.value);
+    contactStateInput.value = state;
     if (!crossStreet) {
       setLocationStatus("Enter a nearby cross-street or intersection first.");
       return;
@@ -2486,11 +2642,13 @@ const initializeApp = async () => {
     const lastName = document.getElementById("contact-lastname").value.trim();
     const email = document.getElementById("contact-email").value.trim();
     const phone = phoneInput.value.trim();
-    const street = document.getElementById("contact-address").value.trim();
+    const street = normalizeStreetName(streetAddressInput.value);
     const city = document.getElementById("contact-city-select").value;
     const region = contactRegionSelect.value;
     const area = contactAreaSelect.value;
-    const state = document.getElementById("contact-state").value.trim();
+    const state = normalizeUsState(contactStateInput.value);
+    streetAddressInput.value = street;
+    contactStateInput.value = state;
     const lat = document.getElementById("contact-lat").value.trim();
     const lng = document.getElementById("contact-lng").value.trim();
     const latitude = Number(lat);
@@ -3147,15 +3305,17 @@ const initializeApp = async () => {
     document.getElementById("contact-lastname").value = contact.lastName;
     document.getElementById("contact-email").value = contact.email || "";
     phoneInput.value = contact.phone || "";
-    document.getElementById("contact-address").value =
-      getStreetAddress(contact);
+    document.getElementById("contact-address").value = normalizeStreetName(
+      getStreetAddress(contact),
+    );
     document.getElementById("contact-city-select").value = contact.city || "";
     dropdownHelpers.populateContactRegionArea(
       contact.region || "",
       contact.area || "",
     );
-    document.getElementById("contact-state").value =
-      contact.state || settings.state;
+    document.getElementById("contact-state").value = normalizeUsState(
+      contact.state || settings.state,
+    );
     document.getElementById("contact-lat").value = contact.lat || "";
     document.getElementById("contact-lng").value = contact.lng || "";
     document.getElementById("contact-notes").value = "";
@@ -3717,6 +3877,7 @@ const initializeApp = async () => {
         cryptoMetadata = restored.metadata;
         settings = restored.settings;
         contacts = restored.contacts;
+        settings.state = normalizeUsState(settings.state);
         document.getElementById("setting-state").value = settings.state;
         document.getElementById("setting-default-city").value =
           settings.defaultCity || "Newcastle";
