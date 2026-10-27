@@ -167,6 +167,13 @@
 
             <label>Street Address:</label>
             <input type="text" id="contact-address" />
+            <button type="button" id="btn-find-address">
+              📍 Find Address on Map
+            </button>
+            <small>
+              Address searches are sent to OpenStreetMap Nominatim. Tap the map
+              or drag the pin to adjust its location.
+            </small>
 
             <label>City:</label>
             <select id="contact-city-select"></select>
@@ -259,7 +266,7 @@
 
             <!-- Interactive Map Pin Picker inside Modal -->
             <label style="margin-top: 10px"
-              >Click Map to Pin Exact Location:</label
+              >Tap Map or Drag Pin to Adjust Location:</label
             >
             <div
               id="modal-picker-map"

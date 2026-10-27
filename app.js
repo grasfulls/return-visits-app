@@ -405,12 +405,84 @@ const initializeApp = async () => {
   // Modal Elements & Interactive Picker Map
   const modal = document.getElementById("contact-modal");
   const btnOpenModal = document.getElementById("btn-open-modal");
+  const btnFindAddress = document.getElementById("btn-find-address");
   const closeModal = document.getElementById("close-modal");
   const btnExitModal = document.getElementById("btn-exit-modal");
   const contactForm = document.getElementById("contact-form");
 
   let pickerMap = null;
   let pickerMarker = null;
+  const defaultMapCenter = [38.8517, -121.1275];
+
+  const setPickerLocation = (lat, lng, zoom = 16) => {
+    const location = [Number(lat), Number(lng)];
+    document.getElementById("contact-lat").value = location[0].toFixed(6);
+    document.getElementById("contact-lng").value = location[1].toFixed(6);
+    if (pickerMarker) {
+      pickerMarker.setLatLng(location);
+    } else {
+      pickerMarker = L.marker(location, { draggable: true }).addTo(pickerMap);
+      pickerMarker.on("dragend", () => {
+        const movedTo = pickerMarker.getLatLng();
+        document.getElementById("contact-lat").value =
+          movedTo.lat.toFixed(6);
+        document.getElementById("contact-lng").value =
+          movedTo.lng.toFixed(6);
+      });
+    }
+    pickerMap.setView(location, zoom);
+  };
+
+  const getDeviceCoordinates = () =>
+    new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Geolocation is not supported by this browser."));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => resolve([coords.latitude, coords.longitude]),
+        (error) => reject(error),
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+      );
+    });
+
+  const findAddressOnMap = async () => {
+    const street = document.getElementById("contact-address").value.trim();
+    const city = document.getElementById("contact-city-select").value;
+    const state = document.getElementById("contact-state").value.trim();
+    if (!street) {
+      alert("Enter a street address before searching for it on the map.");
+      return;
+    }
+
+    const query = [street, city, state, "USA"].filter(Boolean).join(", ");
+    btnFindAddress.disabled = true;
+    try {
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.search = new URLSearchParams({
+        q: query,
+        format: "jsonv2",
+        limit: "1",
+      }).toString();
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Address lookup failed with status ${response.status}.`);
+      }
+      const results = await response.json();
+      if (results.length === 0) {
+        alert("No matching address was found. Check the address or place the pin manually.");
+        return;
+      }
+      setPickerLocation(results[0].lat, results[0].lon);
+    } catch (error) {
+      console.error("Unable to find address on map:", error);
+      alert(
+        "Address lookup failed. Check your internet connection, then try again or place the pin manually.",
+      );
+    } finally {
+      btnFindAddress.disabled = false;
+    }
+  };
 
   let initialFormState = "";
   const captureFormState = () => {
@@ -440,49 +512,46 @@ const initializeApp = async () => {
     newCityContainer.style.display = "none";
     newAreaContainer.style.display = "none";
 
-    setTimeout(() => {
-      if (!pickerMap) {
-        pickerMap = L.map("modal-picker-map").setView([lat, lng], 15);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: "&copy; OpenStreetMap",
-        }).addTo(pickerMap);
-
-        pickerMap.on("click", (e) => {
-          const clickedLat = e.latlng.lat.toFixed(6);
-          const clickedLng = e.latlng.lng.toFixed(6);
-          document.getElementById("contact-lat").value = clickedLat;
-          document.getElementById("contact-lng").value = clickedLng;
-
-          if (pickerMarker) {
-            pickerMarker.setLatLng(e.latlng);
-          } else {
-            pickerMarker = L.marker(e.latlng).addTo(pickerMap);
-          }
-        });
-      } else {
-        pickerMap.invalidateSize();
-        pickerMap.setView([lat, lng], 15);
-      }
-
-      // Extra safety invalidateSize after rendering
+    return new Promise((resolve) => {
       setTimeout(() => {
-        if (pickerMap) pickerMap.invalidateSize();
-      }, 100);
+        if (!pickerMap) {
+          pickerMap = L.map("modal-picker-map").setView(
+            lat !== null && lng !== null ? [lat, lng] : defaultMapCenter,
+            15,
+          );
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap",
+          }).addTo(pickerMap);
 
-      if (lat && lng) {
-        const initialLatLng = [parseFloat(lat), parseFloat(lng)];
-        if (pickerMarker) {
-          pickerMarker.setLatLng(initialLatLng);
+          pickerMap.on("click", (e) =>
+            setPickerLocation(e.latlng.lat, e.latlng.lng),
+          );
         } else {
-          pickerMarker = L.marker(initialLatLng).addTo(pickerMap);
+          pickerMap.invalidateSize();
+          pickerMap.setView(
+            lat !== null && lng !== null ? [lat, lng] : defaultMapCenter,
+            15,
+          );
         }
-      }
-      initialFormState = captureFormState();
-    }, 150);
+
+        setTimeout(() => {
+          if (pickerMap) pickerMap.invalidateSize();
+        }, 100);
+
+        if (lat !== null && lng !== null) {
+          setPickerLocation(lat, lng, 15);
+        } else if (pickerMarker) {
+          pickerMap.removeLayer(pickerMarker);
+          pickerMarker = null;
+        }
+        initialFormState = captureFormState();
+        resolve();
+      }, 150);
+    });
   };
 
-  btnOpenModal.addEventListener("click", () => {
+  btnOpenModal.addEventListener("click", async () => {
     contactForm.reset();
     document.getElementById("contact-id").value = "";
     document.getElementById("contact-city-select").value =
@@ -490,16 +559,29 @@ const initializeApp = async () => {
     document.getElementById("contact-area-select").value =
       settings.defaultArea || settings.areas[0];
     document.getElementById("contact-state").value = settings.state;
-    document.getElementById("contact-lat").value = "38.851700";
-    document.getElementById("contact-lng").value = "-121.127500";
+    document.getElementById("contact-lat").value = "";
+    document.getElementById("contact-lng").value = "";
     document.getElementById("new-log-timestamp").value = toLocalDateTimeString(
       new Date(),
     );
     document.getElementById("modal-notes-history-container").innerHTML =
       '<span style="color: #888;">No visit logs yet.</span>';
     document.getElementById("modal-title").textContent = "Add Contact";
-    openModalWithCoords(38.8517, -121.1275);
+    await openModalWithCoords(null, null);
+    try {
+      const [lat, lng] = await getDeviceCoordinates();
+      if (modal.style.display === "block") setPickerLocation(lat, lng);
+    } catch (error) {
+      console.warn("Unable to use device location:", error);
+      if (modal.style.display === "block") {
+        alert(
+          "Device location is unavailable. Enter an address and use Find Address on Map, or tap/drag the pin to set a location.",
+        );
+      }
+    }
   });
+
+  btnFindAddress.addEventListener("click", findAddressOnMap);
 
   closeModal.addEventListener("click", attemptExit);
   btnExitModal.addEventListener("click", attemptExit);
@@ -509,15 +591,11 @@ const initializeApp = async () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const lat = position.coords.latitude.toFixed(6);
-          const lng = position.coords.longitude.toFixed(6);
-          document.getElementById("contact-lat").value = lat;
-          document.getElementById("contact-lng").value = lng;
           if (pickerMap) {
-            const newLatLng = [parseFloat(lat), parseFloat(lng)];
-            pickerMap.setView(newLatLng, 16);
-            if (pickerMarker) pickerMarker.setLatLng(newLatLng);
-            else pickerMarker = L.marker(newLatLng).addTo(pickerMap);
+            setPickerLocation(
+              position.coords.latitude,
+              position.coords.longitude,
+            );
           }
         },
         () => {
@@ -541,6 +619,21 @@ const initializeApp = async () => {
     const area = document.getElementById("contact-area-select").value;
     const lat = document.getElementById("contact-lat").value.trim();
     const lng = document.getElementById("contact-lng").value.trim();
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      alert(
+        "Set a location using device GPS, Find Address on Map, or by tapping/dragging the map pin before saving.",
+      );
+      return;
+    }
 
     const newNoteText = document.getElementById("contact-notes").value.trim();
     const newNoteTimestampVal =
@@ -794,7 +887,7 @@ const initializeApp = async () => {
     }
   };
 
-  window.editContact = (id) => {
+  window.editContact = async (id) => {
     const contact = contacts.find((c) => c.id == id);
     if (!contact) return;
     document.getElementById("contact-id").value = contact.id;
@@ -970,10 +1063,26 @@ const initializeApp = async () => {
     }
 
     document.getElementById("modal-title").textContent = "Edit Contact";
-    openModalWithCoords(
-      parseFloat(contact.lat) || 38.8517,
-      parseFloat(contact.lng) || -121.1275,
-    );
+    const lat = Number.parseFloat(contact.lat);
+    const lng = Number.parseFloat(contact.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      await openModalWithCoords(lat, lng);
+    } else {
+      await openModalWithCoords(null, null);
+      if (document.getElementById("contact-address").value.trim()) {
+        await findAddressOnMap();
+      } else {
+        try {
+          const [deviceLat, deviceLng] = await getDeviceCoordinates();
+          setPickerLocation(deviceLat, deviceLng);
+        } catch (error) {
+          console.warn("Unable to use device location:", error);
+          alert(
+            "Device location is unavailable. Tap/drag the pin or enter an address and use Find Address on Map.",
+          );
+        }
+      }
+    }
   };
 
   window.deleteContact = async (id) => {
