@@ -312,6 +312,11 @@
                 Add Region
               </button>
             </div>
+            <p>
+              You can also add a region while adding a contact. Choose
+              <strong>+ Add New Region...</strong> in that contact's Region
+              list to add one under the selected City.
+            </p>
             <h3 style="margin-top: 15px">Add New Area</h3>
             <div style="display: flex; gap: 8px">
               <select id="setting-area-city" aria-label="City for new area">
@@ -340,11 +345,13 @@
                 Add Area
               </button>
             </div>
+            <h3 style="margin-top: 20px">Manage Cities, Regions, and Areas</h3>
             <div id="region-area-list"></div>
             <small>
-              Locations follow City → Region → Area. A contact can have one
-              value at each level, and the fields can be left blank and
-              completed later.
+              Edit renames a location and updates its existing references.
+              Delete is available only when no contact or child location uses
+              it. Locations follow City → Region → Area; each level is optional
+              on a contact.
             </small>
           </div>
         </div>
@@ -510,6 +517,22 @@
             <select id="contact-region-select" disabled>
               <option value="">Choose a region (optional)</option>
             </select>
+            <div id="new-contact-region-container" hidden>
+              <label for="input-new-contact-region">New region name:</label>
+              <input
+                type="text"
+                id="input-new-contact-region"
+                placeholder="Enter new region name..."
+              />
+              <div class="new-contact-area-actions">
+                <button type="button" id="btn-save-new-contact-region">
+                  Add Region
+                </button>
+                <button type="button" id="btn-cancel-new-contact-region">
+                  Cancel
+                </button>
+              </div>
+            </div>
 
             <label>Area (optional):</label>
             <select id="contact-area-select" disabled>

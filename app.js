@@ -840,6 +840,7 @@ const initializeApp = async () => {
 
   // Populate All Dropdowns (Filters & Modal Selects)
   let selectedContactArea = "";
+  let selectedContactRegion = "";
   const populateDropdowns = () => {
     const citySelect = document.getElementById("contact-city-select");
     const currentCityVal = citySelect.value;
@@ -892,6 +893,10 @@ const initializeApp = async () => {
           option.textContent = region.name;
           contactRegion.appendChild(option);
         });
+      const addRegionOption = document.createElement("option");
+      addRegionOption.value = "__ADD_NEW__";
+      addRegionOption.textContent = "+ Add New Region...";
+      contactRegion.appendChild(addRegionOption);
       contactRegion.disabled = !city;
       contactRegion.value = selectedRegion;
 
@@ -914,6 +919,7 @@ const initializeApp = async () => {
       contactArea.disabled = !city || !contactRegion.value;
       contactArea.value = selectedArea;
       selectedContactArea = contactArea.value;
+      selectedContactRegion = contactRegion.value;
     };
     populateContactRegionArea(contactRegion.value, contactArea.value);
 
@@ -1012,23 +1018,60 @@ const initializeApp = async () => {
 
     const hierarchyList = document.getElementById("region-area-list");
     hierarchyList.innerHTML = "";
-    const addHierarchyLabel = (labelText, className) => {
+    const addHierarchyRow = (type, labelText, className, location) => {
       const item = document.createElement("div");
       item.className = className;
-      item.textContent = labelText;
+      const label = document.createElement("span");
+      label.textContent = labelText;
+      item.appendChild(label);
+
+      const actions = document.createElement("div");
+      actions.className = "hierarchy-actions";
+      ["Edit", "Delete"].forEach((action) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = action;
+        button.setAttribute(
+          "aria-label",
+          `${action} ${type.toLowerCase()} ${location.name}`,
+        );
+        button.addEventListener("click", () => {
+          if (action === "Edit")
+            startEditingLocation(type, location, item, label, actions);
+          else deleteLocation(type, location);
+        });
+        actions.appendChild(button);
+      });
+      item.appendChild(actions);
       hierarchyList.appendChild(item);
     };
-    settings.regions.forEach((region) => {
-      addHierarchyLabel(`${region.city} → ${region.name}`, "hierarchy-region");
-      settings.areas
-        .filter(
-          (area) => area.city === region.city && area.region === region.name,
-        )
-        .forEach((area) =>
-          addHierarchyLabel(`　${area.name}`, "hierarchy-area"),
-        );
+
+    settings.cities.forEach((city) => {
+      addHierarchyRow("City", city, "hierarchy-city", { name: city });
+      settings.regions
+        .filter((region) => region.city === city)
+        .forEach((region) => {
+          addHierarchyRow(
+            "Region",
+            `${city} → ${region.name}`,
+            "hierarchy-region",
+            { name: region.name, city },
+          );
+          settings.areas
+            .filter(
+              (area) => area.city === city && area.region === region.name,
+            )
+            .forEach((area) =>
+              addHierarchyRow(
+                "Area",
+                `${region.name} → ${area.name}`,
+                "hierarchy-area",
+                { name: area.name, region: region.name, city },
+              ),
+            );
+        });
     });
-    if (!settings.regions.length) {
+    if (!settings.cities.length) {
       hierarchyList.textContent =
         "Add a city, then add regions and areas beneath it.";
     }
@@ -1039,7 +1082,11 @@ const initializeApp = async () => {
   const citySelect = document.getElementById("contact-city-select");
   const contactRegionSelect = document.getElementById("contact-region-select");
   const contactAreaSelect = document.getElementById("contact-area-select");
+  const newContactRegionContainer = document.getElementById(
+    "new-contact-region-container",
+  );
   citySelect.addEventListener("change", () => {
+    newContactRegionContainer.hidden = true;
     document.getElementById("new-contact-area-container").hidden = true;
     if (citySelect.value !== "__ADD_NEW__") {
       dropdownHelpers.populateContactRegionArea("", "");
@@ -1047,6 +1094,16 @@ const initializeApp = async () => {
   });
   contactRegionSelect.addEventListener("change", () => {
     document.getElementById("new-contact-area-container").hidden = true;
+    if (contactRegionSelect.value === "__ADD_NEW__") {
+      contactRegionSelect.value = selectedContactRegion;
+      newContactRegionContainer.hidden = false;
+      const newRegionInput = document.getElementById(
+        "input-new-contact-region",
+      );
+      newRegionInput.value = "";
+      newRegionInput.focus();
+      return;
+    }
     dropdownHelpers.populateContactRegionArea(contactRegionSelect.value, "");
   });
   contactAreaSelect.addEventListener("change", () => {
@@ -1065,7 +1122,56 @@ const initializeApp = async () => {
     newAreaContainer.hidden = true;
   });
   document
-    .getElementById("btn-save-new-contact-area")
+  .getElementById("btn-save-new-contact-region")
+  .addEventListener("click", async () => {
+    const input = document.getElementById("input-new-contact-region");
+    const name = input.value.trim();
+    const city = citySelect.value;
+    if (!name) {
+      alert("Enter a name for the new region.");
+      input.focus();
+      return;
+    }
+    if (!city || city === "__ADD_NEW__") {
+      alert("Choose a city before adding a region.");
+      return;
+    }
+    const existingRegion = settings.regions.find(
+      (region) =>
+        region.city === city &&
+        region.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (existingRegion) {
+      dropdownHelpers.populateContactRegionArea(existingRegion.name, "");
+      newContactRegionContainer.hidden = true;
+      input.value = "";
+      alert("That region already exists in this city.");
+      return;
+    }
+
+    settings.regions.push({ name, city });
+    try {
+      await saveSettings();
+    } catch (error) {
+      settings.regions.pop();
+      showStorageError("save settings", error);
+      return;
+    }
+    populateDropdowns();
+    citySelect.value = city;
+    dropdownHelpers.populateContactRegionArea(name, "");
+    newContactRegionContainer.hidden = true;
+    input.value = "";
+  });
+  document
+  .getElementById("btn-cancel-new-contact-region")
+  .addEventListener("click", () => {
+    newContactRegionContainer.hidden = true;
+    document.getElementById("input-new-contact-region").value = "";
+    contactRegionSelect.value = selectedContactRegion;
+  });
+  document
+  .getElementById("btn-save-new-contact-area")
     .addEventListener("click", async () => {
       const input = document.getElementById("input-new-contact-area");
       const name = input.value.trim();
@@ -1140,7 +1246,10 @@ const initializeApp = async () => {
     .addEventListener("click", async () => {
       const val = inputNewCity.value.trim();
       if (val) {
-        if (!settings.cities.includes(val)) {
+        const existingCity = settings.cities.find(
+          (city) => city.toLowerCase() === val.toLowerCase(),
+        );
+        if (!existingCity) {
           settings.cities.push(val);
           try {
             await saveSettings();
@@ -1150,9 +1259,10 @@ const initializeApp = async () => {
           }
         }
         populateDropdowns();
-        citySelect.value = val;
+        citySelect.value = existingCity || val;
         dropdownHelpers.populateContactRegionArea("", "");
         newCityContainer.style.display = "none";
+        inputNewCity.value = "";
       }
     });
 
@@ -1170,7 +1280,10 @@ const initializeApp = async () => {
     .addEventListener("click", async () => {
       const input = document.getElementById("setting-new-city");
       const val = input.value.trim();
-      if (val && !settings.cities.includes(val)) {
+      const existingCity = settings.cities.find(
+        (city) => city.toLowerCase() === val.toLowerCase(),
+      );
+      if (val && !existingCity) {
         settings.cities.push(val);
         input.value = "";
         try {
@@ -1181,6 +1294,8 @@ const initializeApp = async () => {
         }
         populateDropdowns();
         alert(`City "${val}" added successfully!`);
+      } else if (val) {
+        alert("That city already exists.");
       }
     });
 
@@ -1261,7 +1376,13 @@ const initializeApp = async () => {
       settings.defaultCity = document
         .getElementById("setting-default-city")
         .value.trim();
-      if (settings.defaultCity && !settings.cities.includes(settings.defaultCity)) {
+      const existingCity = settings.cities.find(
+        (city) =>
+          city.toLowerCase() === settings.defaultCity.toLowerCase(),
+      );
+      if (existingCity) {
+        settings.defaultCity = existingCity;
+      } else if (settings.defaultCity) {
         settings.cities.push(settings.defaultCity);
       }
       try {
@@ -1271,11 +1392,287 @@ const initializeApp = async () => {
         return;
       }
       populateDropdowns();
+      document.getElementById("setting-default-city").value =
+        settings.defaultCity;
       alert("Master settings saved successfully!");
     });
 
   let contacts = savedContacts;
   let visibleContacts = [];
+
+  const cloneLocationState = () => ({
+    settings: JSON.parse(JSON.stringify(settings)),
+    contacts: JSON.parse(JSON.stringify(contacts)),
+  });
+
+  const updateLocationFilter = (filterId, tupleIndex, oldValue, newValue) => {
+    const filter = document.getElementById(filterId);
+    if (!filter.value) return;
+    try {
+      const previousFilterValue = filter.value;
+      const location = JSON.parse(filter.value);
+      if (Array.isArray(location) && location[tupleIndex] === oldValue) {
+        location[tupleIndex] = newValue;
+        const updatedFilterValue = JSON.stringify(location);
+        const selectedOption = Array.from(filter.options).find(
+          (option) => option.value === previousFilterValue,
+        );
+        if (selectedOption) selectedOption.value = updatedFilterValue;
+        filter.value = updatedFilterValue;
+      }
+    } catch (error) {
+      console.error(`Invalid ${filterId} value:`, error);
+    }
+  };
+
+  const startEditingLocation = (type, location, row, label, actions) => {
+    if (row.querySelector("input")) return;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = location.name;
+    input.setAttribute("aria-label", `New ${type.toLowerCase()} name`);
+    label.replaceWith(input);
+    actions.innerHTML = "";
+
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.textContent = "Save";
+    saveButton.addEventListener("click", async () => {
+      await renameLocation(type, location, input.value);
+    });
+    const cancelButton = document.createElement("button");
+    cancelButton.type = "button";
+    cancelButton.textContent = "Cancel";
+    cancelButton.addEventListener("click", () => populateDropdowns());
+    actions.append(saveButton, cancelButton);
+    input.focus();
+    input.select();
+  };
+
+  const persistLocationChanges = async (previousState) => {
+    try {
+      await writeStoredValues(database, [
+        ["settings", await encryptValue(settings, encryptionKey)],
+        ["contacts", await encryptValue(contacts, encryptionKey)],
+      ]);
+    } catch (error) {
+      settings = previousState.settings;
+      contacts = previousState.contacts;
+      showStorageError("save location changes", error);
+      populateDropdowns();
+      renderContacts();
+      return false;
+    }
+    populateDropdowns();
+    renderContacts();
+    return true;
+  };
+
+  const renameLocation = async (type, location, proposedName) => {
+    const name = proposedName.trim();
+    if (!name) {
+      alert("A location name cannot be blank.");
+      return false;
+    }
+    if (name === location.name) return true;
+
+    const duplicate =
+      type === "City"
+        ? settings.cities.some(
+            (city) => city.toLowerCase() === name.toLowerCase(),
+          )
+        : type === "Region"
+          ? settings.regions.some(
+              (region) =>
+                region.city === location.city &&
+                region.name.toLowerCase() === name.toLowerCase(),
+            )
+          : settings.areas.some(
+              (area) =>
+                area.city === location.city &&
+                area.region === location.region &&
+                area.name.toLowerCase() === name.toLowerCase(),
+            );
+    if (duplicate) {
+      alert(`A ${type.toLowerCase()} with that name already exists here.`);
+      return false;
+    }
+
+    const previousState = cloneLocationState();
+    if (type === "City") {
+      settings.cities = settings.cities.map((city) =>
+        city === location.name ? name : city,
+      );
+      settings.regions = settings.regions.map((region) =>
+        region.city === location.name ? { ...region, city: name } : region,
+      );
+      settings.areas = settings.areas.map((area) =>
+        area.city === location.name ? { ...area, city: name } : area,
+      );
+      settings.defaultCity =
+        settings.defaultCity === location.name ? name : settings.defaultCity;
+      contacts = contacts.map((contact) => {
+        if (contact.city !== location.name) return contact;
+        const streetAddress = getStreetAddress(contact);
+        return {
+          ...contact,
+          city: name,
+          streetAddress,
+          address: [streetAddress, name, contact.state].filter(Boolean).join(", "),
+        };
+      });
+
+      if (citySelect.value === location.name) citySelect.value = name;
+      ["setting-region-city", "setting-area-city"].forEach((id) => {
+        const select = document.getElementById(id);
+        if (select.value === location.name) select.value = name;
+      });
+      if (
+        document.getElementById("filter-city").value === location.name
+      ) {
+        const cityFilter = document.getElementById("filter-city");
+        const selectedOption = Array.from(cityFilter.options).find(
+          (option) => option.value === location.name,
+        );
+        if (selectedOption) selectedOption.value = name;
+        cityFilter.value = name;
+      }
+      updateLocationFilter("filter-region", 0, location.name, name);
+      updateLocationFilter("filter-area", 0, location.name, name);
+      if (settings.defaultCity === name) {
+        document.getElementById("setting-default-city").value = name;
+      }
+    } else if (type === "Region") {
+      settings.regions = settings.regions.map((region) =>
+        region.city === location.city && region.name === location.name
+          ? { ...region, name }
+          : region,
+      );
+      settings.areas = settings.areas.map((area) =>
+        area.city === location.city && area.region === location.name
+          ? { ...area, region: name }
+          : area,
+      );
+      contacts = contacts.map((contact) =>
+        contact.city === location.city && contact.region === location.name
+          ? { ...contact, region: name }
+          : contact,
+      );
+      if (
+        citySelect.value === location.city &&
+        contactRegionSelect.value === location.name
+      ) {
+        contactRegionSelect.value = name;
+        selectedContactRegion = name;
+      }
+      const settingAreaRegion = document.getElementById("setting-area-region");
+      if (
+        document.getElementById("setting-area-city").value === location.city &&
+        settingAreaRegion.value === location.name
+      ) {
+        settingAreaRegion.value = name;
+      }
+      updateLocationFilter("filter-region", 1, location.name, name);
+      updateLocationFilter("filter-area", 1, location.name, name);
+    } else {
+      settings.areas = settings.areas.map((area) =>
+        area.city === location.city &&
+        area.region === location.region &&
+        area.name === location.name
+          ? { ...area, name }
+          : area,
+      );
+      contacts = contacts.map((contact) =>
+        contact.city === location.city &&
+        contact.region === location.region &&
+        contact.area === location.name
+          ? { ...contact, area: name }
+          : contact,
+      );
+      if (
+        citySelect.value === location.city &&
+        contactRegionSelect.value === location.region &&
+        document.getElementById("contact-area-select").value === location.name
+      ) {
+        document.getElementById("contact-area-select").value = name;
+        selectedContactArea = name;
+      }
+      updateLocationFilter("filter-area", 2, location.name, name);
+    }
+    return persistLocationChanges(previousState);
+  };
+
+  const deleteLocation = async (type, location) => {
+    const assignedContacts =
+      type === "City"
+        ? contacts.filter((contact) => contact.city === location.name)
+        : type === "Region"
+          ? contacts.filter(
+              (contact) =>
+                contact.city === location.city &&
+                contact.region === location.name,
+            )
+          : contacts.filter(
+              (contact) =>
+                contact.city === location.city &&
+                contact.region === location.region &&
+                contact.area === location.name,
+            );
+    const childLocations =
+      type === "City"
+        ? settings.regions.filter((region) => region.city === location.name)
+            .length +
+          settings.areas.filter((area) => area.city === location.name).length
+        : type === "Region"
+          ? settings.areas.filter(
+              (area) =>
+                area.city === location.city && area.region === location.name,
+            ).length
+          : 0;
+    if (assignedContacts.length || childLocations) {
+      const usage = [];
+      if (assignedContacts.length) {
+        usage.push(
+          `${assignedContacts.length} assigned contact${assignedContacts.length === 1 ? "" : "s"}`,
+        );
+      }
+      if (childLocations) {
+        usage.push(
+          `${childLocations} child location${childLocations === 1 ? "" : "s"}`,
+        );
+      }
+      alert(
+        `Cannot delete this ${type.toLowerCase()} while it has ${usage.join(" and ")}. Reassign or remove those first.`,
+      );
+      return;
+    }
+    if (!confirm(`Delete ${type.toLowerCase()} "${location.name}"?`)) return;
+
+    const previousState = cloneLocationState();
+    if (type === "City") {
+      settings.cities = settings.cities.filter(
+        (city) => city !== location.name,
+      );
+      if (settings.defaultCity === location.name) {
+        settings.defaultCity = settings.cities[0] || "";
+        document.getElementById("setting-default-city").value =
+          settings.defaultCity;
+      }
+    } else if (type === "Region") {
+      settings.regions = settings.regions.filter(
+        (region) =>
+          region.city !== location.city || region.name !== location.name,
+      );
+    } else {
+      settings.areas = settings.areas.filter(
+        (area) =>
+          area.city !== location.city ||
+          area.region !== location.region ||
+          area.name !== location.name,
+      );
+    }
+    await persistLocationChanges(previousState);
+  };
 
   document
     .getElementById("change-passphrase-form")

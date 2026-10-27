@@ -56,7 +56,11 @@ values, so a contact can be saved with partial details and completed later. A
 Region belongs to one City, and an Area belongs to one Region. The contact
 form's Area list always offers **+ Add New Area...**, even when other areas are
 available for the selected City and Region. Each contact has a stable unique
-ID, so different people can share the same name. Contact cards show available
+ID, so different people can share the same name. The Region list also offers
+**+ Add New Region...** for the selected City. In Settings, edit a City,
+Region, or Area to rename it and update existing assignments. Deletion is
+blocked while contacts or child locations still use that entry; reassign or
+remove those first. Contact cards show available
 phone and email details along with the address, location
 hierarchy, urgency, and visit history; they include actions to edit, export,
 delete, and navigate to a contact. Navigate opens Google Maps directions using

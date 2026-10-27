@@ -184,12 +184,68 @@ header {
     margin: 10px 0;
 }
 
+.hierarchy-city,
 .hierarchy-region {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     font-weight: 700;
 }
 
+.hierarchy-city {
+    margin-top: 6px;
+}
+
+.hierarchy-region {
+    padding-left: 12px;
+}
+
 .hierarchy-area {
-    padding-left: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-left: 24px;
+}
+
+.hierarchy-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.hierarchy-city > input,
+.hierarchy-region > input,
+.hierarchy-area > input {
+    flex: 1;
+    min-width: 0;
+}
+
+.hierarchy-actions button {
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    background: white;
+    color: #333;
+    cursor: pointer;
+}
+
+.hierarchy-actions button:last-child {
+    color: #a12622;
+}
+
+@media (max-width: 480px) {
+    .hierarchy-city,
+    .hierarchy-region,
+    .hierarchy-area {
+        align-items: flex-start;
+    }
+
+    .hierarchy-actions button {
+        min-height: 40px;
+    }
 }
 
 .area-region-setting {
