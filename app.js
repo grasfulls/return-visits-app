@@ -1219,7 +1219,6 @@ const initializeApp = async () => {
       return false;
     }
     renderContacts();
-    if (map) renderMapMarkers();
     return true;
   };
 
@@ -1643,11 +1642,13 @@ const initializeApp = async () => {
       visibleContacts = [];
       updatePrintVisibleButton();
       listContainer.innerHTML = "<p>No matching contacts found.</p>";
+      if (map) renderMapMarkers();
       return;
     }
 
     visibleContacts = [...filtered];
     updatePrintVisibleButton();
+    if (map) renderMapMarkers();
     filtered.forEach((contact) => {
       const card = document.createElement("div");
       const status = getContactStatus(contact);
@@ -1927,7 +1928,7 @@ const initializeApp = async () => {
 
     let validMarkers = [];
 
-    contacts.forEach((contact) => {
+    visibleContacts.forEach((contact) => {
       if (contact.lat && contact.lng) {
         const latNum = parseFloat(contact.lat);
         const lngNum = parseFloat(contact.lng);
@@ -2500,7 +2501,6 @@ const initializeApp = async () => {
         contacts = updatedContacts;
         populateDropdowns();
         renderContacts();
-        if (map) renderMapMarkers();
         contactFileInput.value = "";
         alert("Contact imported successfully.");
       } catch (error) {
@@ -2590,7 +2590,6 @@ const initializeApp = async () => {
           settings.defaultCity || "Newcastle";
         populateDropdowns();
         renderContacts();
-        if (map) renderMapMarkers();
         localStorage.setItem("return_visits_last_backup_reminder", Date.now());
         backupFileInput.value = "";
         alert("Encrypted backup restored successfully.");

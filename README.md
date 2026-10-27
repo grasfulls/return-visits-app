@@ -60,7 +60,8 @@ there are no logs:
 
 Map coordinates are optional. To add or update them, use device GPS, enter an
 address and select **Find Address on Map**, tap the map, or drag the pin.
-Device location requires browser permission.
+Device location requires browser permission. The map shows pins only for
+contacts matching the current search and filters.
 
 Address text is sent to OpenStreetMap Nominatim only when you choose **Find
 Address on Map**. Leaflet map assets, map tiles, and address searches require
