@@ -236,6 +236,33 @@ header {
     color: #a12622;
 }
 
+.address-match-results {
+    display: grid;
+    gap: 8px;
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid #b8c8d8;
+    border-radius: 4px;
+    background: #f5f9fc;
+}
+
+.address-match-options {
+    display: grid;
+    gap: 6px;
+}
+
+.address-match-options button {
+    min-height: 40px;
+    padding: 8px;
+    border: 1px solid #b8c8d8;
+    border-radius: 4px;
+    background: white;
+    color: #004080;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
 @media (max-width: 480px) {
     .hierarchy-city,
     .hierarchy-region,

@@ -2031,8 +2031,57 @@ const initializeApp = async () => {
   };
 
   const locationStatus = document.getElementById("location-status");
+  const addressMatchResults = document.getElementById(
+    "address-match-results",
+  );
   const setLocationStatus = (message) => {
     locationStatus.textContent = message;
+  };
+  const clearAddressMatches = () => {
+    addressMatchResults.replaceChildren();
+    addressMatchResults.hidden = true;
+  };
+  const selectAddressMatch = (result, enteredStreet) => {
+    const latitude = Number(result.lat);
+    const longitude = Number(result.lon);
+    setPickerLocation(latitude, longitude);
+    const address = result.address || {};
+    const houseNumber =
+      address.house_number || enteredStreet.match(/^\d+[A-Za-z]?\b/)?.[0];
+    if (address.road) {
+      document.getElementById("contact-address").value = [
+        houseNumber,
+        address.road,
+      ]
+        .filter(Boolean)
+        .join(" ");
+    }
+    updatePrintContactAvailability();
+    crossStreetSearch.hidden = true;
+    document.getElementById("contact-cross-street").value = "";
+    clearAddressMatches();
+    setLocationStatus(
+      `Pin placed near ${result.display_name}. Check its position and move it on the map if needed.`,
+    );
+  };
+  const showAddressMatches = (results, enteredStreet) => {
+    addressMatchResults.replaceChildren();
+    const heading = document.createElement("strong");
+    heading.textContent = "Choose the matching street or location:";
+    addressMatchResults.appendChild(heading);
+    const list = document.createElement("div");
+    list.className = "address-match-options";
+    results.forEach((result) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.textContent = result.display_name;
+      option.addEventListener("click", () =>
+        selectAddressMatch(result, enteredStreet),
+      );
+      list.appendChild(option);
+    });
+    addressMatchResults.appendChild(list);
+    addressMatchResults.hidden = false;
   };
 
   const updatePickerLocationFromCoordinates = () => {
@@ -2079,13 +2128,14 @@ const initializeApp = async () => {
     const street = document.getElementById("contact-address").value.trim();
     const city = document.getElementById("contact-city-select").value;
     const state = document.getElementById("contact-state").value.trim();
-    if (!street) {
+    if ((!street && !city) || city === "__ADD_NEW__") {
       setLocationStatus(
-        "Enter a street address before looking up its location.",
+        "Enter a street address or choose a city before looking up its location.",
       );
       return;
     }
 
+    clearAddressMatches();
     const query = [street, city, state, "USA"].filter(Boolean).join(", ");
     const cityQuery = city
       ? [city, state, "USA"].filter(Boolean).join(", ")
@@ -2098,7 +2148,8 @@ const initializeApp = async () => {
         url.search = new URLSearchParams({
           q: searchQuery,
           format: "jsonv2",
-          limit: "1",
+          addressdetails: "1",
+          limit: "5",
         }).toString();
         const response = await fetch(url);
         if (!response.ok) {
@@ -2108,7 +2159,55 @@ const initializeApp = async () => {
         }
         return response.json();
       };
+      if (!street) {
+        const cityResults = await lookup(cityQuery);
+        if (cityResults.length > 0) {
+          setPickerLocation(cityResults[0].lat, cityResults[0].lon, 13);
+          setLocationStatus(
+            `An approximate pin was placed near ${city}${state ? `, ${state}` : ""}. Move it to the contact's exact location before saving.`,
+          );
+          return;
+        }
+        setLocationStatus(
+          `Couldn't locate ${city}${state ? `, ${state}` : ""}. Try a street address or place the pin on the map.`,
+        );
+        return;
+      }
+
       const addressResults = await lookup(query);
+      if (addressResults.length > 1) {
+        crossStreetSearch.hidden = true;
+        showAddressMatches(addressResults, street);
+        setLocationStatus(
+          `Found ${addressResults.length} possible matches. Choose the correct street or location to place the pin.`,
+        );
+        return;
+      }
+      const streetOnly = street.replace(/^\d+[A-Za-z]?\s*/, "").trim();
+      if (addressResults.length === 0 && streetOnly && streetOnly !== street) {
+        setLocationStatus(
+          "Couldn't match that house number. Searching for streets with a similar name...",
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const streetResults = await lookup(
+          [streetOnly, city, state, "USA"].filter(Boolean).join(", "),
+        );
+        if (streetResults.length > 1) {
+          crossStreetSearch.hidden = true;
+          showAddressMatches(streetResults, street);
+          setLocationStatus(
+            `Found ${streetResults.length} possible street matches. Choose the correct one to place an approximate pin.`,
+          );
+          return;
+        }
+        if (streetResults.length === 1) {
+          selectAddressMatch(streetResults[0], street);
+          setLocationStatus(
+            `Pin placed near ${streetResults[0].display_name} based on the street name. Check and adjust its position before saving.`,
+          );
+          return;
+        }
+      }
       if (addressResults.length === 0 && cityQuery) {
         crossStreetSearch.hidden = false;
         setLocationStatus(
@@ -2137,10 +2236,7 @@ const initializeApp = async () => {
       }
       crossStreetSearch.hidden = true;
       document.getElementById("contact-cross-street").value = "";
-      setPickerLocation(addressResults[0].lat, addressResults[0].lon);
-      setLocationStatus(
-        "Pin placed from the address lookup. Check its position and move it on the map if needed.",
-      );
+      selectAddressMatch(addressResults[0], street);
     } catch (error) {
       console.error("Unable to find address on map:", error);
       setLocationStatus(
@@ -2169,6 +2265,7 @@ const initializeApp = async () => {
     }
 
     btnFindCrossStreet.disabled = true;
+    clearAddressMatches();
     setLocationStatus("Searching near the cross-street...");
     try {
       const url = new URL("https://nominatim.openstreetmap.org/search");
@@ -2297,6 +2394,7 @@ const initializeApp = async () => {
   btnOpenModal.addEventListener("click", async () => {
     contactForm.reset();
     setLocationStatus("");
+    clearAddressMatches();
     crossStreetSearch.hidden = true;
     document.getElementById("contact-cross-street").value = "";
     document.getElementById("contact-id").value = "";
@@ -2973,12 +3071,23 @@ const initializeApp = async () => {
     });
 
     if (validMarkers.length > 0) {
+      const contactsWithoutPins = visibleContacts.length - validMarkers.length;
       if (validMarkers.length === 1) {
         map.setView(validMarkers[0], 16);
       } else {
         const bounds = L.latLngBounds(validMarkers);
         map.fitBounds(bounds, { padding: [50, 50] });
       }
+      document.getElementById("map-location-status").textContent =
+        contactsWithoutPins > 0
+          ? `Showing ${validMarkers.length} map pin${validMarkers.length === 1 ? "" : "s"}; ${contactsWithoutPins} matching contact${contactsWithoutPins === 1 ? " has" : "s have"} no saved coordinates.`
+          : `Showing ${validMarkers.length} map pin${validMarkers.length === 1 ? "" : "s"}. Drag a pin to move it; changes save automatically.`;
+    } else if (visibleContacts.length > 0) {
+      document.getElementById("map-location-status").textContent =
+        `${visibleContacts.length} matching contact${visibleContacts.length === 1 ? " has" : "s have"} no saved map coordinates, so there are no pins to show. Open a contact and choose Find Address or City Pin to set one.`;
+    } else {
+      document.getElementById("map-location-status").textContent =
+        "No matching contacts to show. Change the search or filters, or add map coordinates to a contact.";
     }
   };
 
@@ -3020,8 +3129,14 @@ const initializeApp = async () => {
   window.editContact = async (id) => {
     const contact = contacts.find((c) => c.id == id);
     if (!contact) return;
+    clearAddressMatches();
     crossStreetSearch.hidden = true;
     document.getElementById("contact-cross-street").value = "";
+    setLocationStatus(
+      contact.lat && contact.lng
+        ? "Saved map pin loaded. Check its position and adjust it if needed."
+        : "",
+    );
     document.getElementById("contact-id").value = contact.id;
     printContactButton.hidden = false;
     printContactButton.disabled = true;

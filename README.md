@@ -102,21 +102,25 @@ there are no logs:
 
 ## Location and privacy
 
-Map coordinates are optional. In the contact form, choose **Set Pin from
-Entered Address** to look up the entered address, city, and state, or **Use
-Device Location** to request the device's current location. If the street
-address is not found, the app tries to center the map near the selected city.
-You can then enter a nearby cross-street or intersection and search again to
-place the pin closer, rather than dragging it a long distance. Device location
-requires browser permission and its accuracy can vary. Refine a pin in the
-contact form by tapping the map, dragging the pin, or editing the coordinates.
-Pins can also be dragged in Map view; those changes save automatically. The
-map shows pins only for contacts matching the current search and filters.
+Map coordinates are optional. In the contact form, choose **Find Address or
+City Pin** to look up the entered address, city, and state, or **Use Device
+Location** to request the device's current location. A partial street name can
+return several possible matches; choose the right street to fill its full name
+and place the pin. If the full address is not found, the app also searches by
+the street name without the leading house number. A city-only lookup places an
+approximate pin near the city. Typing or saving address details does not
+automatically create a pin. Device location requires browser permission and
+its accuracy can vary. Refine a pin in the contact form by tapping the map,
+dragging the pin, or editing the coordinates. Pins can also be dragged in Map
+view; those changes save automatically. The map shows pins only for contacts
+matching the current search and filters, and indicates when matching contacts
+have no saved coordinates.
 
-Address and cross-street text are sent to OpenStreetMap Nominatim only when
-you choose the corresponding search button. Leaflet map assets, map tiles, and
-address searches require internet access. The app shell may work offline after
-it has been cached, but the map and address search are not available offline.
+Address text (including partial street-name and city searches) and cross-street
+text are sent to OpenStreetMap Nominatim only when you choose the corresponding
+search button. Leaflet map assets, map tiles, and address searches require
+internet access. The app shell may work offline after it has been cached, but
+the map and address search are not available offline.
 Choosing Navigate sends that contact's saved coordinates or address to Google
 Maps to open directions.
 

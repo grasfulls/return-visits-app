@@ -288,22 +288,30 @@
         </li>
       </ul>
       <p>
-        In the contact form, choose <strong>Set Pin from Entered Address</strong>
-        to search the street address, selected City, and State using
+        In the contact form, choose
+        <strong>Find Address or City Pin</strong> to look up a location using
         OpenStreetMap Nominatim. Choose <strong>Use Device Location</strong>
         instead to request the phone's current location. GPS uses the device's
         location, not the contact's address, and its accuracy can vary. The
-        form shows the GPS-reported accuracy when available.
+        form shows the GPS-reported accuracy when available. Typing or saving
+        an address does not run a lookup or create a pin automatically.
       </p>
       <ul>
         <li>
-          If the address search cannot find the street address, the app tries
-          to center the map near the selected City and State. If the pin still
-          needs to be more precise, enter a nearby cross-street or intersection
-          in the field that appears and search again. This can place the pin
-          closer than dragging it across the map. The street address and
-          cross-street lookup text are sent to OpenStreetMap Nominatim when you
-          choose the corresponding search button.
+          If a partial street address has multiple possible matches, choose the
+          correct street from the list; selecting a match fills in its full
+          street name and places a pin. If the full address is not found, the
+          app also searches by the street name without its leading house number.
+          You can choose a city without entering a street to place an
+          approximate city pin. If you need a more precise result, enter a
+          nearby cross-street or intersection and search again. These searches
+          send the entered location text to OpenStreetMap Nominatim only after
+          you choose the lookup button.
+        </li>
+        <li>
+          Contacts saved without coordinates have no map pin. The Map page
+          reports when matching contacts need coordinates; reopen one and use
+          Find Address or City Pin to add them.
         </li>
         <li>
           Both methods place a pin that you can refine. Tap another point on the

@@ -467,8 +467,13 @@
               placeholder="(555) 123-4567"
             />
 
-            <label>Street Address:</label>
+            <label for="contact-address">Street Address:</label>
             <input type="text" id="contact-address" />
+            <small>
+              Entering or saving an address does not create a map pin by itself.
+              Choose the lookup button below; partial street names can return
+              several matches, and a city-only lookup places an approximate pin.
+            </small>
 
             <label>City (optional):</label>
             <select id="contact-city-select"></select>
@@ -567,7 +572,7 @@
             <label style="margin-top: 10px">Choose how to set the pin:</label>
             <div class="location-source-actions">
               <button type="button" id="btn-find-address">
-                📍 Set Pin from Entered Address
+                📍 Find Address or City Pin
               </button>
               <button type="button" id="btn-gps">
                 📍 Use Device Location
@@ -579,6 +584,12 @@
               Device location uses this device's location and may be
               approximate. You can always adjust the pin.
             </small>
+            <div
+              id="address-match-results"
+              class="address-match-results"
+              aria-live="polite"
+              hidden
+            ></div>
             <div id="cross-street-search" hidden>
               <label for="contact-cross-street">
                 Address not found? Enter a nearby cross-street or intersection:
