@@ -82,6 +82,9 @@
           <select id="filter-city">
             <option value="">All Cities</option>
           </select>
+          <select id="filter-region">
+            <option value="">All Regions</option>
+          </select>
           <select id="filter-area">
             <option value="">All Areas</option>
           </select>
@@ -96,7 +99,12 @@
       <main>
         <!-- Contacts View -->
         <div id="contacts-view" class="view active">
-          <button id="btn-open-modal">➕ Add Contact</button>
+          <div class="contact-list-actions">
+            <button id="btn-open-modal">➕ Add Contact</button>
+            <button type="button" id="btn-print-visible" disabled>
+              🖨️ Print Visible Contacts (0)
+            </button>
+          </div>
           <div id="contacts-list"></div>
         </div>
 
@@ -153,9 +161,6 @@
               <label>Default City:</label>
               <input type="text" id="setting-default-city" />
 
-              <label>Default Area:</label>
-              <input type="text" id="setting-default-area" />
-
               <button
                 type="submit"
                 style="
@@ -196,8 +201,39 @@
               </button>
             </div>
 
-            <h3 style="margin-top: 15px">Add New Area to List</h3>
+            <h3 style="margin-top: 15px">Add New Region</h3>
             <div style="display: flex; gap: 8px">
+              <select id="setting-region-city" aria-label="City for new region">
+                <option value="">Choose city</option>
+              </select>
+              <input
+                type="text"
+                id="setting-new-region"
+                placeholder="New region name..."
+              />
+              <button
+                type="button"
+                id="btn-add-setting-region"
+                style="
+                  background: #004080;
+                  color: white;
+                  border: none;
+                  padding: 8px 14px;
+                  border-radius: 4px;
+                  cursor: pointer;
+                "
+              >
+                Add Region
+              </button>
+            </div>
+            <h3 style="margin-top: 15px">Add New Area</h3>
+            <div style="display: flex; gap: 8px">
+              <select id="setting-area-city" aria-label="City for new area">
+                <option value="">Choose city</option>
+              </select>
+              <select id="setting-area-region" aria-label="Region for new area" disabled>
+                <option value="">Choose region</option>
+              </select>
               <input
                 type="text"
                 id="setting-new-area"
@@ -218,6 +254,12 @@
                 Add Area
               </button>
             </div>
+            <div id="region-area-list"></div>
+            <small>
+              Locations follow City → Region → Area. A contact can have one
+              value at each level, and the fields can be left blank and
+              completed later.
+            </small>
           </div>
         </div>
       </main>
@@ -278,6 +320,7 @@
         <span id="close-modal">&times;</span>
         <div class="modal-header">
           <h2 id="modal-title">Add Contact</h2>
+          <small id="contact-record-id" hidden></small>
         </div>
 
         <form id="contact-form" class="modal-form-container">
@@ -300,7 +343,7 @@
               or drag the pin to adjust its location.
             </small>
 
-            <label>City:</label>
+            <label>City (optional):</label>
             <select id="contact-city-select"></select>
             <div id="new-city-container" style="display: none; margin-top: 6px">
               <div style="display: flex; gap: 6px">
@@ -343,51 +386,25 @@
             <label>State:</label>
             <input type="text" id="contact-state" />
 
-            <label>Area / Zone:</label>
-            <select id="contact-area-select"></select>
-            <div id="new-area-container" style="display: none; margin-top: 6px">
-              <div style="display: flex; gap: 6px">
-                <input
-                  type="text"
-                  id="input-new-area"
-                  placeholder="Enter new area name..."
-                />
-                <button
-                  type="button"
-                  id="btn-save-new-area"
-                  style="
-                    background: #28a745;
-                    color: white;
-                    border: none;
-                    padding: 6px 12px;
-                    border-radius: 4px;
-                    cursor: pointer;
-                  "
-                >
-                  Add
-                </button>
-                <button
-                  type="button"
-                  id="btn-cancel-new-area"
-                  style="
-                    background: #6c757d;
-                    color: white;
-                    border: none;
-                    padding: 6px 12px;
-                    border-radius: 4px;
-                    cursor: pointer;
-                  "
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            <label>Region (optional):</label>
+            <select id="contact-region-select" disabled>
+              <option value="">Choose a region (optional)</option>
+            </select>
+
+            <label>Area (optional):</label>
+            <select id="contact-area-select" disabled>
+              <option value="">Choose an area (optional)</option>
+            </select>
 
             <div class="gps-row">
               <label>Latitude: <input type="text" id="contact-lat" /></label>
               <label>Longitude: <input type="text" id="contact-lng" /></label>
               <button type="button" id="btn-gps">📍 Get GPS</button>
             </div>
+            <small>
+              Map coordinates are optional. You can save the contact now and
+              add or update the location later.
+            </small>
 
             <!-- Interactive Map Pin Picker inside Modal -->
             <label style="margin-top: 10px"
@@ -439,6 +456,15 @@
             <button type="submit" id="btn-save-contact" title="Save Contact">
               💾 Save
             </button>
+            <button
+              type="button"
+              id="btn-print-contact"
+              title="Print this saved contact"
+              hidden
+              disabled
+            >
+              🖨️ Print
+            </button>
             <button type="button" id="btn-exit-modal" title="Exit / Cancel">
               ❌ Exit
             </button>
@@ -446,6 +472,30 @@
         </form>
       </div>
     </div>
+
+    <dialog id="contact-print-dialog">
+      <form id="contact-print-form">
+        <h2>Print Contact</h2>
+        <p id="contact-print-description"></p>
+        <fieldset>
+          <legend>Visit notes to include</legend>
+          <label>
+            <input type="radio" name="print-notes" value="latest" checked />
+            Most recent note only (recommended)
+          </label>
+          <label>
+            <input type="radio" name="print-notes" value="all" />
+            All notes
+          </label>
+        </fieldset>
+        <div class="restore-dialog-actions">
+          <button type="submit">Continue to Print</button>
+          <button type="button" id="cancel-contact-print">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <section id="print-container" hidden aria-hidden="true"></section>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

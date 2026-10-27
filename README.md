@@ -19,17 +19,38 @@ an encrypted backup.
 
 ## Contacts and visit logs
 
-Add contacts with a required first name, optional last name, address, city,
-state, area, and map coordinates. Phone and email fields are not currently
-available. Contact cards show the address, urgency, and visit history; they
-include actions to edit, export, and delete a contact. Visit logs can be added
-from the contact form or quickly from a card, and existing logs can be edited
-or deleted.
+Add contacts with a required first name and optional last name, address, city,
+region, area, and map coordinates. City, Region, and Area are each single
+optional values, so a contact can be saved with partial details and completed
+later. A Region belongs to one City, and an Area belongs to one Region. Phone
+and email fields are not currently available. Each contact has a stable unique
+ID, so different people can share the same name. Contact cards show the
+address, location hierarchy, urgency, and visit history; they include actions
+to edit, export, and delete a contact. Visit logs can be added from the contact
+form or quickly from a card, and existing logs can be edited or deleted.
+
+On the contacts page, **Print Visible Contacts** prints exactly the contacts
+shown by the current search and filters. It confirms the number first, groups
+each contact once under their most specific location (Area, then Region, then
+City, then unassigned), and includes only the latest visit note. In **Edit
+Contact**, **Print** offers **Most recent note only** (the default) or **All
+notes**. Save any pending contact edits before printing; the Print button is
+disabled while changes are unsaved. Print layouts omit app controls. Printing
+uses the browser/device print dialog, where you can choose a printer or save as
+PDF if that option is available.
 
 Search matches names, addresses, and visit notes. The list can be filtered by
-urgency, city, and area, and sorted newest first, oldest first, or
-alphabetically by first name. Urgency is based on the most recent visit log, or
-the contact creation date if there are no logs:
+urgency, city, region, and area, and sorted newest first, oldest first, or
+alphabetically by first name. In the contact form, Region is available only
+after choosing a City, and Area is available only after choosing a Region.
+Settings lets you create regions under cities and areas under regions. Filters
+follow the same hierarchy. During migration from the earlier multiple-area
+format, a contact keeps its first listed area and drops other area assignments;
+the contact's unique ID, visit history, and other details are preserved.
+Legacy area-list strings are placed under an **Unassigned** region for review
+and later editing.
+Urgency is based on the most recent visit log, or the contact creation date if
+there are no logs:
 
 - **Normal:** 0–7 days
 - **Urgent:** 8–14 days
@@ -37,9 +58,8 @@ the contact creation date if there are no logs:
 
 ## Location and privacy
 
-When adding a contact, the app requests device location to position the initial
-map pin. You can instead enter an address and select **Find Address on Map**,
-tap the map, or drag the pin. A valid location is required to save a contact.
+Map coordinates are optional. To add or update them, use device GPS, enter an
+address and select **Find Address on Map**, tap the map, or drag the pin.
 Device location requires browser permission.
 
 Address text is sent to OpenStreetMap Nominatim only when you choose **Find

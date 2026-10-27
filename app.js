@@ -1,9 +1,9 @@
 const DEFAULT_SETTINGS = {
   state: "CA",
   defaultCity: "Newcastle",
-  defaultArea: "Downtown",
   cities: ["Newcastle", "Rocklin", "Roseville", "Auburn"],
-  areas: ["Downtown", "Rural", "North", "South"],
+  regions: ["North", "South", "East", "West"],
+  areas: [],
 };
 const ENCRYPTION_ITERATIONS = 310000;
 const ENCRYPTION_META_KEY = "encryption-meta";
@@ -19,6 +19,17 @@ const escapeHtml = (value) =>
     };
     return entities[character];
   });
+
+const getStreetAddress = (contact) => {
+  if (typeof contact.streetAddress === "string") return contact.streetAddress;
+  const parts = (contact.address || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (contact.state && parts[parts.length - 1] === contact.state) parts.pop();
+  if (contact.city && parts[parts.length - 1] === contact.city) parts.pop();
+  return parts.join(", ");
+};
 
 const openAppDatabase = () =>
   new Promise((resolve, reject) => {
@@ -173,14 +184,186 @@ const decryptContactTransfer = async (transfer, passphrase) => {
     (typeof contact.id !== "number" && typeof contact.id !== "string") ||
     typeof contact.firstName !== "string" ||
     typeof contact.lastName !== "string" ||
-    !Array.isArray(contact.notesHistory) ||
-    !contact.notesHistory.every(
-      (note) => note && typeof note.text === "string",
+    (contact.notesHistory &&
+      (!Array.isArray(contact.notesHistory) ||
+        !contact.notesHistory.every(
+          (note) => note && typeof note.text === "string",
+        ))) ||
+    (contact.areas &&
+      (!Array.isArray(contact.areas) ||
+        !contact.areas.every((area) => typeof area === "string"))) ||
+    (contact.areaAssignments &&
+      (!Array.isArray(contact.areaAssignments) ||
+        !contact.areaAssignments.every(
+          (area) =>
+            area &&
+            typeof area.name === "string" &&
+            typeof area.region === "string" &&
+            (area.city === undefined || typeof area.city === "string"),
+        ))) ||
+    ["city", "region", "area", "state", "streetAddress"].some(
+      (field) =>
+        contact[field] !== undefined && typeof contact[field] !== "string",
     )
   ) {
     throw new Error("The contact file contents are invalid.");
   }
-  return contact;
+  return {
+    ...contact,
+    region:
+      contact.region ||
+      contact.areaAssignments?.[0]?.region ||
+      contact.areas
+        ?.map((areaName) =>
+          contact.areaAssignments?.find((assignment) => assignment.name === areaName)
+            ?.region,
+        )
+        .find(Boolean) ||
+      "",
+    area:
+      contact.area ||
+      contact.areas?.[0] ||
+      contact.areaAssignments?.[0]?.name ||
+      "",
+    areaAssignments: contact.areaAssignments || [],
+    notesHistory: contact.notesHistory || [],
+  };
+};
+
+const normalizeRegionData = (settings, contacts) => {
+  const normalizedSettings = { ...settings };
+  const cities = Array.isArray(settings.cities)
+    ? [...new Set(settings.cities.filter((city) => typeof city === "string"))]
+    : [...DEFAULT_SETTINGS.cities];
+  const defaultCity = cities.includes(settings.defaultCity)
+    ? settings.defaultCity
+    : cities[0] || "";
+  const legacyAreaDefinitions = (settings.areas || []).map((area) =>
+    typeof area === "string"
+      ? { name: area, region: "Unassigned" }
+      : { name: area.name, region: area.region || "Unassigned", city: area.city },
+  );
+  const originalRegions = Array.isArray(settings.regions)
+    ? settings.regions
+    : DEFAULT_SETTINGS.regions;
+  const regionDefinitions = [];
+  const areaDefinitions = [];
+  const addRegion = (name, city) => {
+    if (!name || !city) return;
+    if (
+      !regionDefinitions.some(
+        (region) => region.name === name && region.city === city,
+      )
+    ) {
+      regionDefinitions.push({ name, city });
+    }
+  };
+  const addArea = (name, region, city) => {
+    if (!name || !region || !city) return;
+    addRegion(region, city);
+    if (
+      !areaDefinitions.some(
+        (area) =>
+          area.name === name && area.region === region && area.city === city,
+      )
+    ) {
+      areaDefinitions.push({ name, region, city });
+    }
+  };
+
+  if (
+    originalRegions.every(
+      (region) => region && typeof region === "object" && region.name,
+    )
+  ) {
+    originalRegions.forEach((region) => {
+      const regionCities = region.city ? [region.city] : cities;
+      regionCities.forEach((city) => addRegion(region.name, city));
+    });
+  } else {
+    originalRegions.forEach((region) => {
+      if (typeof region === "string") {
+        cities.forEach((city) => addRegion(region, city));
+      }
+    });
+  }
+
+  contacts.forEach((contact) => {
+    const city = typeof contact.city === "string" ? contact.city : defaultCity;
+    if (city && !cities.includes(city)) cities.push(city);
+    const legacyAreaNames = Array.isArray(contact.areas)
+      ? contact.areas
+      : contact.area
+        ? [contact.area]
+        : [];
+    const firstArea =
+      legacyAreaNames.find((area) => typeof area === "string") || "";
+    const areaDefinition = legacyAreaDefinitions.find(
+      (area) => area.name === firstArea,
+    );
+    const region =
+      typeof contact.region === "string" && contact.region
+        ? contact.region
+        : areaDefinition?.region || "";
+    if (region) addRegion(region, city);
+    if (firstArea && region) addArea(firstArea, region, city);
+  });
+
+  legacyAreaDefinitions.forEach((area) => {
+    const matchingContacts = contacts.filter((contact) => {
+      const assignedAreas = Array.isArray(contact.areas)
+        ? contact.areas
+        : contact.area
+          ? [contact.area]
+          : [];
+      return assignedAreas.includes(area.name);
+    });
+    const areaCities = matchingContacts.length
+      ? matchingContacts.map((contact) => contact.city || defaultCity)
+      : [area.city || defaultCity];
+    areaCities.forEach((city) => {
+      if (city && !cities.includes(city)) cities.push(city);
+      addArea(area.name, area.region, city);
+    });
+  });
+
+  const normalizedContacts = contacts.map((contact) => {
+    const legacyAreaNames = Array.isArray(contact.areas)
+      ? contact.areas
+      : contact.area
+        ? [contact.area]
+        : [];
+    const areaName =
+      legacyAreaNames.find((area) => typeof area === "string") || "";
+    const city = typeof contact.city === "string" ? contact.city : defaultCity;
+    const areaDefinition = areaDefinitions.find(
+      (area) => area.name === areaName && area.city === city,
+    );
+    const region =
+      (typeof contact.region === "string" &&
+        regionDefinitions.some(
+          (item) => item.name === contact.region && item.city === city,
+        ) &&
+        contact.region) ||
+      areaDefinition?.region ||
+      "";
+    const rest = { ...contact };
+    delete rest.areas;
+    delete rest.areaAssignments;
+    return {
+      ...rest,
+      city,
+      region,
+      area: areaDefinition && areaDefinition.region === region ? areaName : "",
+      streetAddress: getStreetAddress(contact),
+    };
+  });
+
+  normalizedSettings.cities = cities;
+  normalizedSettings.defaultCity = defaultCity;
+  normalizedSettings.regions = regionDefinitions;
+  normalizedSettings.areas = areaDefinitions;
+  return { settings: normalizedSettings, contacts: normalizedContacts };
 };
 
 const decryptBackup = async (backup, passphrase) => {
@@ -208,13 +391,23 @@ const decryptBackup = async (backup, passphrase) => {
     }
     const metadata = createCryptoMetadata();
     const encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+    const normalized = normalizeRegionData(
+      backup.settings,
+      backup.contacts,
+    );
     return {
       metadata,
       encryptionKey,
-      settings: backup.settings,
-      contacts: backup.contacts,
-      encryptedSettings: await encryptValue(backup.settings, encryptionKey),
-      encryptedContacts: await encryptValue(backup.contacts, encryptionKey),
+      settings: normalized.settings,
+      contacts: normalized.contacts,
+      encryptedSettings: await encryptValue(
+        normalized.settings,
+        encryptionKey,
+      ),
+      encryptedContacts: await encryptValue(
+        normalized.contacts,
+        encryptionKey,
+      ),
       wasLegacyPlaintext: true,
     };
   }
@@ -254,13 +447,20 @@ const decryptBackup = async (backup, passphrase) => {
   ) {
     throw new Error("The backup contents are invalid.");
   }
+  const normalized = normalizeRegionData(settings, contacts);
   return {
     metadata,
     encryptionKey,
-    settings,
-    contacts,
-    encryptedSettings: backup.data.settings,
-    encryptedContacts: backup.data.contacts,
+    settings: normalized.settings,
+    contacts: normalized.contacts,
+    encryptedSettings: await encryptValue(
+      normalized.settings,
+      encryptionKey,
+    ),
+    encryptedContacts: await encryptValue(
+      normalized.contacts,
+      encryptionKey,
+    ),
     wasLegacyPlaintext: false,
   };
 };
@@ -390,13 +590,13 @@ const initializeAppData = async () => {
 
           if (metadata) {
             encryptionKey = await deriveEncryptionKey(passphrase, metadata);
-            const [encryptedSettings, encryptedContacts] = await Promise.all([
+            const [storedEncryptedSettings, storedEncryptedContacts] = await Promise.all([
               readStoredValue(database, "settings"),
               readStoredValue(database, "contacts"),
             ]);
             [settings, contacts] = await Promise.all([
-              decryptValue(encryptedSettings, encryptionKey),
-              decryptValue(encryptedContacts, encryptionKey),
+              decryptValue(storedEncryptedSettings, encryptionKey),
+              decryptValue(storedEncryptedContacts, encryptionKey),
             ]);
             if (
               !settings ||
@@ -405,6 +605,24 @@ const initializeAppData = async () => {
               !Array.isArray(contacts)
             ) {
               throw new Error("The encrypted database contents are invalid.");
+            }
+            const normalized = normalizeRegionData(settings, contacts);
+            settings = normalized.settings;
+            contacts = normalized.contacts;
+            if (
+              JSON.stringify(settings) !==
+                JSON.stringify(
+                  await decryptValue(storedEncryptedSettings, encryptionKey),
+                ) ||
+              JSON.stringify(contacts) !==
+                JSON.stringify(
+                  await decryptValue(storedEncryptedContacts, encryptionKey),
+                )
+            ) {
+              await writeStoredValues(database, [
+                ["settings", await encryptValue(settings, encryptionKey)],
+                ["contacts", await encryptValue(contacts, encryptionKey)],
+              ]);
             }
             localStorage.removeItem("return_visits_settings");
             localStorage.removeItem("return_visits_contacts");
@@ -428,6 +646,7 @@ const initializeAppData = async () => {
               storedContacts ??
               parseLegacyValue("return_visits_contacts") ??
               [];
+            ({ settings, contacts } = normalizeRegionData(settings, contacts));
             metadata = createCryptoMetadata();
             encryptionKey = await deriveEncryptionKey(passphrase, metadata);
             const encryptedSettings = await encryptValue(settings, encryptionKey);
@@ -509,14 +728,16 @@ const initializeApp = async () => {
   document.getElementById("setting-state").value = settings.state;
   document.getElementById("setting-default-city").value =
     settings.defaultCity || "Newcastle";
-  document.getElementById("setting-default-area").value =
-    settings.defaultArea || "Downtown";
 
   // Populate All Dropdowns (Filters & Modal Selects)
   const populateDropdowns = () => {
     const citySelect = document.getElementById("contact-city-select");
     const currentCityVal = citySelect.value;
     citySelect.innerHTML = "";
+    const emptyCityOption = document.createElement("option");
+    emptyCityOption.value = "";
+    emptyCityOption.textContent = "Choose a city (optional)";
+    citySelect.appendChild(emptyCityOption);
     settings.cities.forEach((city) => {
       const opt = document.createElement("option");
       opt.value = city;
@@ -529,23 +750,8 @@ const initializeApp = async () => {
     citySelect.appendChild(addCityOpt);
     if (settings.cities.includes(currentCityVal)) {
       citySelect.value = currentCityVal;
-    }
-
-    const areaSelect = document.getElementById("contact-area-select");
-    const currentAreaVal = areaSelect.value;
-    areaSelect.innerHTML = "";
-    settings.areas.forEach((area) => {
-      const opt = document.createElement("option");
-      opt.value = area;
-      opt.textContent = area;
-      areaSelect.appendChild(opt);
-    });
-    const addAreaOpt = document.createElement("option");
-    addAreaOpt.value = "__ADD_NEW__";
-    addAreaOpt.textContent = "+ Add New Area...";
-    areaSelect.appendChild(addAreaOpt);
-    if (settings.areas.includes(currentAreaVal)) {
-      areaSelect.value = currentAreaVal;
+    } else {
+      citySelect.value = "";
     }
 
     const filterCity = document.getElementById("filter-city");
@@ -559,22 +765,180 @@ const initializeApp = async () => {
     });
     filterCity.value = currentCityFilter;
 
+    const contactRegion = document.getElementById("contact-region-select");
+    const contactArea = document.getElementById("contact-area-select");
+    const populateContactRegionArea = (
+      selectedRegion = "",
+      selectedArea = "",
+    ) => {
+      const city = citySelect.value;
+      contactRegion.innerHTML =
+        '<option value="">Choose a region (optional)</option>';
+      settings.regions
+        .filter((region) => region.city === city)
+        .forEach((region) => {
+          const option = document.createElement("option");
+          option.value = region.name;
+          option.textContent = region.name;
+          contactRegion.appendChild(option);
+        });
+      contactRegion.disabled = !city;
+      contactRegion.value = selectedRegion;
+
+      contactArea.innerHTML =
+        '<option value="">Choose an area (optional)</option>';
+      settings.areas
+        .filter(
+          (area) => area.city === city && area.region === contactRegion.value,
+        )
+        .forEach((area) => {
+          const option = document.createElement("option");
+          option.value = area.name;
+          option.textContent = area.name;
+          contactArea.appendChild(option);
+        });
+      contactArea.disabled = !city || !contactRegion.value;
+      contactArea.value = selectedArea;
+    };
+    populateContactRegionArea(contactRegion.value, contactArea.value);
+
+    const filterRegion = document.getElementById("filter-region");
+    const currentRegionFilter = filterRegion.value;
+    filterRegion.innerHTML = '<option value="">All Regions</option>';
+    settings.regions
+      .filter(
+        (region) => !filterCity.value || region.city === filterCity.value,
+      )
+      .forEach((region) => {
+        const option = document.createElement("option");
+        option.value = JSON.stringify([region.city, region.name]);
+        option.textContent = `${region.name} (${region.city})`;
+        filterRegion.appendChild(option);
+      });
+    filterRegion.value = Array.from(filterRegion.options).some(
+      (option) => option.value === currentRegionFilter,
+    )
+      ? currentRegionFilter
+      : "";
+
     const filterArea = document.getElementById("filter-area");
-    const currentAreaFilter = filterArea.value;
+    let currentAreaFilter = filterArea.value;
     filterArea.innerHTML = '<option value="">All Areas</option>';
-    settings.areas.forEach((area) => {
-      const opt = document.createElement("option");
-      opt.value = area;
-      opt.textContent = area;
-      filterArea.appendChild(opt);
-    });
+    settings.areas
+      .filter((area) => {
+        let selectedRegion = null;
+        if (filterRegion.value) {
+          try {
+            selectedRegion = JSON.parse(filterRegion.value);
+          } catch (error) {
+            console.error("Invalid region filter value:", error);
+          }
+        }
+        return (
+          (!filterCity.value || area.city === filterCity.value) &&
+          (!filterRegion.value ||
+            (Array.isArray(selectedRegion) &&
+              area.city === selectedRegion[0] &&
+              area.region === selectedRegion[1]))
+        );
+      })
+      .forEach((area) => {
+        const opt = document.createElement("option");
+        opt.value = JSON.stringify([area.city, area.region, area.name]);
+        opt.textContent = `${area.name} (${area.region}, ${area.city})`;
+        filterArea.appendChild(opt);
+      });
+    if (
+      currentAreaFilter &&
+      !Array.from(filterArea.options).some(
+        (option) => option.value === currentAreaFilter,
+      )
+    ) {
+      currentAreaFilter = "";
+    }
     filterArea.value = currentAreaFilter;
+
+    const settingRegionCity = document.getElementById("setting-region-city");
+    const settingAreaCity = document.getElementById("setting-area-city");
+    const settingAreaRegion = document.getElementById("setting-area-region");
+    const populateSettingRegionOptions = () => {
+      const city = settingAreaCity.value;
+      const previousRegion = settingAreaRegion.value;
+      settingAreaRegion.innerHTML = '<option value="">Choose region</option>';
+      settings.regions
+        .filter((region) => region.city === city)
+        .forEach((region) => {
+          const option = document.createElement("option");
+          option.value = region.name;
+          option.textContent = region.name;
+          settingAreaRegion.appendChild(option);
+        });
+      settingAreaRegion.disabled = !city;
+      if (
+        settings.regions.some(
+          (region) => region.city === city && region.name === previousRegion,
+        )
+      ) {
+        settingAreaRegion.value = previousRegion;
+      }
+    };
+    [settingRegionCity, settingAreaCity].forEach((select) => {
+      const previousCity = select.value;
+      select.innerHTML = '<option value="">Choose city</option>';
+      settings.cities.forEach((city) => {
+        const option = document.createElement("option");
+        option.value = city;
+        option.textContent = city;
+        select.appendChild(option);
+      });
+      if (settings.cities.includes(previousCity)) select.value = previousCity;
+    });
+    populateSettingRegionOptions();
+
+    const hierarchyList = document.getElementById("region-area-list");
+    hierarchyList.innerHTML = "";
+    const addHierarchyLabel = (labelText, className) => {
+      const item = document.createElement("div");
+      item.className = className;
+      item.textContent = labelText;
+      hierarchyList.appendChild(item);
+    };
+    settings.regions.forEach((region) => {
+      addHierarchyLabel(`${region.city} → ${region.name}`, "hierarchy-region");
+      settings.areas
+        .filter(
+          (area) => area.city === region.city && area.region === region.name,
+        )
+        .forEach((area) =>
+          addHierarchyLabel(`　${area.name}`, "hierarchy-area"),
+        );
+    });
+    if (!settings.regions.length) {
+      hierarchyList.textContent =
+        "Add a city, then add regions and areas beneath it.";
+    }
+
+    return { populateContactRegionArea, populateSettingRegionOptions };
   };
-
-  populateDropdowns();
-
-  // Inline "Add New City" Handlers
+  const dropdownHelpers = populateDropdowns();
   const citySelect = document.getElementById("contact-city-select");
+  const contactRegionSelect = document.getElementById("contact-region-select");
+  const contactAreaSelect = document.getElementById("contact-area-select");
+  citySelect.addEventListener("change", () => {
+    if (citySelect.value !== "__ADD_NEW__") {
+      dropdownHelpers.populateContactRegionArea("", "");
+    }
+  });
+  contactRegionSelect.addEventListener("change", () => {
+    dropdownHelpers.populateContactRegionArea(contactRegionSelect.value, "");
+  });
+  document
+    .getElementById("setting-area-city")
+    .addEventListener("change", () =>
+      dropdownHelpers.populateSettingRegionOptions(),
+    );
+  // Inline "Add New City" Handlers
+  // Inline "Add New City" Handlers
   const newCityContainer = document.getElementById("new-city-container");
   const inputNewCity = document.getElementById("input-new-city");
 
@@ -604,6 +968,7 @@ const initializeApp = async () => {
         }
         populateDropdowns();
         citySelect.value = val;
+        dropdownHelpers.populateContactRegionArea("", "");
         newCityContainer.style.display = "none";
       }
     });
@@ -613,48 +978,7 @@ const initializeApp = async () => {
     .addEventListener("click", () => {
       newCityContainer.style.display = "none";
       citySelect.value = settings.defaultCity || settings.cities[0];
-    });
-
-  // Inline "Add New Area" Handlers
-  const areaSelect = document.getElementById("contact-area-select");
-  const newAreaContainer = document.getElementById("new-area-container");
-  const inputNewArea = document.getElementById("input-new-area");
-
-  areaSelect.addEventListener("change", (e) => {
-    if (e.target.value === "__ADD_NEW__") {
-      newAreaContainer.style.display = "block";
-      inputNewArea.value = "";
-      inputNewArea.focus();
-    } else {
-      newAreaContainer.style.display = "none";
-    }
-  });
-
-  document
-    .getElementById("btn-save-new-area")
-    .addEventListener("click", async () => {
-      const val = inputNewArea.value.trim();
-      if (val) {
-        if (!settings.areas.includes(val)) {
-          settings.areas.push(val);
-          try {
-            await saveSettings();
-          } catch (error) {
-            showStorageError("save settings", error);
-            return;
-          }
-        }
-        populateDropdowns();
-        areaSelect.value = val;
-        newAreaContainer.style.display = "none";
-      }
-    });
-
-  document
-    .getElementById("btn-cancel-new-area")
-    .addEventListener("click", () => {
-      newAreaContainer.style.display = "none";
-      areaSelect.value = settings.defaultArea || settings.areas[0];
+      dropdownHelpers.populateContactRegionArea("", "");
     });
 
   // Settings View Buttons
@@ -682,8 +1006,22 @@ const initializeApp = async () => {
     .addEventListener("click", async () => {
       const input = document.getElementById("setting-new-area");
       const val = input.value.trim();
-      if (val && !settings.areas.includes(val)) {
-        settings.areas.push(val);
+      const city = document.getElementById("setting-area-city").value;
+      const region = document.getElementById("setting-area-region").value;
+      if (!city || !region) {
+        alert("Choose a city and region for this area first.");
+        return;
+      }
+      if (
+        val &&
+        !settings.areas.some(
+          (area) =>
+            area.city === city &&
+            area.region === region &&
+            area.name.toLowerCase() === val.toLowerCase(),
+        )
+      ) {
+        settings.areas.push({ name: val, region, city });
         input.value = "";
         try {
           await saveSettings();
@@ -692,7 +1030,43 @@ const initializeApp = async () => {
           return;
         }
         populateDropdowns();
-        alert(`Area "${val}" added successfully!`);
+        alert(`Area "${val}" added to ${region}, ${city}.`);
+      } else if (val) {
+        alert("That area already exists in this region and city.");
+      }
+    });
+
+  document
+    .getElementById("btn-add-setting-region")
+    .addEventListener("click", async () => {
+      const input = document.getElementById("setting-new-region");
+      const city = document.getElementById("setting-region-city").value;
+      const region = input.value.trim();
+      if (
+        city &&
+        region &&
+        !settings.regions.some(
+          (existing) =>
+            existing.city === city &&
+            existing.name.toLowerCase() === region.toLowerCase(),
+        )
+      ) {
+        settings.regions.push({ name: region, city });
+        input.value = "";
+        try {
+          await saveSettings();
+        } catch (error) {
+          showStorageError("save settings", error);
+          return;
+        }
+        populateDropdowns();
+        alert(`Region "${region}" added to ${city}.`);
+      } else if (region) {
+        alert(
+          city
+            ? "That region already exists in this city."
+            : "Choose a city for this region first.",
+        );
       }
     });
 
@@ -704,9 +1078,9 @@ const initializeApp = async () => {
       settings.defaultCity = document
         .getElementById("setting-default-city")
         .value.trim();
-      settings.defaultArea = document
-        .getElementById("setting-default-area")
-        .value.trim();
+      if (settings.defaultCity && !settings.cities.includes(settings.defaultCity)) {
+        settings.cities.push(settings.defaultCity);
+      }
       try {
         await saveSettings();
       } catch (error) {
@@ -718,6 +1092,7 @@ const initializeApp = async () => {
     });
 
   let contacts = savedContacts;
+  let visibleContacts = [];
 
   // Helper: Calculate days between a timestamp and now
   const calculateDaysSince = (dateInput) => {
@@ -744,6 +1119,18 @@ const initializeApp = async () => {
     if (days >= 8)
       return { label: "Urgent", color: "#ffc107", class: "urgent", days };
     return { label: "Normal", color: "#28a745", class: "normal", days };
+  };
+
+  const getContactAreas = (contact) => (contact.area ? [contact.area] : []);
+
+  const getContactLocationSummary = (contact) =>
+    [contact.city, contact.region, contact.area].filter(Boolean).join(" → ") ||
+    "No location hierarchy assigned";
+
+  const updatePrintVisibleButton = () => {
+    const button = document.getElementById("btn-print-visible");
+    button.textContent = `🖨️ Print Visible Contacts (${visibleContacts.length})`;
+    button.disabled = visibleContacts.length === 0;
   };
 
   const toLocalDateTimeString = (dateObj) => {
@@ -856,19 +1243,6 @@ const initializeApp = async () => {
     pickerMap.setView(location, zoom);
   };
 
-  const getDeviceCoordinates = () =>
-    new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error("Geolocation is not supported by this browser."));
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        ({ coords }) => resolve([coords.latitude, coords.longitude]),
-        (error) => reject(error),
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
-      );
-    });
-
   const findAddressOnMap = async () => {
     const street = document.getElementById("contact-address").value.trim();
     const city = document.getElementById("contact-city-select").value;
@@ -910,13 +1284,33 @@ const initializeApp = async () => {
   let initialFormState = "";
   const captureFormState = () => {
     const formEl = document.getElementById("contact-form");
-    const formData = new FormData(formEl);
-    let str = "";
-    for (let [key, val] of formData.entries()) {
-      str += key + "=" + val + "|";
-    }
-    return str;
+    return JSON.stringify(
+      Array.from(formEl.querySelectorAll("input, select, textarea")).map(
+        (field) => ({
+          id: field.id,
+          type: field.type || field.tagName.toLowerCase(),
+          value: field.value,
+          checked: field.type === "checkbox" || field.type === "radio"
+            ? field.checked
+            : undefined,
+        }),
+      ),
+    );
   };
+  const printContactButton = document.getElementById("btn-print-contact");
+  const updatePrintContactAvailability = () => {
+    const hasSavedContact = Boolean(
+      document.getElementById("contact-id").value,
+    );
+    const hasUnsavedChanges = captureFormState() !== initialFormState;
+    printContactButton.hidden = !hasSavedContact;
+    printContactButton.disabled = !hasSavedContact || hasUnsavedChanges;
+    printContactButton.title = hasUnsavedChanges
+      ? "Save changes before printing"
+      : "Print this contact";
+  };
+  contactForm.addEventListener("input", updatePrintContactAvailability);
+  contactForm.addEventListener("change", updatePrintContactAvailability);
 
   const attemptExit = () => {
     const currentState = captureFormState();
@@ -933,7 +1327,6 @@ const initializeApp = async () => {
   const openModalWithCoords = (lat, lng) => {
     modal.style.display = "flex";
     newCityContainer.style.display = "none";
-    newAreaContainer.style.display = "none";
 
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -969,6 +1362,7 @@ const initializeApp = async () => {
           pickerMarker = null;
         }
         initialFormState = captureFormState();
+        updatePrintContactAvailability();
         resolve();
       }, 150);
     });
@@ -977,10 +1371,12 @@ const initializeApp = async () => {
   btnOpenModal.addEventListener("click", async () => {
     contactForm.reset();
     document.getElementById("contact-id").value = "";
+    document.getElementById("contact-record-id").hidden = true;
+    printContactButton.hidden = true;
+    printContactButton.disabled = true;
     document.getElementById("contact-city-select").value =
       settings.defaultCity || settings.cities[0];
-    document.getElementById("contact-area-select").value =
-      settings.defaultArea || settings.areas[0];
+    dropdownHelpers.populateContactRegionArea("", "");
     document.getElementById("contact-state").value = settings.state;
     document.getElementById("contact-lat").value = "";
     document.getElementById("contact-lng").value = "";
@@ -991,17 +1387,6 @@ const initializeApp = async () => {
       '<span style="color: #888;">No visit logs yet.</span>';
     document.getElementById("modal-title").textContent = "Add Contact";
     await openModalWithCoords(null, null);
-    try {
-      const [lat, lng] = await getDeviceCoordinates();
-      if (modal.style.display === "flex") setPickerLocation(lat, lng);
-    } catch (error) {
-      console.warn("Unable to use device location:", error);
-      if (modal.style.display === "flex") {
-        alert(
-          "Device location is unavailable. Enter an address and use Find Address on Map, or tap/drag the pin to set a location.",
-        );
-      }
-    }
   });
 
   btnFindAddress.addEventListener("click", findAddressOnMap);
@@ -1038,22 +1423,44 @@ const initializeApp = async () => {
     const lastName = document.getElementById("contact-lastname").value.trim();
     const street = document.getElementById("contact-address").value.trim();
     const city = document.getElementById("contact-city-select").value;
+    const region = contactRegionSelect.value;
+    const area = contactAreaSelect.value;
     const state = document.getElementById("contact-state").value.trim();
-    const area = document.getElementById("contact-area-select").value;
     const lat = document.getElementById("contact-lat").value.trim();
     const lng = document.getElementById("contact-lng").value.trim();
     const latitude = Number(lat);
     const longitude = Number(lng);
+    if (city === "__ADD_NEW__") {
+      alert("Add or choose a city, or leave City blank, before saving.");
+      return;
+    }
     if (
-      !Number.isFinite(latitude) ||
-      !Number.isFinite(longitude) ||
-      latitude < -90 ||
-      latitude > 90 ||
-      longitude < -180 ||
-      longitude > 180
+      (region &&
+        !settings.regions.some(
+          (item) => item.name === region && item.city === city,
+        )) ||
+      (area &&
+        !settings.areas.some(
+          (item) =>
+            item.name === area &&
+            item.region === region &&
+            item.city === city,
+        ))
+    ) {
+      alert("Choose a region and area that belong to the selected city.");
+      return;
+    }
+    if (
+      (lat || lng) &&
+      (!Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180)
     ) {
       alert(
-        "Set a location using device GPS, Find Address on Map, or by tapping/dragging the map pin before saving.",
+        "Enter valid latitude and longitude coordinates, or clear both fields.",
       );
       return;
     }
@@ -1072,8 +1479,10 @@ const initializeApp = async () => {
         contact.firstName = firstName;
         contact.lastName = lastName;
         contact.address = fullAddress;
+        contact.streetAddress = street;
         contact.city = city;
         contact.state = state;
+        contact.region = region;
         contact.area = area;
         contact.lat = lat;
         contact.lng = lng;
@@ -1107,13 +1516,20 @@ const initializeApp = async () => {
         : [];
 
       targetId = Date.now();
+      while (
+        contacts.some((contact) => String(contact.id) === String(targetId))
+      ) {
+        targetId += 1;
+      }
       const newContact = {
         id: targetId,
         createdAt: new Date().toISOString(),
         firstName,
         lastName,
         address: fullAddress,
+        streetAddress: street,
         city,
+        region,
         state,
         area,
         lat,
@@ -1144,25 +1560,62 @@ const initializeApp = async () => {
       .value.toLowerCase();
     const filterUrgency = document.getElementById("filter-urgency").value;
     const filterCity = document.getElementById("filter-city").value;
+    const filterRegion = document.getElementById("filter-region").value;
     const filterArea = document.getElementById("filter-area").value;
     const sortMode = document.getElementById("sort-select").value;
 
     let filtered = contacts.filter((c) => {
       const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
       const addr = (c.address || "").toLowerCase();
+      const areasMatch = getContactAreas(c).some((area) =>
+        area.toLowerCase().includes(searchTerm),
+      );
       const notesMatch =
         c.notesHistory &&
         c.notesHistory.some((n) => n.text.toLowerCase().includes(searchTerm));
       const textMatch =
         fullName.includes(searchTerm) ||
         addr.includes(searchTerm) ||
+        areasMatch ||
         notesMatch;
 
       const status = getContactStatus(c);
       const urgencyMatch = !filterUrgency || status.label === filterUrgency;
       const cityMatch = !filterCity || c.city === filterCity;
-      const areaMatch = !filterArea || c.area === filterArea;
-      return textMatch && urgencyMatch && cityMatch && areaMatch;
+      let regionSelection = null;
+      if (filterRegion) {
+        try {
+          regionSelection = JSON.parse(filterRegion);
+        } catch (error) {
+          console.error("Invalid region filter value:", error);
+        }
+      }
+      const regionMatch =
+        !filterRegion ||
+        (Array.isArray(regionSelection) &&
+          c.city === regionSelection[0] &&
+          c.region === regionSelection[1]);
+      let areaSelection = null;
+      if (filterArea) {
+        try {
+          areaSelection = JSON.parse(filterArea);
+        } catch (error) {
+          console.error("Invalid area filter value:", error);
+        }
+      }
+      const areaMatch =
+        !filterArea ||
+        (Array.isArray(areaSelection) &&
+          c.city === areaSelection[0] &&
+          c.region === areaSelection[1] &&
+          c.area === areaSelection[2]);
+      return (
+        textMatch &&
+        urgencyMatch &&
+        cityMatch &&
+        regionMatch &&
+        areaMatch
+      );
     });
 
     filtered.sort((a, b) => {
@@ -1176,10 +1629,14 @@ const initializeApp = async () => {
 
     listContainer.innerHTML = "";
     if (filtered.length === 0) {
+      visibleContacts = [];
+      updatePrintVisibleButton();
       listContainer.innerHTML = "<p>No matching contacts found.</p>";
       return;
     }
 
+    visibleContacts = [...filtered];
+    updatePrintVisibleButton();
     filtered.forEach((contact) => {
       const card = document.createElement("div");
       const status = getContactStatus(contact);
@@ -1210,7 +1667,8 @@ const initializeApp = async () => {
 
       card.innerHTML = `
                 <strong>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</strong><br>
-                <small>${escapeHtml(contact.address || "No address provided")} ${contact.area ? `(${escapeHtml(contact.area)})` : ""}</small><br>
+                <small class="contact-record-id">Contact ID: ${escapeHtml(contact.id)}</small><br>
+                <small>${escapeHtml(contact.address || "No address provided")} (${escapeHtml(getContactLocationSummary(contact))})</small><br>
                 <span>Days Since Last Contact: <strong>${status.days} days</strong> (${status.label})</span>
                 ${historyHtml}
                 <div class="quick-add-note-box">
@@ -1229,6 +1687,226 @@ const initializeApp = async () => {
       listContainer.appendChild(card);
     });
   };
+
+  const getSortedVisitNotes = (contact) =>
+    [...(contact.notesHistory || [])].sort((a, b) => {
+      const dateA = new Date(a.rawDate || a.date || 0).getTime();
+      const dateB = new Date(b.rawDate || b.date || 0).getTime();
+      return (Number.isFinite(dateB) ? dateB : 0) -
+        (Number.isFinite(dateA) ? dateA : 0);
+    });
+
+  const getPrintableNoteDate = (note) => {
+    const parsedDate = new Date(note.rawDate || note.date || "");
+    return Number.isNaN(parsedDate.getTime())
+      ? note.date || "Date not recorded"
+      : parsedDate.toLocaleString();
+  };
+
+  const getPrintGroup = (contact) => {
+    if (contact.area) {
+      return {
+        key: JSON.stringify(["area", contact.city, contact.region, contact.area]),
+        title: `${contact.city} → ${contact.region} → ${contact.area}`,
+      };
+    }
+    if (contact.region) {
+      return {
+        key: JSON.stringify(["region", contact.city, contact.region]),
+        title: `${contact.city} → ${contact.region} (No area assigned)`,
+      };
+    }
+    if (contact.city) {
+      return {
+        key: JSON.stringify(["city", contact.city]),
+        title: `${contact.city} (No region or area assigned)`,
+      };
+    }
+    return {
+      key: JSON.stringify(["unassigned"]),
+      title: "No location assigned",
+    };
+  };
+
+  const printContactEntry = (contact) => {
+    const latestNote = getSortedVisitNotes(contact)[0];
+    const streetAddress =
+      contact.streetAddress || getStreetAddress(contact) || "No street address recorded";
+    const fullName = `${contact.firstName} ${contact.lastName}`.trim();
+    return `
+      <article class="print-contact-entry">
+        <h3>${escapeHtml(fullName)}</h3>
+        <p class="print-contact-id">Contact ID: ${escapeHtml(contact.id)}</p>
+        <p class="print-contact-address">${escapeHtml(streetAddress)}</p>
+        <div class="print-latest-note">
+          <strong>Most recent note:</strong>
+          ${
+            latestNote
+              ? `<p class="print-note-date">${escapeHtml(getPrintableNoteDate(latestNote))}</p><p class="print-note">${escapeHtml(latestNote.text)}</p>`
+              : '<p class="print-note">No visit notes recorded.</p>'
+          }
+        </div>
+      </article>
+    `;
+  };
+
+  const printContainer = document.getElementById("print-container");
+  const printContent = (title, subtitle, content) => {
+    printContainer.innerHTML = `
+      <header class="print-header">
+        <h1>${escapeHtml(title)}</h1>
+        <p class="print-subtitle">${escapeHtml(subtitle)}</p>
+      </header>
+      ${content}
+    `;
+    printContainer.hidden = false;
+    printContainer.setAttribute("aria-hidden", "false");
+    try {
+      window.print();
+    } catch (error) {
+      printContainer.hidden = true;
+      printContainer.setAttribute("aria-hidden", "true");
+      console.error("Unable to open the print dialog:", error);
+      alert("Could not open the print dialog. Please try again.");
+    }
+  };
+
+  window.addEventListener("afterprint", () => {
+    printContainer.hidden = true;
+    printContainer.setAttribute("aria-hidden", "true");
+    printContainer.replaceChildren();
+  });
+
+  document
+    .getElementById("btn-print-visible")
+    .addEventListener("click", () => {
+      if (!visibleContacts.length) return;
+      const count = visibleContacts.length;
+      if (
+        !confirm(
+          `Print ${count} visible contact${count === 1 ? "" : "s"}? The printout will include only the most recent note for each contact.`,
+        )
+      ) {
+        return;
+      }
+
+      const groups = new Map();
+      visibleContacts.forEach((contact) => {
+        const group = getPrintGroup(contact);
+        if (!groups.has(group.key)) {
+          groups.set(group.key, { title: group.title, contacts: [] });
+        }
+        groups.get(group.key).contacts.push(contact);
+      });
+      const content = [...groups.values()]
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .map(
+          (group) => `
+            <section class="print-location-group">
+              <h2>${escapeHtml(group.title)}</h2>
+              ${group.contacts
+                .sort((a, b) => {
+                  const nameA = `${a.lastName} ${a.firstName}`.trim();
+                  const nameB = `${b.lastName} ${b.firstName}`.trim();
+                  return (
+                    nameA.localeCompare(nameB) ||
+                    String(a.id).localeCompare(String(b.id))
+                  );
+                })
+                .map(printContactEntry)
+                .join("")}
+            </section>
+          `,
+        )
+        .join("");
+      printContent(
+        "Visible Contacts",
+        `${count} contact${count === 1 ? "" : "s"} • most recent note per contact • ${new Date().toLocaleDateString()}`,
+        content,
+      );
+    });
+
+  const contactPrintDialog = document.getElementById("contact-print-dialog");
+  const contactPrintForm = document.getElementById("contact-print-form");
+  const printContactDescription = document.getElementById(
+    "contact-print-description",
+  );
+  let selectedContactToPrint = null;
+
+  printContactButton.addEventListener("click", () => {
+    if (printContactButton.disabled) return;
+    const contactId = document.getElementById("contact-id").value;
+    selectedContactToPrint = contacts.find(
+      (contact) => String(contact.id) === String(contactId),
+    );
+    if (!selectedContactToPrint) {
+      alert("Save this contact before printing.");
+      return;
+    }
+    const fullName =
+      `${selectedContactToPrint.firstName} ${selectedContactToPrint.lastName}`.trim();
+    printContactDescription.textContent = `Choose which visit notes to print for ${fullName} (ID ${selectedContactToPrint.id}).`;
+    contactPrintForm.elements.namedItem("print-notes").value = "latest";
+    contactPrintDialog.showModal();
+  });
+
+  document
+    .getElementById("cancel-contact-print")
+    .addEventListener("click", () => {
+      contactPrintDialog.close();
+      selectedContactToPrint = null;
+    });
+
+  contactPrintDialog.addEventListener("cancel", () => {
+    selectedContactToPrint = null;
+  });
+
+  contactPrintForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!selectedContactToPrint) return;
+    const contact = selectedContactToPrint;
+    const includeAllNotes =
+      contactPrintForm.elements.namedItem("print-notes").value === "all";
+    const notes = getSortedVisitNotes(contact);
+    const selectedNotes = includeAllNotes ? notes : notes.slice(0, 1);
+    const fullName = `${contact.firstName} ${contact.lastName}`.trim();
+    const streetAddress =
+      contact.streetAddress || getStreetAddress(contact) || "No street address recorded";
+    const cityState = [contact.city, contact.state].filter(Boolean).join(", ");
+    const location = getContactLocationSummary(contact);
+    const notesMarkup = selectedNotes.length
+      ? selectedNotes
+          .map(
+            (note) => `
+              <article class="print-note-entry">
+                <p class="print-note-date">${escapeHtml(getPrintableNoteDate(note))}</p>
+                <p class="print-note-text">${escapeHtml(note.text)}</p>
+              </article>
+            `,
+          )
+          .join("")
+      : '<p>No visit notes recorded.</p>';
+
+    contactPrintDialog.close();
+    selectedContactToPrint = null;
+    printContent(
+      fullName,
+      `Contact ID: ${contact.id} • ${includeAllNotes ? "all visit notes" : "most recent note only"} • ${new Date().toLocaleDateString()}`,
+      `
+        <article class="print-single-contact">
+          <h2>${escapeHtml(fullName)}</h2>
+          <p>${escapeHtml(streetAddress)}</p>
+          ${cityState ? `<p>${escapeHtml(cityState)}</p>` : ""}
+          <p class="print-single-location">${escapeHtml(location)}</p>
+          <p class="print-contact-id">Contact ID: ${escapeHtml(contact.id)}</p>
+          <section class="print-notes">
+            <h3>${includeAllNotes ? "Visit history" : "Most recent note"}</h3>
+            ${notesMarkup}
+          </section>
+        </article>
+      `,
+    );
+  });
 
   // Render Leaflet Map Markers with Dynamic Color-Coded Pins
   const renderMapMarkers = () => {
@@ -1257,7 +1935,7 @@ const initializeApp = async () => {
                     <div>
                         <b>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</b><br>
                         ${escapeHtml(contact.address)}<br>
-                        City: ${escapeHtml(contact.city || "N/A")} | Area: ${escapeHtml(contact.area || "N/A")}<br>
+                        Location: ${escapeHtml(getContactLocationSummary(contact))}<br>
                         Days Since Contact: ${status.days} (${status.label})<br><br>
                         <button onclick="editContact(${contact.id})" style="background: #004080; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;">✏️ Edit Details</button>
                     </div>
@@ -1318,17 +1996,22 @@ const initializeApp = async () => {
     const contact = contacts.find((c) => c.id == id);
     if (!contact) return;
     document.getElementById("contact-id").value = contact.id;
+    printContactButton.hidden = false;
+    printContactButton.disabled = true;
+    const recordIdLabel = document.getElementById("contact-record-id");
+    recordIdLabel.textContent = `Permanent contact ID: ${contact.id}`;
+    recordIdLabel.hidden = false;
     document.getElementById("contact-firstname").value = contact.firstName;
     document.getElementById("contact-lastname").value = contact.lastName;
-    document.getElementById("contact-address").value = contact.address
-      ? contact.address.split(",")[0]
-      : "";
-    document.getElementById("contact-city-select").value =
-      contact.city || settings.cities[0];
+    document.getElementById("contact-address").value =
+      getStreetAddress(contact);
+    document.getElementById("contact-city-select").value = contact.city || "";
+    dropdownHelpers.populateContactRegionArea(
+      contact.region || "",
+      contact.area || "",
+    );
     document.getElementById("contact-state").value =
       contact.state || settings.state;
-    document.getElementById("contact-area-select").value =
-      contact.area || settings.areas[0];
     document.getElementById("contact-lat").value = contact.lat || "";
     document.getElementById("contact-lng").value = contact.lng || "";
     document.getElementById("contact-notes").value = "";
@@ -1492,24 +2175,10 @@ const initializeApp = async () => {
     document.getElementById("modal-title").textContent = "Edit Contact";
     const lat = Number.parseFloat(contact.lat);
     const lng = Number.parseFloat(contact.lng);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      await openModalWithCoords(lat, lng);
-    } else {
-      await openModalWithCoords(null, null);
-      if (document.getElementById("contact-address").value.trim()) {
-        await findAddressOnMap();
-      } else {
-        try {
-          const [deviceLat, deviceLng] = await getDeviceCoordinates();
-          setPickerLocation(deviceLat, deviceLng);
-        } catch (error) {
-          console.warn("Unable to use device location:", error);
-          alert(
-            "Device location is unavailable. Tap/drag the pin or enter an address and use Find Address on Map.",
-          );
-        }
-      }
-    }
+    await openModalWithCoords(
+      Number.isFinite(lat) && Number.isFinite(lng) ? lat : null,
+      Number.isFinite(lat) && Number.isFinite(lng) ? lng : null,
+    );
   };
 
   window.deleteContact = async (id) => {
@@ -1527,7 +2196,16 @@ const initializeApp = async () => {
     .addEventListener("change", renderContacts);
   document
     .getElementById("filter-city")
-    .addEventListener("change", renderContacts);
+    .addEventListener("change", () => {
+      populateDropdowns();
+      renderContacts();
+    });
+  document
+    .getElementById("filter-region")
+    .addEventListener("change", () => {
+      populateDropdowns();
+      renderContacts();
+    });
   document
     .getElementById("filter-area")
     .addEventListener("change", renderContacts);
@@ -1668,6 +2346,16 @@ const initializeApp = async () => {
         data: await encryptValue(
           {
             ...contact,
+            areas: getContactAreas(contact),
+            areaAssignments: contact.area
+              ? [
+                  {
+                    name: contact.area,
+                    region: contact.region,
+                    city: contact.city,
+                  },
+                ]
+              : [],
             notesHistory: contact.notesHistory || [],
           },
           transferKey,
@@ -1712,6 +2400,71 @@ const initializeApp = async () => {
           transfer,
           passphrase,
         );
+        const importedAreaName =
+          importedContact.area || importedContact.areas?.[0] || "";
+        const legacyAssignment =
+          importedContact.areaAssignments.find(
+            (assignment) => assignment.name === importedAreaName,
+          ) ||
+          settings.areas.find(
+            (area) =>
+              area.name === importedAreaName &&
+              (!importedContact.city || area.city === importedContact.city),
+          );
+        const importedCity =
+          importedContact.city || legacyAssignment?.city || "";
+        const importedRegion =
+          importedCity
+            ? importedContact.region || legacyAssignment?.region || ""
+            : "";
+        const importedArea =
+          importedRegion
+            ? importedAreaName || legacyAssignment?.name || ""
+            : "";
+        const updatedSettings = {
+          ...settings,
+          cities: [...settings.cities],
+          regions: [...settings.regions],
+          areas: [...settings.areas],
+        };
+        if (importedCity && !updatedSettings.cities.includes(importedCity)) {
+          updatedSettings.cities.push(importedCity);
+        }
+        if (importedCity && importedRegion) {
+          if (
+            !updatedSettings.regions.some(
+              (region) =>
+                region.name === importedRegion &&
+                region.city === importedCity,
+            )
+          ) {
+            updatedSettings.regions.push({
+              name: importedRegion,
+              city: importedCity,
+            });
+          }
+        }
+        if (importedCity && importedRegion && importedArea) {
+          const existingArea = updatedSettings.areas.find(
+            (area) =>
+              area.name.toLowerCase() === importedArea.toLowerCase() &&
+              area.region === importedRegion &&
+              area.city === importedCity,
+          );
+          if (!existingArea) {
+            updatedSettings.areas.push({
+              name: importedArea,
+              region: importedRegion,
+              city: importedCity,
+            });
+          }
+        }
+        importedContact.city = importedCity;
+        importedContact.region = importedRegion;
+        importedContact.area = importedArea;
+        importedContact.streetAddress = getStreetAddress(importedContact);
+        delete importedContact.areas;
+        delete importedContact.areaAssignments;
         if (
           !confirm(
             `Import ${importedContact.firstName} ${importedContact.lastName} as a new contact? Its visit history will be included. Existing contacts will not be changed.`,
@@ -1724,17 +2477,25 @@ const initializeApp = async () => {
         while (contacts.some((contact) => String(contact.id) === String(newId))) {
           newId += 1;
         }
-        contacts.push({ ...importedContact, id: newId });
-        if (await saveContacts()) {
-          contactFileInput.value = "";
-          alert("Contact imported successfully.");
-        } else {
-          contacts.pop();
-        }
+        const updatedContacts = [
+          ...contacts,
+          { ...importedContact, id: newId },
+        ];
+        await writeStoredValues(database, [
+          ["settings", await encryptValue(updatedSettings, encryptionKey)],
+          ["contacts", await encryptValue(updatedContacts, encryptionKey)],
+        ]);
+        settings = updatedSettings;
+        contacts = updatedContacts;
+        populateDropdowns();
+        renderContacts();
+        if (map) renderMapMarkers();
+        contactFileInput.value = "";
+        alert("Contact imported successfully.");
       } catch (error) {
         console.error("Unable to import encrypted contact:", error);
         alert(
-          "Could not import that contact. Check that the file is valid and the passphrase is correct. Your current contacts were not changed.",
+          `Could not import that contact. ${error.message || "Check that the file is valid and the passphrase is correct."} Your current contacts were not changed.`,
         );
       }
     });
@@ -1816,8 +2577,6 @@ const initializeApp = async () => {
         document.getElementById("setting-state").value = settings.state;
         document.getElementById("setting-default-city").value =
           settings.defaultCity || "Newcastle";
-        document.getElementById("setting-default-area").value =
-          settings.defaultArea || "Downtown";
         populateDropdowns();
         renderContacts();
         if (map) renderMapMarkers();

@@ -127,6 +127,32 @@ header {
     font-size: 14px;
 }
 
+#region-area-list {
+    display: grid;
+    gap: 8px;
+    margin: 10px 0;
+}
+
+.hierarchy-region {
+    font-weight: 700;
+}
+
+.hierarchy-area {
+    padding-left: 16px;
+}
+
+.area-region-setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.area-region-setting select {
+    min-height: 40px;
+    max-width: 55%;
+}
+
 main {
     flex: 1;
     overflow-y: auto;
@@ -142,6 +168,23 @@ main {
 
 .view.active {
     display: block;
+}
+
+.contact-list-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.contact-list-actions button {
+    min-height: 44px;
+}
+
+#btn-print-visible:disabled,
+#btn-print-contact:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 #map-view {
@@ -240,6 +283,51 @@ main {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 }
 
+#contact-print-dialog {
+    width: calc(100% - 40px);
+    max-width: 420px;
+    border: none;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+#contact-print-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+}
+
+#contact-print-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+#contact-print-form h2,
+#contact-print-form p {
+    margin: 0;
+}
+
+#contact-print-form fieldset {
+    display: grid;
+    gap: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+#contact-print-form label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+#contact-print-form input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex: 0 0 auto;
+}
+
 #restore-passphrase-form,
 #contact-transfer-form {
     display: flex;
@@ -296,6 +384,11 @@ textarea {
     border-radius: 6px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     border-left: 6px solid #28a745;
+}
+
+.contact-record-id {
+    color: #6c757d;
+    font-size: 0.75rem;
 }
 
 .contact-card.urgent {
@@ -554,6 +647,7 @@ textarea {
 }
 
 #btn-save-contact,
+#btn-print-contact,
 #btn-exit-modal {
     min-height: 48px;
 }
@@ -580,6 +674,112 @@ textarea {
     font-weight: bold;
     border-radius: 4px;
     cursor: pointer;
+}
+
+#btn-print-contact {
+    flex: 1;
+    background: #004080;
+    color: white;
+    padding: 12px;
+    border: none;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#btn-print-contact[hidden] {
+    display: none;
+}
+
+#print-container {
+    display: none;
+}
+
+@page {
+    margin: 16mm;
+}
+
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+
+    #print-container,
+    #print-container * {
+        visibility: visible !important;
+    }
+
+    #print-container {
+        display: block !important;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        color: #111;
+        background: #fff;
+        font-family: Arial, sans-serif;
+        font-size: 10pt;
+    }
+
+    #print-container h1 {
+        margin: 0 0 4pt;
+        font-size: 20pt;
+    }
+
+    .print-subtitle {
+        margin: 0 0 16pt;
+        color: #444;
+        font-size: 9pt;
+    }
+
+    .print-location-group {
+        margin: 0 0 14pt;
+    }
+
+    .print-location-group h2 {
+        margin: 12pt 0 6pt;
+        padding-bottom: 3pt;
+        border-bottom: 1px solid #555;
+        font-size: 13pt;
+        break-after: avoid;
+    }
+
+    .print-contact-entry,
+    .print-single-contact {
+        break-inside: avoid;
+        padding: 6pt 0 8pt;
+    }
+
+    .print-contact-entry {
+        border-bottom: 1px solid #bbb;
+    }
+
+    .print-contact-entry h3,
+    .print-single-contact h2,
+    .print-notes h3 {
+        margin: 0 0 4pt;
+        font-size: 11pt;
+    }
+
+    .print-contact-id,
+    .print-contact-address,
+    .print-note-date,
+    .print-single-location {
+        margin: 2pt 0;
+        color: #333;
+        font-size: 9pt;
+    }
+
+    .print-note,
+    .print-note-text {
+        margin: 3pt 0 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .print-notes {
+        margin-top: 12pt;
+    }
 }
 
 @media (max-width: 600px) {
