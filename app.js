@@ -1162,7 +1162,7 @@ const initializeApp = async () => {
   let currentViewId = "contacts-view";
   const navButtonsConfig = [
     { id: "contacts-view", icon: "👥" },
-    { id: "map-view", icon: "🗺️" },
+    { id: "map-view", icon: "📍", label: "Map" },
     { id: "settings-view", icon: "⚙️" },
   ];
 
@@ -1173,7 +1173,18 @@ const initializeApp = async () => {
       if (btnConfig.id !== currentViewId) {
         const btn = document.createElement("button");
         btn.className = "nav-btn";
-        btn.textContent = btnConfig.icon;
+        const icon = document.createElement("span");
+        icon.className = "nav-btn-icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = btnConfig.icon;
+        btn.appendChild(icon);
+        if (btnConfig.label) {
+          btn.classList.add("nav-btn-labeled");
+          const label = document.createElement("span");
+          label.className = "nav-btn-label";
+          label.textContent = btnConfig.label;
+          btn.appendChild(label);
+        }
         btn.title = btnConfig.id.replace("-view", "");
         btn.addEventListener("click", () => {
           currentViewId = btnConfig.id;
