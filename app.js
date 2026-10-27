@@ -1380,6 +1380,8 @@ const initializeApp = async () => {
   const modal = document.getElementById("contact-modal");
   const btnOpenModal = document.getElementById("btn-open-modal");
   const btnFindAddress = document.getElementById("btn-find-address");
+  const btnFindCrossStreet = document.getElementById("btn-find-cross-street");
+  const crossStreetSearch = document.getElementById("cross-street-search");
   const closeModal = document.getElementById("close-modal");
   const btnExitModal = document.getElementById("btn-exit-modal");
   const contactForm = document.getElementById("contact-form");
@@ -1399,6 +1401,9 @@ const initializeApp = async () => {
       location[1] > 180
     ) {
       throw new Error("The pin coordinates are outside the valid range.");
+    }
+    if (!pickerMap) {
+      throw new Error("The contact map is not ready yet.");
     }
     document.getElementById("contact-lat").value = location[0].toFixed(6);
     document.getElementById("contact-lng").value = location[1].toFixed(6);
@@ -1459,6 +1464,12 @@ const initializeApp = async () => {
   };
 
   const findAddressOnMap = async () => {
+    if (!pickerMap) {
+      setLocationStatus(
+        "The map is still loading. Please try again in a moment.",
+      );
+      return;
+    }
     const street = document.getElementById("contact-address").value.trim();
     const city = document.getElementById("contact-city-select").value;
     const state = document.getElementById("contact-state").value.trim();
@@ -1470,27 +1481,57 @@ const initializeApp = async () => {
     }
 
     const query = [street, city, state, "USA"].filter(Boolean).join(", ");
+    const cityQuery = city
+      ? [city, state, "USA"].filter(Boolean).join(", ")
+      : "";
     btnFindAddress.disabled = true;
     setLocationStatus("Looking up the entered address...");
     try {
-      const url = new URL("https://nominatim.openstreetmap.org/search");
-      url.search = new URLSearchParams({
-        q: query,
-        format: "jsonv2",
-        limit: "1",
-      }).toString();
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Address lookup failed with status ${response.status}.`);
-      }
-      const results = await response.json();
-      if (results.length === 0) {
+      const lookup = async (searchQuery) => {
+        const url = new URL("https://nominatim.openstreetmap.org/search");
+        url.search = new URLSearchParams({
+          q: searchQuery,
+          format: "jsonv2",
+          limit: "1",
+        }).toString();
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(
+            `Address lookup failed with status ${response.status}.`,
+          );
+        }
+        return response.json();
+      };
+      const addressResults = await lookup(query);
+      if (addressResults.length === 0 && cityQuery) {
+        crossStreetSearch.hidden = false;
         setLocationStatus(
-          "No matching address was found. Check it or place the pin manually.",
+          "Couldn't find the street address. Looking for the city to place an approximate pin...",
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const cityResults = await lookup(cityQuery);
+        if (cityResults.length > 0) {
+          setPickerLocation(cityResults[0].lat, cityResults[0].lon, 13);
+          setLocationStatus(
+            `Couldn't find the street address. The map is centered near ${city}${state ? `, ${state}` : ""}. Enter a nearby cross-street below to narrow the pin, or adjust it on the map.`,
+          );
+          return;
+        }
+        setLocationStatus(
+          `Couldn't find the street address or locate ${city}${state ? `, ${state}` : ""}. Enter a nearby cross-street below to try a more specific search, or place the pin on the map.`,
         );
         return;
       }
-      setPickerLocation(results[0].lat, results[0].lon);
+      if (addressResults.length === 0) {
+        crossStreetSearch.hidden = false;
+        setLocationStatus(
+          "Couldn't find the street address. Choose a city, enter a nearby cross-street, or place the pin on the map.",
+        );
+        return;
+      }
+      crossStreetSearch.hidden = true;
+      document.getElementById("contact-cross-street").value = "";
+      setPickerLocation(addressResults[0].lat, addressResults[0].lon);
       setLocationStatus(
         "Pin placed from the address lookup. Check its position and move it on the map if needed.",
       );
@@ -1501,6 +1542,59 @@ const initializeApp = async () => {
       );
     } finally {
       btnFindAddress.disabled = false;
+    }
+  };
+
+  const findCrossStreetOnMap = async () => {
+    if (!pickerMap) {
+      setLocationStatus(
+        "The map is still loading. Please try again in a moment.",
+      );
+      return;
+    }
+    const crossStreet = document
+      .getElementById("contact-cross-street")
+      .value.trim();
+    const city = document.getElementById("contact-city-select").value;
+    const state = document.getElementById("contact-state").value.trim();
+    if (!crossStreet) {
+      setLocationStatus("Enter a nearby cross-street or intersection first.");
+      return;
+    }
+
+    btnFindCrossStreet.disabled = true;
+    setLocationStatus("Searching near the cross-street...");
+    try {
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.search = new URLSearchParams({
+        q: [crossStreet, city, state, "USA"].filter(Boolean).join(", "),
+        format: "jsonv2",
+        limit: "1",
+      }).toString();
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(
+          `Cross-street lookup failed with status ${response.status}.`,
+        );
+      }
+      const results = await response.json();
+      if (results.length === 0) {
+        setLocationStatus(
+          "Couldn't find that cross-street. Check the names or move the city-centered pin on the map.",
+        );
+        return;
+      }
+      setPickerLocation(results[0].lat, results[0].lon, 16);
+      setLocationStatus(
+        "Pin placed near the cross-street search. Check its position and adjust it if needed.",
+      );
+    } catch (error) {
+      console.error("Unable to find cross-street on map:", error);
+      setLocationStatus(
+        "Cross-street lookup failed. Check your connection, then try again or adjust the pin on the map.",
+      );
+    } finally {
+      btnFindCrossStreet.disabled = false;
     }
   };
 
@@ -1594,6 +1688,8 @@ const initializeApp = async () => {
   btnOpenModal.addEventListener("click", async () => {
     contactForm.reset();
     setLocationStatus("");
+    crossStreetSearch.hidden = true;
+    document.getElementById("contact-cross-street").value = "";
     document.getElementById("contact-id").value = "";
     document.getElementById("contact-record-id").hidden = true;
     printContactButton.hidden = true;
@@ -1614,6 +1710,7 @@ const initializeApp = async () => {
   });
 
   btnFindAddress.addEventListener("click", findAddressOnMap);
+  btnFindCrossStreet.addEventListener("click", findCrossStreetOnMap);
 
   document
     .getElementById("contact-lat")
@@ -1626,6 +1723,12 @@ const initializeApp = async () => {
   btnExitModal.addEventListener("click", attemptExit);
 
   document.getElementById("btn-gps").addEventListener("click", () => {
+    if (!pickerMap) {
+      setLocationStatus(
+        "The map is still loading. Please try again in a moment.",
+      );
+      return;
+    }
     if (!navigator.geolocation) {
       setLocationStatus("Device location is not supported by this browser.");
       return;
@@ -2184,18 +2287,42 @@ const initializeApp = async () => {
           iconAnchor: [11, 11],
         });
 
-        const marker = L.marker([latNum, lngNum], { icon: svgIcon }).addTo(map);
-
+        const marker = L.marker([latNum, lngNum], {
+          icon: svgIcon,
+          draggable: true,
+        }).addTo(map);
         const popupContent = `
                     <div>
                         <b>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</b><br>
                         ${escapeHtml(contact.address)}<br>
                         Location: ${escapeHtml(getContactLocationSummary(contact))}<br>
                         Days Since Contact: ${status.days} (${status.label})<br><br>
+                        Drag this pin to move it. The new location saves automatically.<br><br>
                         <button onclick="editContact(${contact.id})" style="background: #004080; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;">✏️ Edit Details</button>
                     </div>
                 `;
         marker.bindPopup(popupContent);
+        marker.on("dragend", async () => {
+          const previousCoordinates = { lat: contact.lat, lng: contact.lng };
+          const previousCenter = map.getCenter();
+          const previousZoom = map.getZoom();
+          const movedTo = marker.getLatLng();
+          contact.lat = movedTo.lat.toFixed(6);
+          contact.lng = movedTo.lng.toFixed(6);
+          const status = document.getElementById("map-location-status");
+          status.textContent = "Saving moved pin...";
+          if (await saveContacts()) {
+            map.setView(previousCenter, previousZoom);
+            status.textContent = "Pin moved and saved.";
+          } else {
+            contact.lat = previousCoordinates.lat;
+            contact.lng = previousCoordinates.lng;
+            renderMapMarkers();
+            map.setView(previousCenter, previousZoom);
+            status.textContent =
+              "Could not save the moved pin. The previous location was restored.";
+          }
+        });
 
         mapMarkers.push(marker);
         validMarkers.push([latNum, lngNum]);
@@ -2250,6 +2377,8 @@ const initializeApp = async () => {
   window.editContact = async (id) => {
     const contact = contacts.find((c) => c.id == id);
     if (!contact) return;
+    crossStreetSearch.hidden = true;
+    document.getElementById("contact-cross-street").value = "";
     document.getElementById("contact-id").value = contact.id;
     printContactButton.hidden = false;
     printContactButton.disabled = true;

@@ -190,11 +190,30 @@ main {
 #map-view {
     padding: 0;
     height: calc(100vh - 140px);
+    position: relative;
 }
 
 #map {
     height: 100%;
     width: 100%;
+}
+
+#map-location-status {
+    position: absolute;
+    z-index: 1000;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgb(255 255 255 / 92%);
+    color: #333;
+    font-size: 0.9rem;
+    text-align: center;
+    box-shadow: 0 1px 5px rgb(0 0 0 / 25%);
+    pointer-events: none;
 }
 
 #btn-open-modal {
@@ -623,6 +642,26 @@ textarea {
     margin: 0;
     color: #333;
     font-size: 0.9rem;
+}
+
+#cross-street-search {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+#cross-street-search[hidden] {
+    display: none;
+}
+
+#btn-find-cross-street {
+    min-height: 44px;
+    padding: 8px 12px;
+    background: #004080;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
 #btn-gps {

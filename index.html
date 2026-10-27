@@ -111,6 +111,9 @@
         <!-- Map View -->
         <div id="map-view" class="view">
           <div id="map"></div>
+          <p id="map-location-status" role="status" aria-live="polite">
+            Drag a pin to move it; changes save automatically.
+          </p>
         </div>
 
         <!-- Settings View -->
@@ -455,10 +458,25 @@
               </button>
             </div>
             <small>
-              Address lookup sends the entered address, city, and state to
-              OpenStreetMap Nominatim. Device location uses this device's
-              location and may be approximate. You can always adjust the pin.
+              Address and cross-street lookups send the entered location text
+              to OpenStreetMap Nominatim only when you choose a lookup button.
+              Device location uses this device's location and may be
+              approximate. You can always adjust the pin.
             </small>
+            <div id="cross-street-search" hidden>
+              <label for="contact-cross-street">
+                Address not found? Enter a nearby cross-street or intersection:
+              </label>
+              <input
+                type="text"
+                id="contact-cross-street"
+                placeholder="e.g., Stonewood Rd & Newcastle Rd"
+                autocomplete="off"
+              />
+              <button type="button" id="btn-find-cross-street">
+                Search Near Cross-Street
+              </button>
+            </div>
             <p id="location-status" role="status" aria-live="polite"></p>
 
             <!-- Interactive Map Pin Picker inside Modal -->

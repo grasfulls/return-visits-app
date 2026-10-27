@@ -75,16 +75,19 @@ there are no logs:
 
 Map coordinates are optional. In the contact form, choose **Set Pin from
 Entered Address** to look up the entered address, city, and state, or **Use
-Device Location** to request the device's current location. Device location
-requires browser permission and its accuracy can vary. Whichever method you
-choose, refine the pin by tapping the map, dragging the pin, or editing the
-coordinates. The map shows pins only for contacts matching the current search
-and filters.
+Device Location** to request the device's current location. If the street
+address is not found, the app tries to center the map near the selected city.
+You can then enter a nearby cross-street or intersection and search again to
+place the pin closer, rather than dragging it a long distance. Device location
+requires browser permission and its accuracy can vary. Refine a pin in the
+contact form by tapping the map, dragging the pin, or editing the coordinates.
+Pins can also be dragged in Map view; those changes save automatically. The
+map shows pins only for contacts matching the current search and filters.
 
-Address text is sent to OpenStreetMap Nominatim only when you choose **Find
-Address on Map**. Leaflet map assets, map tiles, and address searches require
-internet access. The app shell may work offline after it has been cached, but
-the map and address search are not available offline.
+Address and cross-street text are sent to OpenStreetMap Nominatim only when
+you choose the corresponding search button. Leaflet map assets, map tiles, and
+address searches require internet access. The app shell may work offline after
+it has been cached, but the map and address search are not available offline.
 
 ## Full backup and restore
 
