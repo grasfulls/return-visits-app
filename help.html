@@ -166,6 +166,15 @@
         Step-by-step instructions are in
         <a href="#backup">Protect your information and make a backup</a>.
       </p>
+      <p class="notice">
+        If you have contacts in more than one browser or app copy, choose one
+        copy to keep before deleting anything. Full backups replace the
+        destination data; they do not merge copies. To combine several
+        collections, use one copy as the base and import individual contacts
+        from the other copies. Verify the combined records, then make a fresh
+        backup before clearing unused copies. See
+        <a href="#consolidate">Consolidate copies and remove unused data</a>.
+      </p>
 
       <h2>First time: create your passphrase</h2>
       <ul>
@@ -350,7 +359,65 @@
         </li>
       </ul>
 
+      <h2 id="consolidate">Consolidate copies and remove unused data</h2>
+      <p>
+        If Safari, Chrome, and a Home Screen app each have contacts, they are
+        separate local copies and do not sync. For regular phone use, choose
+        the Home Screen app as the one copy to keep. A full backup restore
+        replaces all contacts and settings in the destination; it does not
+        merge two full backups.
+      </p>
+      <ol>
+        <li>
+          Decide which copy will be your permanent one. If it already contains
+          contacts you want to keep, leave it as the destination and import
+          other contacts into it individually. If you choose a different base
+          copy, remember that restoring its full backup will replace the
+          destination's current contacts and settings.
+        </li>
+        <li>
+          Before changing anything, export an encrypted full backup from every
+          copy that contains information you may need. Keep these backups until
+          the consolidation is complete.
+        </li>
+        <li>
+          Use the full backup from your chosen base copy to populate the
+          destination, if needed. From every other copy, export contacts one at
+          a time using each contact card's download/export button, then import
+          each encrypted contact file into the destination from
+          <strong>Settings → Share a Contact</strong>. Individual contact
+          imports add records; they do not replace the collection. This can
+          take time if a source contains many contacts.
+        </li>
+        <li>
+          Review the destination for missing or duplicate contacts and confirm
+          important visit notes are present. Contact imports may create a
+          duplicate if the same person is already in the destination.
+        </li>
+        <li>
+          Export a new encrypted full backup from the destination. Keep it
+          somewhere safe and confirm you know its passphrase before deleting
+          any source copy.
+        </li>
+        <li>
+          Only after verification, remove the unused copies using
+          <a href="#remove-data">the removal instructions below</a>. Clear
+          data only for a source copy you no longer need. If the browser's
+          controls do not make it clear which copy will be removed, do not
+          clear it until you have confirmed the surviving copy still opens
+          with all your contacts.
+        </li>
+      </ol>
+      <p class="notice">
+        Full backups cannot be merged directly. If you need to bring over
+        contacts from a second full backup, restore that backup only if you are
+        ready to replace the destination, or import its contacts individually.
+        Do not delete source data or backup files until the destination has
+        been checked and backed up.
+      </p>
+
       <h2>Stop using the app and remove its saved data</h2>
+      <h3 id="remove-data">Remove unused app data</h3>
       <p class="notice">
         Uninstalling the Home Screen app alone may not remove its browser-stored
         data. To remove the app's local contacts and settings, clear the site

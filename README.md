@@ -103,6 +103,13 @@ screen; the restored backup’s passphrase becomes the passphrase for that
 device. Older unencrypted full-app backups are supported and encrypted when
 imported, with a warning.
 
+Full backups cannot be merged directly. To combine several browser or app
+copies, choose one as the base and import individual contacts from the other
+copies using **Settings → Share a Contact**. Check for missing or duplicate
+contacts, create a fresh backup of the combined destination, then clear unused
+source data. See the [User Guide](./help.html) for a step-by-step consolidation
+and data-removal checklist.
+
 The app prompts for a backup about once a month after initial setup, and only
 when the device has at least one contact. It does not create or upload backups
 automatically.
