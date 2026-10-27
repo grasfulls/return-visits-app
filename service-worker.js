@@ -1,7 +1,8 @@
-const CACHE_NAME = "return-visits-shell-v7";
+const CACHE_NAME = "return-visits-shell-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
+  "./help.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",

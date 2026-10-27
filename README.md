@@ -103,6 +103,11 @@ The app is published on GitHub Pages:
 
 **https://grasfulls.github.io/return-visits-app/**
 
+The plain-language user guide is available from **Settings → Read the
+plain-language User Guide** or directly at
+**https://grasfulls.github.io/return-visits-app/help.html**. It is an
+accessible, responsive HTML page that can be read in a standard web browser.
+
 PWA installation is optional. On iPhone, open the site in Safari, tap **Share**,
 then **Add to Home Screen**. On Android, open it in Chrome and choose **Install
 app** or **Add to Home screen**.

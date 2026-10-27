@@ -832,3 +832,19 @@ textarea {
     font-size: 12px;
     line-height: 1;
 }
+
+.user-guide-link {
+    display: inline-block;
+    padding: 10px 14px;
+    border: 1px solid #004080;
+    border-radius: 4px;
+    color: #004080;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.user-guide-link:hover,
+.user-guide-link:focus-visible {
+    background: #eaf3fb;
+    text-decoration: underline;
+}

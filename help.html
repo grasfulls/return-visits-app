@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Plain-language instructions for using the Return Visits app."
+    />
+    <title>Return Visits App - User Guide</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #202a35;
+        background: #f4f7fa;
+        line-height: 1.6;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      header {
+        padding: 2rem 1rem;
+        color: white;
+        background: #004080;
+      }
+
+      header > div,
+      main {
+        width: min(100% - 2rem, 820px);
+        margin: 0 auto;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: clamp(1.8rem, 5vw, 2.5rem);
+        line-height: 1.2;
+      }
+
+      header p {
+        margin: 0.5rem 0 0;
+        font-size: 1.1rem;
+      }
+
+      main {
+        margin-top: 1.5rem;
+        margin-bottom: 3rem;
+        padding: clamp(1rem, 4vw, 2rem);
+        background: white;
+        border: 1px solid #d5dee8;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgb(20 45 70 / 8%);
+      }
+
+      h2 {
+        margin-top: 2rem;
+        padding-bottom: 0.25rem;
+        color: #004080;
+        border-bottom: 1px solid #d5dee8;
+        font-size: 1.35rem;
+      }
+
+      h2:first-of-type {
+        margin-top: 0;
+      }
+
+      a {
+        color: #004080;
+        text-underline-offset: 0.15em;
+      }
+
+      a:focus-visible {
+        outline: 3px solid #d97706;
+        outline-offset: 3px;
+      }
+
+      .notice {
+        padding: 1rem;
+        border-left: 4px solid #b45309;
+        background: #fff7ed;
+      }
+
+      li + li {
+        margin-top: 0.45rem;
+      }
+
+      footer {
+        padding: 0 1rem 2rem;
+        text-align: center;
+      }
+
+      @media print {
+        :root {
+          background: white;
+        }
+
+        header {
+          padding: 0 0 1rem;
+          color: #202a35;
+          background: white;
+        }
+
+        header > div,
+        main {
+          width: 100%;
+        }
+
+        main {
+          margin: 0;
+          padding: 0;
+          border: 0;
+          box-shadow: none;
+        }
+
+        a {
+          color: inherit;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Return Visits App</h1>
+        <p>A plain-language guide for everyday use</p>
+      </div>
+    </header>
+
+    <main>
+      <h2>What this app does</h2>
+      <p>
+        Return Visits helps you keep contact details and visit notes organized,
+        find contacts by name or location, view contacts on a map, and print
+        contact information.
+      </p>
+
+      <h2>Important: your information stays on this device</h2>
+      <p>
+        Contacts and settings are stored in the browser on the device where you
+        use the app. They do not automatically sync to your other devices or
+        browsers.
+      </p>
+      <p class="notice">
+        Before changing devices or browsers, clearing browser data, or removing
+        and reinstalling the app, make an encrypted backup. Local records may
+        become unavailable after these changes. To use your contacts again,
+        restore the backup on the device where you reinstall or open the app.
+        Step-by-step instructions are in
+        <a href="#backup">Protect your information and make a backup</a>.
+      </p>
+
+      <h2>First time: create your passphrase</h2>
+      <ul>
+        <li>
+          The first time you open the app on a device and browser, create a
+          passphrase with at least 8 characters and enter it again to confirm.
+        </li>
+        <li>Use that same passphrase to unlock the app on that device and browser.</li>
+        <li>
+          Keep the passphrase somewhere safe. There is no passphrase recovery.
+          If you forget it, the app cannot unlock that device's encrypted
+          contacts.
+        </li>
+        <li>
+          Your passphrase unlocks the encrypted data on this device; it does not
+          sync or restore contacts by itself. To recover your contacts after
+          reinstalling the app or to move them to another device, you also need
+          an encrypted backup. See
+          <a href="#backup">Protect your information and make a backup</a>.
+        </li>
+      </ul>
+
+      <h2>Add and organize contacts</h2>
+      <ul>
+        <li>
+          Choose <strong>Add Contact</strong>, enter a first name, and add any
+          other details you have. A first name is required; other contact
+          details can be completed later.
+        </li>
+        <li>
+          A contact can have one City, one Region within that City, and one Area
+          within that Region. Region becomes available after choosing a City;
+          Area becomes available after choosing a Region. These location details
+          are optional.
+        </li>
+        <li>
+          Different contacts may have the same name. The app assigns each
+          contact a permanent ID to tell them apart.
+        </li>
+        <li>
+          Choose <strong>Save</strong> to keep your changes. To edit an existing
+          contact, use the pencil/edit action on its contact card.
+        </li>
+        <li>
+          Use the <strong>Map</strong> button in the bottom navigation to view
+          contacts that have map coordinates. To add or adjust a pin, edit a
+          contact and use the map in its form, device GPS (if permitted), or
+          <strong>Find Address on Map</strong>.
+        </li>
+      </ul>
+      <p>
+        Map tiles and address lookup need an internet connection. If you choose
+        <strong>Find Address on Map</strong>, the address text is sent to
+        OpenStreetMap Nominatim to find a location. The app explains this beside
+        the address-search button.
+      </p>
+
+      <h2>Find contacts and record visits</h2>
+      <ul>
+        <li>Use the search box to search names, addresses, or visit notes.</li>
+        <li>
+          Narrow the list with urgency, City, Region, or Area filters. Sort by
+          newest, oldest, or name. Clear filters to see the full contact list
+          again.
+        </li>
+        <li>
+          Add a visit note from the contact card or while editing a contact.
+          Existing notes can be edited or deleted from the contact editor.
+        </li>
+        <li>
+          Urgency is based on the most recent visit (or the contact's creation
+          date if there are no visit notes): Normal is 0-7 days, Urgent is 8-14
+          days, and Immediate is 15 or more days.
+        </li>
+      </ul>
+
+      <h2>Print contacts</h2>
+      <ul>
+        <li>
+          On the contact list, choose <strong>Print Visible Contacts</strong> to
+          print the contacts currently shown. Search terms and filters determine
+          what is included. The app confirms the number of contacts before
+          printing.
+        </li>
+        <li>
+          A list print includes each contact once, grouped under its most
+          specific location, and includes only its latest note.
+        </li>
+        <li>
+          To print one contact, open that saved contact and choose
+          <strong>Print</strong>. Choose the most recent note only (the default)
+          or all notes.
+        </li>
+        <li>
+          Save contact edits before printing. If the Print button is unavailable
+          while editing, save your changes first. Printing opens your device or
+          browser's print options; saving as a PDF may be available there.
+        </li>
+      </ul>
+
+      <h2 id="backup">Protect your information and make a backup</h2>
+      <p>
+        Your contacts and settings are encrypted and stored in this device's
+        browser. They are not uploaded to an account and are not automatically
+        backed up. Clearing browser data, losing the device, or forgetting the
+        passphrase can make the local records unavailable. Make encrypted
+        backups regularly and keep them somewhere safe.
+      </p>
+      <ul>
+        <li>
+          In <strong>Settings</strong>, choose <strong>Export Data Backup</strong>.
+          The encrypted backup includes all contacts and settings and is
+          downloaded by your browser to its usual Downloads location.
+        </li>
+        <li>
+          To move your full collection to a new device, open the app there and
+          choose <strong>Choose Backup to Restore</strong> on the first screen.
+          Select the backup and enter the passphrase used when it was created.
+        </li>
+        <li>
+          Restoring a full backup replaces the contacts and settings currently
+          on that device. Check the confirmation carefully before continuing.
+        </li>
+        <li>
+          To share one contact, use that contact card's export/download action.
+          This creates an encrypted contact file. Give the recipient the file
+          and its separate sharing passphrase through different channels.
+          Import it from Settings; it adds that contact without replacing the
+          recipient's other contacts.
+        </li>
+      </ul>
+
+      <h2>Use the app on another device</h2>
+      <p>
+        On another device, open the
+        <a href="https://grasfulls.github.io/return-visits-app/">
+          Return Visits app
+        </a>
+        in a web browser. Your contacts will not appear automatically; restore
+        an encrypted backup using the instructions above. On a phone, you can
+        optionally add the app to your Home Screen: in Safari on iPhone, use
+        Share then Add to Home Screen; in Chrome on Android, choose Install app
+        or Add to Home screen.
+      </p>
+    </main>
+
+    <footer>
+      <a href="./">Return to the Return Visits app</a>
+    </footer>
+  </body>
+</html>
