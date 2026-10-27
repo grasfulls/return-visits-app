@@ -7,6 +7,64 @@ const DEFAULT_SETTINGS = {
 };
 const ENCRYPTION_ITERATIONS = 310000;
 const ENCRYPTION_META_KEY = "encryption-meta";
+const APP_UPDATE_PENDING_KEY = "return_visits_app_update_pending";
+let appUpdateAvailable = false;
+let appUpdatePromptDismissed = false;
+let appUpdatePromptTimer = null;
+let getAppRefreshBlockMessage = () => "";
+let appUpdatePromptHandler = () => {
+  const dialog = document.getElementById("app-update-dialog");
+  if (!appUpdateAvailable || appUpdatePromptDismissed || dialog.open) return;
+  appUpdatePromptTimer = window.setTimeout(() => {
+    appUpdatePromptTimer = null;
+    if (
+      appUpdateAvailable &&
+      !appUpdatePromptDismissed &&
+      !dialog.open &&
+      !document.querySelector("dialog[open]")
+    ) {
+      dialog.showModal();
+    }
+  }, 750);
+};
+document
+  .getElementById("btn-apply-app-update")
+  .addEventListener("click", () => {
+    const blockMessage = getAppRefreshBlockMessage();
+    if (blockMessage) {
+      document.getElementById("app-update-dialog").close();
+      document.getElementById("app-update-status").textContent = blockMessage;
+      return;
+    }
+    try {
+      localStorage.removeItem(APP_UPDATE_PENDING_KEY);
+    } catch (error) {
+      console.error("Unable to clear the pending app update status:", error);
+    }
+    window.location.reload();
+  });
+document
+  .getElementById("btn-later-app-update")
+  .addEventListener("click", () => {
+    appUpdatePromptDismissed = true;
+    document.getElementById("app-update-dialog").close();
+  });
+try {
+  appUpdateAvailable =
+    localStorage.getItem(APP_UPDATE_PENDING_KEY) === "true";
+} catch (error) {
+  console.error("Unable to read the pending app update status:", error);
+}
+document.addEventListener("app-update-available", () => {
+  appUpdateAvailable = true;
+  try {
+    localStorage.setItem(APP_UPDATE_PENDING_KEY, "true");
+  } catch (error) {
+    console.error("Unable to save the pending app update status:", error);
+  }
+  appUpdatePromptHandler?.();
+});
+if (appUpdateAvailable) appUpdatePromptHandler();
 const US_STATE_ABBREVIATIONS = {
   alabama: "AL",
   alaska: "AK",
@@ -2208,6 +2266,15 @@ const initializeApp = async () => {
           btn.appendChild(label);
         }
         btn.title = btnConfig.id.replace("-view", "");
+        if (btnConfig.id === "settings-view" && appUpdateAvailable) {
+          btn.title = "Settings — app update available";
+          btn.setAttribute("aria-label", "Settings, app update available");
+          const badge = document.createElement("span");
+          badge.className = "nav-update-badge";
+          badge.setAttribute("aria-hidden", "true");
+          badge.textContent = "!";
+          icon.appendChild(badge);
+        }
         btn.addEventListener("click", () => {
           currentViewId = btnConfig.id;
           document
@@ -2215,6 +2282,10 @@ const initializeApp = async () => {
             .forEach((v) => v.classList.remove("active"));
           document.getElementById(currentViewId).classList.add("active");
           renderBottomNav();
+          if (currentViewId === "settings-view" && appUpdateAvailable) {
+            appUpdatePromptDismissed = false;
+            appUpdatePromptHandler?.();
+          }
 
           if (currentViewId === "map-view") {
             if (!map) {
@@ -2701,38 +2772,73 @@ const initializeApp = async () => {
   contactForm.addEventListener("input", updatePrintContactAvailability);
   contactForm.addEventListener("change", updatePrintContactAvailability);
 
+  const appUpdateDialog = document.getElementById("app-update-dialog");
+  const appUpdateStatus = document.getElementById("app-update-status");
+  getAppRefreshBlockMessage = () => {
+    const contactEditorOpen = getComputedStyle(modal).display !== "none";
+    const hasUnsavedSettingsChanges =
+      normalizeUsState(settingStateInput.value) !== settings.state ||
+      toTitleCase(settingDefaultCityInput.value) !== settings.defaultCity;
+    const hasPendingSettingsInput = Array.from(
+      document.querySelectorAll(
+        '#settings-view input:not(#setting-state):not(#setting-default-city)',
+      ),
+    ).some((input) =>
+      input.type === "file" ? input.files.length > 0 : input.value.trim(),
+    );
+    if (contactEditorOpen) {
+      return "Save or exit the open contact before refreshing the app. Your saved contacts will remain on this device.";
+    }
+    if (hasUnsavedSettingsChanges || hasPendingSettingsInput) {
+      return "Finish or save your current edits in Settings before refreshing the app.";
+    }
+    return "";
+  };
+  const showAppUpdatePrompt = () => {
+    renderBottomNav();
+    document.getElementById("app-update-notice").hidden = false;
+    document.getElementById("btn-check-updates").textContent = "Update Now";
+    if (getAppRefreshBlockMessage()) {
+      if (currentViewId === "settings-view") {
+        appUpdateStatus.textContent =
+          "An app update is ready. Save or finish your edits before refreshing.";
+      }
+      return;
+    }
+    appUpdateStatus.textContent = "";
+    if (appUpdatePromptDismissed) return;
+    if (appUpdatePromptTimer !== null) {
+      window.clearTimeout(appUpdatePromptTimer);
+    }
+    appUpdatePromptTimer = window.setTimeout(() => {
+      appUpdatePromptTimer = null;
+      if (
+        appUpdateAvailable &&
+        !appUpdatePromptDismissed &&
+        !appUpdateDialog.open &&
+        !getAppRefreshBlockMessage() &&
+        !document.querySelector("dialog[open]")
+      ) {
+        appUpdateDialog.showModal();
+      }
+    }, 750);
+  };
+  appUpdatePromptHandler = showAppUpdatePrompt;
+  if (appUpdateAvailable) showAppUpdatePrompt();
+
   document
     .getElementById("btn-check-updates")
     .addEventListener("click", async (event) => {
       const button = event.currentTarget;
-      const status = document.getElementById("app-update-status");
+      const status = appUpdateStatus;
       if (!navigator.onLine) {
         status.textContent =
           "Connect to the internet before checking for app updates.";
         return;
       }
-      const contactEditorOpen = getComputedStyle(modal).display !== "none";
-      const hasUnsavedContactChanges =
-        contactEditorOpen &&
-        captureFormState() !== initialFormState;
-      const hasUnsavedSettingsChanges =
-        normalizeUsState(settingStateInput.value) !== settings.state ||
-        toTitleCase(settingDefaultCityInput.value) !== settings.defaultCity;
-      const hasPendingSettingsInput = Array.from(
-        document.querySelectorAll(
-          '#settings-view input:not(#setting-state):not(#setting-default-city)',
-        ),
-      ).some((input) =>
-        input.type === "file" ? input.files.length > 0 : input.value.trim(),
-      );
-      if (
-        getComputedStyle(modal).display !== "none" ||
-        hasUnsavedSettingsChanges ||
-        hasPendingSettingsInput
-      ) {
-        status.textContent = contactEditorOpen
-          ? "Save or exit the open contact before refreshing the app. Your saved contacts will remain on this device."
-          : "Finish or save your current edits in Settings before refreshing the app.";
+      const blockMessage = getAppRefreshBlockMessage();
+      if (blockMessage) {
+        status.textContent = blockMessage;
         return;
       }
       if (!("serviceWorker" in navigator)) {
@@ -2751,6 +2857,11 @@ const initializeApp = async () => {
         await registration.update();
         status.textContent =
           "Update check complete. Refreshing the app now; saved contacts are kept on this device.";
+        try {
+          localStorage.removeItem(APP_UPDATE_PENDING_KEY);
+        } catch (error) {
+          console.error("Unable to clear the pending app update status:", error);
+        }
         window.location.reload();
       } catch (error) {
         console.error("Unable to check for app updates:", error);

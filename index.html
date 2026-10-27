@@ -173,9 +173,14 @@
             </p>
             <h3>App updates</h3>
             <p>
-              Connect to the internet, then check for updates to refresh the app.
-              Save or exit any open edits first. After it reloads, unlock with
-              your passphrase; saved contacts remain on this device.
+              The app checks for updates when it opens. If an update is ready,
+              you can install it now or later. You can also check manually
+              while online. Save or finish any open edits before refreshing;
+              after it reloads, unlock with your passphrase. Saved contacts
+              remain on this device.
+            </p>
+            <p id="app-update-notice" role="status" aria-live="polite" hidden>
+              An app update is ready. Choose Update Now to install it.
             </p>
             <button type="button" id="btn-check-updates">
               Check for Updates &amp; Refresh
@@ -710,6 +715,19 @@
       </form>
     </dialog>
 
+    <dialog id="app-update-dialog" aria-labelledby="app-update-title">
+      <h2 id="app-update-title">App update available</h2>
+      <p>
+        A newer version is ready. Update now to refresh the app. Your saved
+        contacts stay on this device; after refreshing, unlock with your
+        passphrase.
+      </p>
+      <div class="restore-dialog-actions">
+        <button type="button" id="btn-apply-app-update">Update now</button>
+        <button type="button" id="btn-later-app-update">Later</button>
+      </div>
+    </dialog>
+
     <section id="print-container" hidden aria-hidden="true"></section>
 
     <!-- Leaflet JS -->
@@ -718,11 +736,48 @@
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("./service-worker.js", { updateViaCache: "none" })
-            .catch((error) =>
-              console.error("Service worker registration failed:", error),
-            );
+          const signalUpdateAvailable = () =>
+            document.dispatchEvent(new Event("app-update-available"));
+          const observeUpdate = (previousWorker, worker) => {
+            if (!worker || !previousWorker || worker === previousWorker) return;
+            const signalIfActivated = () => {
+              if (worker.state === "activated") signalUpdateAvailable();
+            };
+            worker.addEventListener("statechange", signalIfActivated);
+            signalIfActivated();
+          };
+
+          (async () => {
+            try {
+              const previousRegistration =
+                await navigator.serviceWorker.getRegistration();
+              const previousWorker =
+                navigator.serviceWorker.controller ||
+                previousRegistration?.active ||
+                null;
+              const registration =
+                await navigator.serviceWorker.register(
+                  "./service-worker.js",
+                  { updateViaCache: "none" },
+                );
+              registration.addEventListener("updatefound", () =>
+                observeUpdate(previousWorker, registration.installing),
+              );
+              if (registration.installing) {
+                observeUpdate(previousWorker, registration.installing);
+              }
+              if (
+                previousWorker &&
+                registration.active &&
+                registration.active !== previousWorker
+              ) {
+                signalUpdateAvailable();
+              }
+              if (navigator.onLine) await registration.update();
+            } catch (error) {
+              console.error("Service worker update check failed:", error);
+            }
+          })();
         });
       }
     </script>

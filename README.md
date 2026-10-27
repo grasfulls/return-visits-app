@@ -190,8 +190,10 @@ The app is published on GitHub Pages:
 
 **https://grasfulls.github.io/return-visits-app/**
 
-To refresh an installed Home Screen app, open **Settings → Check for Updates &
-Refresh** while online. Save or exit any open contact or Settings edits first.
+The app checks for updates when it opens. If an update is ready, it prompts you
+to update now or later; an exclamation mark also appears by Settings. To check
+or refresh manually, open **Settings → Check for Updates & Refresh** while
+online. Save or finish any open contact or Settings edits before refreshing.
 The app reloads its code while keeping the contacts and settings stored in that
 app copy on the device. After the reload, unlock with the same passphrase.
 
