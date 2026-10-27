@@ -2622,6 +2622,65 @@ const initializeApp = async () => {
   contactForm.addEventListener("input", updatePrintContactAvailability);
   contactForm.addEventListener("change", updatePrintContactAvailability);
 
+  document
+    .getElementById("btn-check-updates")
+    .addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const status = document.getElementById("app-update-status");
+      if (!navigator.onLine) {
+        status.textContent =
+          "Connect to the internet before checking for app updates.";
+        return;
+      }
+      const contactEditorOpen = getComputedStyle(modal).display !== "none";
+      const hasUnsavedContactChanges =
+        contactEditorOpen &&
+        captureFormState() !== initialFormState;
+      const hasUnsavedSettingsChanges =
+        normalizeUsState(settingStateInput.value) !== settings.state ||
+        toTitleCase(settingDefaultCityInput.value) !== settings.defaultCity;
+      const hasPendingSettingsInput = Array.from(
+        document.querySelectorAll(
+          '#settings-view input:not(#setting-state):not(#setting-default-city)',
+        ),
+      ).some((input) =>
+        input.type === "file" ? input.files.length > 0 : input.value.trim(),
+      );
+      if (
+        getComputedStyle(modal).display !== "none" ||
+        hasUnsavedSettingsChanges ||
+        hasPendingSettingsInput
+      ) {
+        status.textContent = contactEditorOpen
+          ? "Save or exit the open contact before refreshing the app. Your saved contacts will remain on this device."
+          : "Finish or save your current edits in Settings before refreshing the app.";
+        return;
+      }
+      if (!("serviceWorker" in navigator)) {
+        status.textContent =
+          "This browser does not support app updates. Open the website in a supported browser while online.";
+        return;
+      }
+
+      button.disabled = true;
+      status.textContent = "Checking for updates...";
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) {
+          throw new Error("The app's update service is not registered.");
+        }
+        await registration.update();
+        status.textContent =
+          "Update check complete. Refreshing the app now; saved contacts are kept on this device.";
+        window.location.reload();
+      } catch (error) {
+        console.error("Unable to check for app updates:", error);
+        status.textContent =
+          "Could not check for updates. Confirm you are online and try again.";
+        button.disabled = false;
+      }
+    });
+
   const attemptExit = () => {
     const currentState = captureFormState();
     if (currentState !== initialFormState) {

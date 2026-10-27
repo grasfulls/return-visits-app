@@ -187,6 +187,11 @@ The app is published on GitHub Pages:
 
 **https://grasfulls.github.io/return-visits-app/**
 
+To refresh an installed Home Screen app, open **Settings → Check for Updates &
+Refresh** while online. Save or exit any open contact or Settings edits first.
+The app reloads its code while keeping the contacts and settings stored in that
+app copy on the device. After the reload, unlock with the same passphrase.
+
 The plain-language user guide is available from **Settings → Read the
 plain-language User Guide** or directly at
 **https://grasfulls.github.io/return-visits-app/help.html**. It is an

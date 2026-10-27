@@ -171,6 +171,16 @@
                 Read the Privacy &amp; Data Notice
               </a>
             </p>
+            <h3>App updates</h3>
+            <p>
+              Connect to the internet, then check for updates to refresh the app.
+              Save or exit any open edits first. After it reloads, unlock with
+              your passphrase; saved contacts remain on this device.
+            </p>
+            <button type="button" id="btn-check-updates">
+              Check for Updates &amp; Refresh
+            </button>
+            <p id="app-update-status" role="status" aria-live="polite"></p>
             <button type="button" id="btn-export-backup">
               ⬇️ Export Data Backup
             </button>
@@ -702,7 +712,7 @@
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker
-            .register("./service-worker.js")
+            .register("./service-worker.js", { updateViaCache: "none" })
             .catch((error) =>
               console.error("Service worker registration failed:", error),
             );
