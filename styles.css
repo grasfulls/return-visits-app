@@ -289,7 +289,8 @@ main {
 }
 
 #restore-passphrase-dialog::backdrop,
-#contact-transfer-dialog::backdrop {
+#contact-transfer-dialog::backdrop,
+#contact-share-dialog::backdrop {
     background: rgba(0, 0, 0, 0.55);
 }
 
@@ -300,6 +301,20 @@ main {
     border-radius: 10px;
     padding: 24px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+#contact-share-dialog {
+    width: calc(100% - 40px);
+    max-width: 420px;
+    border: none;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+#contact-share-dialog h2,
+#contact-share-dialog p {
+    margin-top: 0;
 }
 
 #contact-print-dialog {
@@ -389,6 +404,29 @@ main {
 .restore-dialog-actions button {
     min-height: 44px;
     flex: 1;
+}
+
+.dialog-action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 8px;
+    border-radius: 4px;
+    background: #004080;
+    color: white;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+}
+
+#contact-share-dialog .restore-dialog-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#contact-share-dialog .restore-dialog-actions button {
+    width: 100%;
 }
 
 textarea {

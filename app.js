@@ -66,6 +66,17 @@ const getNavigationUrl = (contact) => {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
 };
 
+const getContactShareText = (contact) => {
+  const fullName = `${contact.firstName} ${contact.lastName || ""}`.trim();
+  const lines = [fullName];
+  if (contact.phone) lines.push(`Phone: ${contact.phone}`);
+  if (contact.email) lines.push(`Email: ${contact.email}`);
+  if (contact.address) lines.push(`Address: ${contact.address}`);
+  const navigationUrl = getNavigationUrl(contact);
+  if (navigationUrl) lines.push(`Directions: ${navigationUrl}`);
+  return lines.join("\n");
+};
+
 const openAppDatabase = () =>
   new Promise((resolve, reject) => {
     const request = indexedDB.open("return-visits-app", 1);
@@ -1438,6 +1449,39 @@ const initializeApp = async () => {
   const contactForm = document.getElementById("contact-form");
   const contactModalBody = contactForm.querySelector(".modal-body");
   const phoneInput = document.getElementById("contact-phone");
+  const contactShareDialog = document.getElementById("contact-share-dialog");
+  const contactShareTitle = document.getElementById("contact-share-title");
+
+  const setShareLink = (elementId, href) => {
+    document.getElementById(elementId).href = href;
+  };
+  [
+    "share-contact-sms",
+    "share-contact-whatsapp",
+    "share-contact-email",
+  ].forEach((elementId) => {
+    document
+      .getElementById(elementId)
+      .addEventListener("click", () => contactShareDialog.close());
+  });
+
+  const openContactShareDialog = (contact) => {
+    const fullName = `${contact.firstName} ${contact.lastName || ""}`.trim();
+    const shareText = getContactShareText(contact);
+    const encodedText = encodeURIComponent(shareText);
+    const encodedSubject = encodeURIComponent(`Contact: ${fullName}`);
+    contactShareTitle.textContent = `Share: ${fullName}`;
+    setShareLink("share-contact-sms", `sms:?body=${encodedText}`);
+    setShareLink(
+      "share-contact-whatsapp",
+      `https://wa.me/?text=${encodedText}`,
+    );
+    setShareLink(
+      "share-contact-email",
+      `mailto:?subject=${encodedSubject}&body=${encodedText}`,
+    );
+    contactShareDialog.showModal();
+  };
 
   const formatPhoneNumber = (value) => {
     let digits = value.replace(/\D/g, "");
@@ -2150,10 +2194,14 @@ const initializeApp = async () => {
                 <div class="card-actions">
                     <button class="btn-icon" onclick="editContact(${contact.id})" title="Edit Details">✏️</button>
                     ${navigationUrl ? `<a class="btn-icon navigate-contact" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">🧭 Navigate</a>` : ""}
+                    <button class="btn-icon" data-share-contact="${escapeHtml(contact.id)}" aria-label="Share ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">Share</button>
                     <button class="btn-icon" data-export-contact="${escapeHtml(contact.id)}" title="Export this contact" aria-label="Export ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">⬇️</button>
                     <button class="btn-icon delete" onclick="deleteContact(${contact.id})" title="Delete Contact">🗑️</button>
                 </div>
             `;
+      card
+        .querySelector("[data-share-contact]")
+        .addEventListener("click", () => openContactShareDialog(contact));
       card
         .querySelector("[data-export-contact]")
         .addEventListener("click", () => exportContact(contact));
