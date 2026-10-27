@@ -8,6 +8,10 @@ same passphrase whenever opening the app. There is no passphrase recovery, so
 keep it safe.
 
 Use **Settings → Export Data Backup** to download an encrypted JSON backup.
+The browser saves it to the device's usual download location (for example,
+**Files → Downloads** on iPhone or the browser's **Downloads** location on
+other devices). The app cannot choose a save folder. The monthly reminder
+starts after setup and only appears when there is at least one contact.
 Restore it on another device from **Settings → Restore Selected Backup** using
 the backup's passphrase, or choose **Choose Backup to Restore** on the initial
 unlock screen on a new device. Restoring replaces current local data only after

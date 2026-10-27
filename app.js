@@ -1835,7 +1835,10 @@ const initializeApp = async () => {
   renderContacts();
   const reminderKey = "return_visits_last_backup_reminder";
   const lastReminder = Number(localStorage.getItem(reminderKey) || 0);
-  if (!lastReminder || Date.now() - lastReminder >= 30 * 24 * 60 * 60 * 1000) {
+  const reminderInterval = 30 * 24 * 60 * 60 * 1000;
+  if (!contacts.length || !lastReminder) {
+    localStorage.setItem(reminderKey, Date.now());
+  } else if (Date.now() - lastReminder >= reminderInterval) {
     localStorage.setItem(reminderKey, Date.now());
     window.setTimeout(() => {
       if (
