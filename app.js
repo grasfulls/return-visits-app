@@ -72,6 +72,52 @@ const writeStoredValues = (database, entries) =>
     transaction.onabort = () => reject(transaction.error);
   });
 
+const replaceStoredValuesIfUnchanged = (
+  database,
+  expectedEntries,
+  replacementEntries,
+) =>
+  new Promise((resolve, reject) => {
+    const transaction = database.transaction("appData", "readwrite");
+    const store = transaction.objectStore("appData");
+    let remainingChecks = expectedEntries.length;
+    let dataChanged = false;
+
+    expectedEntries.forEach(([key, expectedValue]) => {
+      const request = store.get(key);
+      request.onsuccess = () => {
+        if (
+          JSON.stringify(request.result?.value) !== JSON.stringify(expectedValue)
+        ) {
+          dataChanged = true;
+          transaction.abort();
+          return;
+        }
+        remainingChecks -= 1;
+        if (remainingChecks === 0) {
+          replacementEntries.forEach(([replacementKey, value]) =>
+            store.put({ key: replacementKey, value }),
+          );
+        }
+      };
+      request.onerror = () => transaction.abort();
+    });
+
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () =>
+      reject(
+        dataChanged
+          ? new Error("Saved data changed during the passphrase update.")
+          : transaction.error || new Error("The storage update failed."),
+      );
+    transaction.onabort = () =>
+      reject(
+        dataChanged
+          ? new Error("Saved data changed during the passphrase update.")
+          : transaction.error || new Error("The storage update was aborted."),
+      );
+  });
+
 const deleteStoredValues = (database, keys) =>
   new Promise((resolve, reject) => {
     const transaction = database.transaction("appData", "readwrite");
@@ -1093,6 +1139,114 @@ const initializeApp = async () => {
 
   let contacts = savedContacts;
   let visibleContacts = [];
+
+  document
+    .getElementById("change-passphrase-form")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const currentPassphrase = document.getElementById(
+        "current-passphrase",
+      );
+      const newPassphrase = document.getElementById("new-passphrase");
+      const confirmNewPassphrase = document.getElementById(
+        "confirm-new-passphrase",
+      );
+      const submitButton = document.getElementById("btn-change-passphrase");
+      const status = document.getElementById("change-passphrase-status");
+      const appContainer = document.getElementById("app-container");
+      let statusMessage = "";
+      status.textContent = "";
+      submitButton.disabled = true;
+      appContainer.inert = true;
+
+      try {
+        if (newPassphrase.value.length < 8) {
+          throw new Error("Use a new passphrase with at least 8 characters.");
+        }
+        if (newPassphrase.value !== confirmNewPassphrase.value) {
+          throw new Error("The new passphrases do not match.");
+        }
+        if (newPassphrase.value === currentPassphrase.value) {
+          throw new Error(
+            "Choose a new passphrase that differs from the current one.",
+          );
+        }
+
+        let currentSettings;
+        let currentContacts;
+        let storedEncryptedSettings;
+        let storedEncryptedContacts;
+        try {
+          const currentKey = await deriveEncryptionKey(
+            currentPassphrase.value,
+            cryptoMetadata,
+          );
+          [storedEncryptedSettings, storedEncryptedContacts] = await Promise.all([
+            readStoredValue(database, "settings"),
+            readStoredValue(database, "contacts"),
+          ]);
+          [currentSettings, currentContacts] = await Promise.all([
+            decryptValue(storedEncryptedSettings, currentKey),
+            decryptValue(storedEncryptedContacts, currentKey),
+          ]);
+        } catch (error) {
+          console.error("Unable to verify current passphrase:", error);
+          throw new Error(
+            "The current passphrase is incorrect, or the saved data could not be decrypted. Your data was not changed.",
+          );
+        }
+
+        const newMetadata = createCryptoMetadata();
+        const newKey = await deriveEncryptionKey(
+          newPassphrase.value,
+          newMetadata,
+        );
+        const [newEncryptedSettings, newEncryptedContacts] = await Promise.all([
+          encryptValue(currentSettings, newKey),
+          encryptValue(currentContacts, newKey),
+        ]);
+        const [verifiedSettings, verifiedContacts] = await Promise.all([
+          decryptValue(newEncryptedSettings, newKey),
+          decryptValue(newEncryptedContacts, newKey),
+        ]);
+        if (
+          JSON.stringify(verifiedSettings) !== JSON.stringify(currentSettings) ||
+          JSON.stringify(verifiedContacts) !== JSON.stringify(currentContacts)
+        ) {
+          throw new Error("Encrypted data verification did not match.");
+        }
+
+        await replaceStoredValuesIfUnchanged(
+          database,
+          [
+            ["settings", storedEncryptedSettings],
+            ["contacts", storedEncryptedContacts],
+            [ENCRYPTION_META_KEY, cryptoMetadata],
+          ],
+          [
+            ["settings", newEncryptedSettings],
+            ["contacts", newEncryptedContacts],
+            [ENCRYPTION_META_KEY, newMetadata],
+          ],
+        );
+        encryptionKey = newKey;
+        cryptoMetadata = newMetadata;
+        statusMessage =
+          "Passphrase changed. Use the new passphrase next time you open this app copy.";
+        document.getElementById("change-passphrase-form").reset();
+      } catch (error) {
+        console.error("Unable to change passphrase:", error);
+        statusMessage =
+          error.message === "Saved data changed during the passphrase update."
+            ? "Your data changed while the passphrase was being updated. No changes were made; please try again."
+            : error.message ||
+              "Could not change the passphrase. Your existing passphrase remains active and your saved data was not changed.";
+      } finally {
+        appContainer.inert = false;
+        submitButton.disabled = false;
+        status.textContent = statusMessage;
+      }
+    });
 
   // Helper: Calculate days between a timestamp and now
   const calculateDaysSince = (dateInput) => {

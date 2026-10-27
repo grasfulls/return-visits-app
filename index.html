@@ -187,6 +187,43 @@
             </form>
 
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
+            <h3>Change Passphrase</h3>
+            <p>
+              Enter your current passphrase and choose a new one with at least
+              8 characters. This changes the passphrase for this app copy only.
+              Existing backup files keep the passphrase they were created with.
+            </p>
+            <form id="change-passphrase-form">
+              <label for="current-passphrase">Current passphrase</label>
+              <input
+                type="password"
+                id="current-passphrase"
+                autocomplete="current-password"
+                required
+              />
+              <label for="new-passphrase">New passphrase</label>
+              <input
+                type="password"
+                id="new-passphrase"
+                autocomplete="new-password"
+                minlength="8"
+                required
+              />
+              <label for="confirm-new-passphrase">Confirm new passphrase</label>
+              <input
+                type="password"
+                id="confirm-new-passphrase"
+                autocomplete="new-password"
+                minlength="8"
+                required
+              />
+              <button type="submit" id="btn-change-passphrase">
+                Change Passphrase
+              </button>
+              <p id="change-passphrase-status" role="status" aria-live="polite"></p>
+            </form>
+
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
 
             <h3>Add New City to List</h3>
             <div style="display: flex; gap: 8px">

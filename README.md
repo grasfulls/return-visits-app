@@ -21,6 +21,10 @@ and encrypted with AES-GCM. On first use, create and confirm a passphrase of at
 least 8 characters. Enter the same passphrase whenever opening the app. There
 is no passphrase recovery; if it is forgotten, the encrypted data cannot be
 unlocked. Keep the passphrase safe and separate from any backup or contact file.
+To change it for the current browser or Home Screen copy, use **Settings →
+Change Passphrase** and verify the current passphrase first. The change does
+not affect other copies or previously exported backup files; those backups
+continue to require the passphrase they were created with.
 
 Existing legacy browser data is encrypted and verified during migration before
 plaintext copies are removed. Data is not synchronized between browsers or
