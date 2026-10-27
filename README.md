@@ -109,6 +109,13 @@ plain-language User Guide** or directly at
 **https://grasfulls.github.io/return-visits-app/help.html**. It is an
 accessible, responsive HTML page that can be read in a standard web browser.
 
+The **Privacy & Data Notice** is available from Settings or directly at
+**https://grasfulls.github.io/return-visits-app/privacy.html**. The page also
+provides a downloadable Word copy. It explains what information the app stores
+on the user's device, what may be sent to hosting and mapping providers, and
+that the app owner does not collect information identifying who downloads or
+uses the app.
+
 PWA installation is optional. On iPhone, open the site in Safari, tap **Share**,
 then **Add to Home Screen**. On Android, open it in Chrome and choose **Install
 app** or **Add to Home screen**.
