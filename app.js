@@ -8,6 +8,18 @@ const DEFAULT_SETTINGS = {
 const ENCRYPTION_ITERATIONS = 310000;
 const ENCRYPTION_META_KEY = "encryption-meta";
 
+const escapeHtml = (value) =>
+  String(value ?? "").replace(/[&<>"']/g, (character) => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+    return entities[character];
+  });
+
 const openAppDatabase = () =>
   new Promise((resolve, reject) => {
     const request = indexedDB.open("return-visits-app", 1);
@@ -137,6 +149,38 @@ const decryptValue = async (encryptedValue, key) => {
     base64ToBytes(encryptedValue.ciphertext),
   );
   return JSON.parse(new TextDecoder().decode(plaintext));
+};
+
+const decryptContactTransfer = async (transfer, passphrase) => {
+  const metadata = transfer.encryption;
+  if (
+    transfer.format !== "return-visits-encrypted-contact" ||
+    transfer.version !== 1 ||
+    metadata?.version !== 1 ||
+    metadata.algorithm !== "AES-GCM" ||
+    metadata.keyDerivation !== "PBKDF2-SHA-256" ||
+    !Number.isInteger(metadata.iterations) ||
+    metadata.iterations < 100000 ||
+    metadata.iterations > 1000000 ||
+    base64ToBytes(metadata.salt).length !== 16
+  ) {
+    throw new Error("This is not a supported encrypted contact file.");
+  }
+  const encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+  const contact = await decryptValue(transfer.data, encryptionKey);
+  if (
+    !contact ||
+    (typeof contact.id !== "number" && typeof contact.id !== "string") ||
+    typeof contact.firstName !== "string" ||
+    typeof contact.lastName !== "string" ||
+    !Array.isArray(contact.notesHistory) ||
+    !contact.notesHistory.every(
+      (note) => note && typeof note.text === "string",
+    )
+  ) {
+    throw new Error("The contact file contents are invalid.");
+  }
+  return contact;
 };
 
 const decryptBackup = async (backup, passphrase) => {
@@ -1153,8 +1197,8 @@ const initializeApp = async () => {
         sortedNotes.forEach((note) => {
           historyHtml += `
                         <div class="note-entry">
-                            <small style="color: #6c757d; font-weight: bold;">${note.date}</small><br>
-                            <span>${note.text}</span>
+                            <small style="color: #6c757d; font-weight: bold;">${escapeHtml(note.date)}</small><br>
+                            <span>${escapeHtml(note.text)}</span>
                         </div>
                     `;
         });
@@ -1165,8 +1209,8 @@ const initializeApp = async () => {
       historyHtml += "</div>";
 
       card.innerHTML = `
-                <strong>${contact.firstName} ${contact.lastName}</strong><br>
-                <small>${contact.address || "No address provided"} ${contact.area ? `(${contact.area})` : ""}</small><br>
+                <strong>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</strong><br>
+                <small>${escapeHtml(contact.address || "No address provided")} ${contact.area ? `(${escapeHtml(contact.area)})` : ""}</small><br>
                 <span>Days Since Last Contact: <strong>${status.days} days</strong> (${status.label})</span>
                 ${historyHtml}
                 <div class="quick-add-note-box">
@@ -1175,9 +1219,13 @@ const initializeApp = async () => {
                 </div>
                 <div class="card-actions">
                     <button class="btn-icon" onclick="editContact(${contact.id})" title="Edit Details">✏️</button>
+                    <button class="btn-icon" data-export-contact="${escapeHtml(contact.id)}" title="Export this contact" aria-label="Export ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">⬇️</button>
                     <button class="btn-icon delete" onclick="deleteContact(${contact.id})" title="Delete Contact">🗑️</button>
                 </div>
             `;
+      card
+        .querySelector("[data-export-contact]")
+        .addEventListener("click", () => exportContact(contact));
       listContainer.appendChild(card);
     });
   };
@@ -1207,9 +1255,9 @@ const initializeApp = async () => {
 
         const popupContent = `
                     <div>
-                        <b>${contact.firstName} ${contact.lastName}</b><br>
-                        ${contact.address}<br>
-                        City: ${contact.city || "N/A"} | Area: ${contact.area || "N/A"}<br>
+                        <b>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</b><br>
+                        ${escapeHtml(contact.address)}<br>
+                        City: ${escapeHtml(contact.city || "N/A")} | Area: ${escapeHtml(contact.area || "N/A")}<br>
                         Days Since Contact: ${status.days} (${status.label})<br><br>
                         <button onclick="editContact(${contact.id})" style="background: #004080; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;">✏️ Edit Details</button>
                     </div>
@@ -1312,7 +1360,7 @@ const initializeApp = async () => {
 
           const infoDiv = document.createElement("div");
           infoDiv.style.marginBottom = "4px";
-          infoDiv.innerHTML = `<small style="color: #6c757d; font-weight: bold;">${note.date}</small><br><span>${note.text}</span>`;
+          infoDiv.innerHTML = `<small style="color: #6c757d; font-weight: bold;">${escapeHtml(note.date)}</small><br><span>${escapeHtml(note.text)}</span>`;
 
           const btnRow = document.createElement("div");
           btnRow.style.display = "flex";
@@ -1520,7 +1568,177 @@ const initializeApp = async () => {
     .getElementById("btn-export-backup")
     .addEventListener("click", downloadEncryptedBackup);
 
+  const contactTransferDialog = document.getElementById(
+    "contact-transfer-dialog",
+  );
+  const contactTransferForm = document.getElementById(
+    "contact-transfer-form",
+  );
+  const contactTransferPassphrase = document.getElementById(
+    "contact-transfer-passphrase",
+  );
+  const contactTransferConfirmContainer = document.getElementById(
+    "contact-transfer-confirm-container",
+  );
+  const contactTransferConfirm = document.getElementById(
+    "contact-transfer-confirm",
+  );
+  let contactTransferMode = "export";
+  let contactTransferDialogResolve;
+
+  const requestContactTransferPassphrase = (mode) =>
+    new Promise((resolve) => {
+      contactTransferMode = mode;
+      contactTransferDialogResolve = resolve;
+      document.getElementById("contact-transfer-title").textContent =
+        mode === "export" ? "Protect Contact File" : "Unlock Contact File";
+      document.getElementById("contact-transfer-description").textContent =
+        mode === "export"
+          ? "Create a passphrase of at least 8 characters. Give it to the recipient separately from the contact file."
+          : "Enter the passphrase that was used to protect this contact file.";
+      document.getElementById("contact-transfer-submit").textContent =
+        mode === "export" ? "Export Contact" : "Import Contact";
+      contactTransferConfirmContainer.hidden = mode !== "export";
+      contactTransferPassphrase.value = "";
+      contactTransferConfirm.value = "";
+      contactTransferPassphrase.autocomplete =
+        mode === "export" ? "new-password" : "current-password";
+      contactTransferConfirm.required = mode === "export";
+      contactTransferForm.addEventListener(
+        "submit",
+        onContactTransferSubmit,
+      );
+      document
+        .getElementById("cancel-contact-transfer")
+        .addEventListener("click", cancelContactTransfer);
+      contactTransferDialog.addEventListener("cancel", cancelContactTransfer);
+      contactTransferDialog.showModal();
+      contactTransferPassphrase.focus();
+    });
+
+  const finishContactTransferDialog = (passphrase) => {
+    contactTransferDialog.close();
+    contactTransferForm.removeEventListener(
+      "submit",
+      onContactTransferSubmit,
+    );
+    document
+      .getElementById("cancel-contact-transfer")
+      .removeEventListener("click", cancelContactTransfer);
+    contactTransferDialog.removeEventListener("cancel", cancelContactTransfer);
+    contactTransferPassphrase.value = "";
+    contactTransferConfirm.value = "";
+    contactTransferDialogResolve(passphrase);
+    contactTransferDialogResolve = null;
+  };
+
+  function onContactTransferSubmit(event) {
+    event.preventDefault();
+    const passphrase = contactTransferPassphrase.value;
+    if (passphrase.length < 8) {
+      alert("Use a passphrase with at least 8 characters.");
+      return;
+    }
+    if (
+      contactTransferMode === "export" &&
+      passphrase !== contactTransferConfirm.value
+    ) {
+      alert("The passphrases do not match.");
+      contactTransferConfirm.select();
+      return;
+    }
+    finishContactTransferDialog(passphrase);
+  }
+
+  function cancelContactTransfer() {
+    finishContactTransferDialog(null);
+  }
+
+  const exportContact = async (contact) => {
+    const passphrase = await requestContactTransferPassphrase("export");
+    if (passphrase === null) return;
+    try {
+      const metadata = createCryptoMetadata();
+      const transferKey = await deriveEncryptionKey(passphrase, metadata);
+      const transfer = {
+        format: "return-visits-encrypted-contact",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        encryption: metadata,
+        data: await encryptValue(
+          {
+            ...contact,
+            notesHistory: contact.notesHistory || [],
+          },
+          transferKey,
+        ),
+      };
+      const downloadUrl = URL.createObjectURL(
+        new Blob([JSON.stringify(transfer, null, 2)], {
+          type: "application/json",
+        }),
+      );
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `return-visits-contact-${contact.firstName
+        .trim()
+        .replace(/[^a-z0-9_-]+/gi, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase() || "export"}.json`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (error) {
+      console.error("Unable to export contact:", error);
+      alert("Could not export this contact. No contact data was changed.");
+    }
+  };
+
   const backupFileInput = document.getElementById("backup-file-input");
+  const contactFileInput = document.getElementById("contact-file-input");
+  document
+    .getElementById("btn-import-contact")
+    .addEventListener("click", async () => {
+      const file = contactFileInput.files[0];
+      if (!file) {
+        alert("Choose an encrypted contact file first.");
+        return;
+      }
+
+      try {
+        const transfer = JSON.parse(await file.text());
+        const passphrase = await requestContactTransferPassphrase("import");
+        if (passphrase === null) return;
+        const importedContact = await decryptContactTransfer(
+          transfer,
+          passphrase,
+        );
+        if (
+          !confirm(
+            `Import ${importedContact.firstName} ${importedContact.lastName} as a new contact? Its visit history will be included. Existing contacts will not be changed.`,
+          )
+        ) {
+          return;
+        }
+
+        let newId = Date.now();
+        while (contacts.some((contact) => String(contact.id) === String(newId))) {
+          newId += 1;
+        }
+        contacts.push({ ...importedContact, id: newId });
+        if (await saveContacts()) {
+          contactFileInput.value = "";
+          alert("Contact imported successfully.");
+        } else {
+          contacts.pop();
+        }
+      } catch (error) {
+        console.error("Unable to import encrypted contact:", error);
+        alert(
+          "Could not import that contact. Check that the file is valid and the passphrase is correct. Your current contacts were not changed.",
+        );
+      }
+    });
+
   const restorePassphraseDialog = document.getElementById(
     "restore-passphrase-dialog",
   );

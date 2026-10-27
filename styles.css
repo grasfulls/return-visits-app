@@ -226,28 +226,52 @@ main {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 }
 
-#restore-passphrase-dialog::backdrop {
+#restore-passphrase-dialog::backdrop,
+#contact-transfer-dialog::backdrop {
     background: rgba(0, 0, 0, 0.55);
 }
 
-#restore-passphrase-form {
+#contact-transfer-dialog {
+    width: calc(100% - 40px);
+    max-width: 420px;
+    border: none;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+#restore-passphrase-form,
+#contact-transfer-form {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
 #restore-passphrase-form h2,
-#restore-passphrase-form p {
+#restore-passphrase-form p,
+#contact-transfer-form h2,
+#contact-transfer-form p {
     margin: 0;
 }
 
-#restore-passphrase-form input {
+#restore-passphrase-form input,
+#contact-transfer-form input {
     min-height: 44px;
     padding: 10px;
     box-sizing: border-box;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 16px;
+}
+
+#contact-transfer-confirm-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#contact-transfer-confirm-container[hidden] {
+    display: none;
 }
 
 .restore-dialog-actions {

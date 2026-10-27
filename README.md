@@ -15,6 +15,14 @@ confirmation. Older unencrypted backup files are also supported and are
 encrypted when imported. The app reminds users monthly to export a backup.
 The app does not synchronize data between devices.
 
+To share one contact, use the download button on that contact's card. The
+encrypted contact file includes its visit history and can be imported from
+**Settings → Share a Contact**. Set a separate passphrase when exporting and
+give that passphrase to the recipient through a different channel. The
+recipient can use the regular website or installed PWA, and importing adds a
+new contact without replacing or changing their existing contacts. The contact
+is re-encrypted with the recipient device's own passphrase when saved.
+
 The contact map requests the device's location when adding a contact. You can
 also search for an entered address with OpenStreetMap Nominatim; that address
 is sent to Nominatim only when you choose **Find Address on Map**. The map pin

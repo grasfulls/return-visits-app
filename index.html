@@ -126,6 +126,21 @@
             <button type="button" id="btn-restore-backup">
               Restore Selected Backup
             </button>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
+            <h3>Share a Contact</h3>
+            <p>
+              Export one contact, including its visit history, as an encrypted
+              file. The recipient needs the file and its passphrase to import it.
+            </p>
+            <label for="contact-file-input">Import an encrypted contact file</label>
+            <input
+              type="file"
+              id="contact-file-input"
+              accept="application/json,.json"
+            />
+            <button type="button" id="btn-import-contact">
+              Import Selected Contact
+            </button>
             <form id="settings-form">
               <label>Default State:</label>
               <input type="text" id="setting-state" />
@@ -220,6 +235,34 @@
         <div class="restore-dialog-actions">
           <button type="submit">Decrypt Backup</button>
           <button type="button" id="cancel-restore-passphrase">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="contact-transfer-dialog">
+      <form id="contact-transfer-form">
+        <h2 id="contact-transfer-title">Protect Contact File</h2>
+        <p id="contact-transfer-description"></p>
+        <label for="contact-transfer-passphrase">Passphrase</label>
+        <input
+          type="password"
+          id="contact-transfer-passphrase"
+          minlength="8"
+          required
+        />
+        <div id="contact-transfer-confirm-container">
+          <label for="contact-transfer-confirm">Confirm passphrase</label>
+          <input
+            type="password"
+            id="contact-transfer-confirm"
+            minlength="8"
+          />
+        </div>
+        <div class="restore-dialog-actions">
+          <button type="submit" id="contact-transfer-submit">
+            Export Contact
+          </button>
+          <button type="button" id="cancel-contact-transfer">Cancel</button>
         </div>
       </form>
     </dialog>
