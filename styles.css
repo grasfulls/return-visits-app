@@ -90,13 +90,19 @@ main {
 }
 
 .view input,
-.view select {
+.view select,
+.view textarea {
     width: 100%;
     padding: 10px;
     box-sizing: border-box;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 16px;
+}
+
+textarea {
+    min-height: 90px;
+    resize: vertical;
 }
 
 .contact-card {
@@ -205,10 +211,10 @@ main {
 
 .modal-content {
     background-color: white;
-    width: 94%;
+    width: 96%;
     max-width: 500px;
-    height: 84vh;
-    max-height: 84vh;
+    height: auto;
+    max-height: 90vh;
     display: flex;
     flex-direction: column;
     border-radius: 12px;
@@ -244,17 +250,22 @@ main {
     flex-direction: column;
     flex: 1;
     overflow: hidden;
+    min-height: 0;
 }
 
 .modal-body {
     flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 15px 20px 120px 20px;
+    padding: 15px 20px 140px 20px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.modal-body > * {
+    flex-shrink: 0;
 }
 
 .modal-body label {
@@ -273,6 +284,27 @@ main {
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 16px;
+}
+
+.modal-body input,
+.modal-body select {
+    min-height: 44px;
+}
+
+.modal-body textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+#modal-notes-history-container {
+    min-height: 48px;
+    box-sizing: border-box;
+}
+
+.new-log-timestamp-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
 /* Force Modal Leaflet Map to render properly with full height */

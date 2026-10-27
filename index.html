@@ -2,31 +2,33 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My RVs</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Return Visits App</title>
     <!-- Leaflet CSS -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="app-container">
-      <!-- Header & Search/Filter Bar -->
       <header>
-        <h1>My RVs</h1>
+        <h1>Return Visits</h1>
         <div id="filters-bar">
           <input
             type="text"
             id="search-input"
-            placeholder="Search contacts..."
+            placeholder="Search contacts or notes..."
           />
           <select id="filter-urgency">
-            <option value="">All Statuses</option>
-            <option value="Normal">Normal</option>
-            <option value="Urgent">Urgent</option>
-            <option value="Immediate">Immediate</option>
+            <option value="">All Urgency</option>
+            <option value="Normal">Normal (&le; 30d)</option>
+            <option value="Urgent">Urgent (31-90d)</option>
+            <option value="Immediate">Immediate (&gt; 90d)</option>
           </select>
           <select id="filter-city">
             <option value="">All Cities</option>
@@ -35,73 +37,106 @@
             <option value="">All Areas</option>
           </select>
           <select id="sort-select">
-            <option value="chronological-asc">Oldest to Newest</option>
-            <option value="chronological-desc">Newest to Oldest</option>
-            <option value="alphabetical">By First Name</option>
+            <option value="chronological-desc">Newest First</option>
+            <option value="chronological-asc">Oldest First</option>
+            <option value="alphabetical">Alphabetical</option>
           </select>
         </div>
       </header>
 
-      <!-- Main Content Area -->
       <main>
         <!-- Contacts View -->
-        <section id="contacts-view" class="view active">
-          <button id="btn-open-modal" title="Add Contact">👥➕</button>
+        <div id="contacts-view" class="view active">
+          <button id="btn-open-modal">➕ Add Contact</button>
           <div id="contacts-list"></div>
-        </section>
+        </div>
 
         <!-- Map View -->
-        <section id="map-view" class="view">
+        <div id="map-view" class="view">
           <div id="map"></div>
-        </section>
+        </div>
 
         <!-- Settings View -->
-        <section id="settings-view" class="view">
-          <h2>Default Settings & Management</h2>
-          <form id="settings-form">
-            <label
-              >Default State: <input type="text" id="setting-state" value="CA"
-            /></label>
-            <label
-              >Default City:
-              <input type="text" id="setting-default-city" value="Newcastle"
-            /></label>
-            <label
-              >Add City to List:
-              <div style="display: flex; gap: 5px">
-                <input
-                  type="text"
-                  id="setting-new-city"
-                  placeholder="New City Name"
-                />
-                <button type="button" id="btn-add-setting-city">
-                  Add City
-                </button>
-              </div>
-            </label>
-            <label
-              >Default Area:
-              <input type="text" id="setting-default-area" value="Downtown"
-            /></label>
-            <label
-              >Add Area to List:
-              <div style="display: flex; gap: 5px">
-                <input
-                  type="text"
-                  id="setting-new-area"
-                  placeholder="New Area Name"
-                />
-                <button type="button" id="btn-add-setting-area">
-                  Add Area
-                </button>
-              </div>
-            </label>
-            <button type="submit">Save Master Settings</button>
-          </form>
-        </section>
+        <div id="settings-view" class="view">
+          <div class="settings-container">
+            <h2>Settings & Master Lists</h2>
+            <form id="settings-form">
+              <label>Default State:</label>
+              <input type="text" id="setting-state" />
+
+              <label>Default City:</label>
+              <input type="text" id="setting-default-city" />
+
+              <label>Default Area:</label>
+              <input type="text" id="setting-default-area" />
+
+              <button
+                type="submit"
+                style="
+                  background: #28a745;
+                  color: white;
+                  padding: 10px;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                "
+              >
+                💾 Save Settings
+              </button>
+            </form>
+
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
+
+            <h3>Add New City to List</h3>
+            <div style="display: flex; gap: 8px">
+              <input
+                type="text"
+                id="setting-new-city"
+                placeholder="New city name..."
+              />
+              <button
+                type="button"
+                id="btn-add-setting-city"
+                style="
+                  background: #004080;
+                  color: white;
+                  border: none;
+                  padding: 8px 14px;
+                  border-radius: 4px;
+                  cursor: pointer;
+                "
+              >
+                Add City
+              </button>
+            </div>
+
+            <h3 style="margin-top: 15px">Add New Area to List</h3>
+            <div style="display: flex; gap: 8px">
+              <input
+                type="text"
+                id="setting-new-area"
+                placeholder="New area name..."
+              />
+              <button
+                type="button"
+                id="btn-add-setting-area"
+                style="
+                  background: #004080;
+                  color: white;
+                  border: none;
+                  padding: 8px 14px;
+                  border-radius: 4px;
+                  cursor: pointer;
+                "
+              >
+                Add Area
+              </button>
+            </div>
+          </div>
+        </div>
       </main>
 
-      <!-- Dynamic Footer Navigation -->
+      <!-- Bottom Navigation Bar -->
       <nav id="bottom-nav"></nav>
     </div>
 
@@ -114,35 +149,26 @@
         </div>
 
         <form id="contact-form" class="modal-form-container">
-          <div class="modal-body">
-            <input type="hidden" id="contact-id" />
-            <label
-              >First Name: <input type="text" id="contact-firstname" required
-            /></label>
-            <label
-              >Last Name: <input type="text" id="contact-lastname"
-            /></label>
-            <label
-              >Street Address:
-              <input
-                type="text"
-                id="contact-address"
-                placeholder="Street address"
-            /></label>
+          <input type="hidden" id="contact-id" />
 
-            <label
-              >City:
-              <select id="contact-city-select"></select>
-            </label>
-            <div
-              id="new-city-container"
-              style="display: none; margin-bottom: 10px"
-            >
-              <div style="display: flex; gap: 5px">
+          <div class="modal-body">
+            <label>First Name:</label>
+            <input type="text" id="contact-firstname" required />
+
+            <label>Last Name:</label>
+            <input type="text" id="contact-lastname" />
+
+            <label>Street Address:</label>
+            <input type="text" id="contact-address" />
+
+            <label>City:</label>
+            <select id="contact-city-select"></select>
+            <div id="new-city-container" style="display: none; margin-top: 6px">
+              <div style="display: flex; gap: 6px">
                 <input
                   type="text"
                   id="input-new-city"
-                  placeholder="Type new city name..."
+                  placeholder="Enter new city name..."
                 />
                 <button
                   type="button"
@@ -175,23 +201,17 @@
               </div>
             </div>
 
-            <label
-              >State: <input type="text" id="contact-state" value="CA"
-            /></label>
+            <label>State:</label>
+            <input type="text" id="contact-state" />
 
-            <label
-              >Area:
-              <select id="contact-area-select"></select>
-            </label>
-            <div
-              id="new-area-container"
-              style="display: none; margin-bottom: 10px"
-            >
-              <div style="display: flex; gap: 5px">
+            <label>Area / Zone:</label>
+            <select id="contact-area-select"></select>
+            <div id="new-area-container" style="display: none; margin-top: 6px">
+              <div style="display: flex; gap: 6px">
                 <input
                   type="text"
                   id="input-new-area"
-                  placeholder="Type new area name..."
+                  placeholder="Enter new area name..."
                 />
                 <button
                   type="button"
@@ -260,11 +280,11 @@
             ></div>
 
             <label>Add New Visit Log:</label>
-            <div style="display: flex; gap: 8px; margin-bottom: 8px">
+            <div class="new-log-timestamp-row">
               <input
                 type="datetime-local"
                 id="new-log-timestamp"
-                style="flex: 1"
+                style="flex: 1; min-width: 0;"
               />
             </div>
             <textarea
@@ -272,6 +292,9 @@
               rows="2"
               placeholder="Note text for new visit..."
             ></textarea>
+
+            <!-- Bottom spacer to ensure full visibility above sticky footer -->
+            <div style="height: 60px"></div>
           </div>
 
           <!-- Sticky Footer Action Bar Inside Modal Form -->
