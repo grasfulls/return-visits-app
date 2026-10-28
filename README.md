@@ -76,11 +76,13 @@ reassign those contacts first. Deleting a City or Region with no assigned
 contacts also deletes its Regions and Areas, after confirmation. Contact cards show available
 phone and email details along with the address, location
 hierarchy, urgency, last visit date, and note count; they include actions to
-edit, export, delete, and navigate to a contact. Notes themselves are viewed,
+edit, delete, and navigate to a contact. Share, Export, and Print are at the
+bottom of the Edit Contact screen and work on the saved contact (save any
+changes first). Notes themselves are viewed,
 added, edited, and deleted (including their date and time) in the contact
 editor, not on the card. Navigate opens Google Maps directions using
-saved coordinates when available, or the contact address otherwise. Visit
-cards also have a Share action for preparing a plain-text contact summary in
+saved coordinates when available, or the contact address otherwise. Share
+prepares a plain-text contact summary in
 Text/SMS, WhatsApp, or Email. The summary includes available contact details
 and a directions link. Visit notes are left out unless you choose to include
 the most recent note or all notes in the Share dialog. This message is not
@@ -173,7 +175,8 @@ automatically.
 
 ## Share one contact
 
-Select the download button on a contact card to export that contact, including
+Open a contact with the pencil button and choose **Export** at the bottom of the
+Edit Contact screen to export that contact, including
 its visit history, as a file. If the device has a passphrase, the file is
 encrypted: create a separate sharing passphrase of at least 8 characters and
 give it to the recipient through a different channel. With no passphrase, the

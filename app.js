@@ -3066,16 +3066,27 @@ const initializeApp = async () => {
     );
   };
   const printContactButton = document.getElementById("btn-print-contact");
+  const shareContactButton = document.getElementById("btn-share-contact");
+  const exportContactButton = document.getElementById("btn-export-contact");
+  const contactSecondaryActions = document.getElementById(
+    "contact-secondary-actions",
+  );
   const updatePrintContactAvailability = () => {
     const hasSavedContact = Boolean(
       document.getElementById("contact-id").value,
     );
     const hasUnsavedChanges = captureFormState() !== initialFormState;
-    printContactButton.hidden = !hasSavedContact;
-    printContactButton.disabled = !hasSavedContact || hasUnsavedChanges;
-    printContactButton.title = hasUnsavedChanges
-      ? "Save changes before printing"
-      : "Print this contact";
+    contactSecondaryActions.hidden = !hasSavedContact;
+    [
+      [printContactButton, "printing", "Print this contact"],
+      [shareContactButton, "sharing", "Share this contact"],
+      [exportContactButton, "exporting", "Export this contact"],
+    ].forEach(([button, verb, readyTitle]) => {
+      button.disabled = !hasSavedContact || hasUnsavedChanges;
+      button.title = hasUnsavedChanges
+        ? `Save changes before ${verb}`
+        : readyTitle;
+    });
   };
   contactForm.addEventListener("input", updatePrintContactAvailability);
   contactForm.addEventListener("change", updatePrintContactAvailability);
@@ -3245,9 +3256,12 @@ const initializeApp = async () => {
     document.getElementById("contact-cross-street").value = "";
     document.getElementById("contact-id").value = "";
     document.getElementById("contact-record-id").hidden = true;
-    printContactButton.hidden = true;
-    printContactButton.disabled = true;
-    document.getElementById("contact-city-select").value =
+    contactSecondaryActions.hidden = true;
+    [printContactButton, shareContactButton, exportContactButton].forEach(
+      (button) => {
+        button.disabled = true;
+      },
+    );
       settings.defaultCity || settings.cities[0];
     dropdownHelpers.populateContactRegionArea("", "");
     document.getElementById("contact-state").value = settings.state;
@@ -3615,17 +3629,9 @@ const initializeApp = async () => {
                 <div class="card-actions">
                     <button class="btn-icon" onclick="editContact(${contact.id})" title="Edit Details">✏️</button>
                     ${navigationUrl ? `<a class="btn-icon navigate-contact" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}" title="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2" fill="currentColor"/><path d="M6 16V9a4 4 0 0 1 4-4h8m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></a>` : ""}
-                    <button class="btn-icon" data-share-contact="${escapeHtml(contact.id)}" aria-label="Share ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">Share</button>
-                    <button class="btn-icon" data-export-contact="${escapeHtml(contact.id)}" title="Export this contact" aria-label="Export ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}">⬇️</button>
                     <button class="btn-icon delete" onclick="deleteContact(${contact.id})" title="Delete Contact">🗑️</button>
                 </div>
             `;
-      card
-        .querySelector("[data-share-contact]")
-        .addEventListener("click", () => openContactShareDialog(contact));
-      card
-        .querySelector("[data-export-contact]")
-        .addEventListener("click", () => exportContact(contact));
       listContainer.appendChild(card);
     });
   };
@@ -3777,6 +3783,31 @@ const initializeApp = async () => {
     "contact-print-description",
   );
   let selectedContactToPrint = null;
+
+  const getSavedContactFromEditor = () => {
+    const contactId = document.getElementById("contact-id").value;
+    return contacts.find((contact) => String(contact.id) === String(contactId));
+  };
+
+  shareContactButton.addEventListener("click", () => {
+    if (shareContactButton.disabled) return;
+    const contact = getSavedContactFromEditor();
+    if (!contact) {
+      alert("Save this contact before sharing.");
+      return;
+    }
+    openContactShareDialog(contact);
+  });
+
+  exportContactButton.addEventListener("click", () => {
+    if (exportContactButton.disabled) return;
+    const contact = getSavedContactFromEditor();
+    if (!contact) {
+      alert("Save this contact before exporting.");
+      return;
+    }
+    exportContact(contact);
+  });
 
   printContactButton.addEventListener("click", () => {
     if (printContactButton.disabled) return;
@@ -3976,8 +4007,12 @@ const initializeApp = async () => {
         : "",
     );
     document.getElementById("contact-id").value = contact.id;
-    printContactButton.hidden = false;
-    printContactButton.disabled = true;
+    contactSecondaryActions.hidden = false;
+    [printContactButton, shareContactButton, exportContactButton].forEach(
+      (button) => {
+        button.disabled = true;
+      },
+    );
     const recordIdLabel = document.getElementById("contact-record-id");
     recordIdLabel.textContent = `Permanent contact ID: ${contact.id}`;
     recordIdLabel.hidden = false;

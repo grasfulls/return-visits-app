@@ -923,8 +923,43 @@ textarea {
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
+.modal-sticky-footer {
+    flex-wrap: wrap;
+}
+
+#contact-secondary-actions {
+    flex: 1 1 100%;
+    display: flex;
+    gap: 10px;
+}
+
+#contact-secondary-actions[hidden] {
+    display: none;
+}
+
+#btn-share-contact,
+#btn-export-contact,
+#btn-print-contact {
+    flex: 1;
+    min-height: 44px;
+    background: #004080;
+    color: white;
+    padding: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#btn-share-contact:disabled,
+#btn-export-contact:disabled,
+#btn-print-contact:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 #btn-save-contact,
-#btn-print-contact,
 #btn-exit-modal {
     min-height: 48px;
 }
@@ -951,22 +986,6 @@ textarea {
     font-weight: bold;
     border-radius: 4px;
     cursor: pointer;
-}
-
-#btn-print-contact {
-    flex: 1;
-    background: #004080;
-    color: white;
-    padding: 12px;
-    border: none;
-    font-size: 15px;
-    font-weight: bold;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-#btn-print-contact[hidden] {
-    display: none;
 }
 
 #print-container {

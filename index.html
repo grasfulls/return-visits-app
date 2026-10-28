@@ -740,17 +740,34 @@
 
           <!-- Sticky Footer Action Bar Inside Modal Form -->
           <div class="modal-sticky-footer">
+            <div id="contact-secondary-actions" hidden>
+              <button
+                type="button"
+                id="btn-share-contact"
+                title="Share this saved contact"
+                disabled
+              >
+                📤 Share
+              </button>
+              <button
+                type="button"
+                id="btn-export-contact"
+                title="Export this saved contact"
+                disabled
+              >
+                ⬇️ Export
+              </button>
+              <button
+                type="button"
+                id="btn-print-contact"
+                title="Print this saved contact"
+                disabled
+              >
+                🖨️ Print
+              </button>
+            </div>
             <button type="submit" id="btn-save-contact" title="Save Contact">
               💾 Save
-            </button>
-            <button
-              type="button"
-              id="btn-print-contact"
-              title="Print this saved contact"
-              hidden
-              disabled
-            >
-              🖨️ Print
             </button>
             <button type="button" id="btn-exit-modal" title="Exit / Cancel">
               ❌ Exit
