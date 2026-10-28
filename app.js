@@ -386,7 +386,7 @@ const getNavigationUrl = (contact) => {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
 };
 
-const getContactShareText = (contact, notes = []) => {
+const getContactShareText = (contact, notes = [], senderName = "") => {
   const fullName = `${contact.firstName} ${contact.lastName || ""}`.trim();
   const lines = [fullName];
   if (contact.phone) lines.push(`Phone: ${contact.phone}`);
@@ -403,6 +403,7 @@ const getContactShareText = (contact, notes = []) => {
     if (index === 0) lines.push("");
     lines.push(`${notes.length > 1 ? "Visit note" : "Last visit note"}${dateLabel ? ` (${dateLabel})` : ""}: ${note.text}`);
   });
+  if (senderName) lines.push("", `Shared by ${senderName}`);
   return lines.join("\n");
 };
 
@@ -592,6 +593,7 @@ const PLAIN_CONTACT_FORMAT = "return-visits-contact";
 
 const ICON_PATHS = {
   plus: '<path d="M12 5v14M5 12h14"/>',
+  home: '<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>',
   print: '<path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z"/>',
   export: '<path d="M12 15V3M8 7l4-4 4 4M4 14v6h16v-6"/>',
   import: '<path d="M12 3v12M8 11l4 4 4-4M4 14v6h16v-6"/>',
@@ -1892,6 +1894,145 @@ const initializeApp = async () => {
       alert("Master settings saved successfully!");
     });
 
+  const meFields = {
+    name: document.getElementById("me-name"),
+    street: document.getElementById("me-street"),
+    city: document.getElementById("me-city"),
+    state: document.getElementById("me-state"),
+    lat: document.getElementById("me-lat"),
+    lng: document.getElementById("me-lng"),
+  };
+  const meStatus = document.getElementById("me-status");
+  const populateMeForm = () => {
+    const me = settings.me || {};
+    Object.entries(meFields).forEach(([key, input]) => {
+      input.value = me[key] || "";
+    });
+  };
+  const readMeForm = () => {
+    const me = {};
+    Object.entries(meFields).forEach(([key, input]) => {
+      me[key] = input.value.trim();
+    });
+    me.state = me.state ? normalizeUsState(me.state) : "";
+    me.street = me.street ? normalizeStreetName(me.street) : "";
+    me.city = me.city ? toTitleCase(me.city) : "";
+    return me;
+  };
+  populateMeForm();
+  meFields.state.addEventListener("blur", () => {
+    if (meFields.state.value) {
+      meFields.state.value = normalizeUsState(meFields.state.value);
+    }
+  });
+
+  document.getElementById("btn-me-find").addEventListener("click", async () => {
+    const me = readMeForm();
+    if (!me.street && !me.city) {
+      meStatus.textContent = "Enter your street address or city first.";
+      return;
+    }
+    const button = document.getElementById("btn-me-find");
+    button.disabled = true;
+    meStatus.textContent = "Looking up your address...";
+    try {
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.search = new URLSearchParams({
+        q: [me.street, me.city, me.state || settings.state, "USA"]
+          .filter(Boolean)
+          .join(", "),
+        format: "jsonv2",
+        limit: "1",
+      }).toString();
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Lookup failed (${response.status}).`);
+      const results = await response.json();
+      if (!results.length) {
+        meStatus.textContent =
+          "No match found. Try a different address, use device location, or enter coordinates.";
+      } else {
+        meFields.lat.value = Number(results[0].lat).toFixed(6);
+        meFields.lng.value = Number(results[0].lon).toFixed(6);
+        meStatus.textContent =
+          "Home pin found. Choose Save, then drag it on the Map to fine-tune.";
+      }
+    } catch (error) {
+      console.error("Home lookup failed:", error);
+      meStatus.textContent =
+        "Could not look up the address. Check your connection and try again.";
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  document.getElementById("btn-me-gps").addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      meStatus.textContent = "Device location is not supported by this browser.";
+      return;
+    }
+    const button = document.getElementById("btn-me-gps");
+    button.disabled = true;
+    meStatus.textContent = "Getting your device location...";
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        meFields.lat.value = position.coords.latitude.toFixed(6);
+        meFields.lng.value = position.coords.longitude.toFixed(6);
+        meStatus.textContent =
+          "Home pin set from device location. Choose Save to keep it.";
+        button.disabled = false;
+      },
+      () => {
+        meStatus.textContent =
+          "Could not get a device location. Check permission, or use the address lookup.";
+        button.disabled = false;
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
+    );
+  });
+
+  document.getElementById("me-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const me = readMeForm();
+    const lat = parseFloat(me.lat);
+    const lng = parseFloat(me.lng);
+    if (
+      (me.lat || me.lng) &&
+      !(Number.isFinite(lat) && Number.isFinite(lng) &&
+        Math.abs(lat) <= 90 && Math.abs(lng) <= 180)
+    ) {
+      meStatus.textContent = "Enter valid latitude and longitude values.";
+      return;
+    }
+    const previousMe = settings.me;
+    settings.me = me;
+    try {
+      await saveSettings();
+    } catch (error) {
+      settings.me = previousMe;
+      showStorageError("save your details", error);
+      return;
+    }
+    populateMeForm();
+    if (map) renderMapMarkers();
+    meStatus.textContent = "Your details were saved.";
+  });
+
+  document.getElementById("btn-me-clear").addEventListener("click", async () => {
+    if (!confirm("Clear your details and remove your home pin?")) return;
+    const previousMe = settings.me;
+    delete settings.me;
+    try {
+      await saveSettings();
+    } catch (error) {
+      settings.me = previousMe;
+      showStorageError("clear your details", error);
+      return;
+    }
+    populateMeForm();
+    if (map) renderMapMarkers();
+    meStatus.textContent = "Your details were cleared.";
+  });
+
   let contacts = savedContacts;
   let visibleContacts = [];
 
@@ -2474,6 +2615,12 @@ const initializeApp = async () => {
   // Initialize Main Leaflet Map
   let map = null;
   let mapMarkers = [];
+  let homeMarker = null;
+  const getHomePoint = () => {
+    const lat = parseFloat(settings.me?.lat);
+    const lng = parseFloat(settings.me?.lng);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
+  };
   let lastDefaultCityCenterQuery = null;
   const defaultCityCoordinates = new Map();
   const pendingDefaultCityLookups = new Map();
@@ -2763,7 +2910,11 @@ const initializeApp = async () => {
         ?.value || "none";
     const selectedNotes =
       choice === "all" ? notes : choice === "latest" ? notes.slice(0, 1) : [];
-    const shareText = getContactShareText(contact, selectedNotes);
+    const shareText = getContactShareText(
+      contact,
+      selectedNotes,
+      settings.me?.name || "",
+    );
     const encodedText = encodeURIComponent(shareText);
     const encodedSubject = encodeURIComponent(`Contact: ${fullName}`);
     setShareLink("share-contact-sms", `sms:?body=${encodedText}`);
@@ -3887,6 +4038,15 @@ const initializeApp = async () => {
       `<section class="print-location-group">
         <p>Default state: ${escapeHtml(settings.state || "Not set")}</p>
         <p>Default city: ${escapeHtml(settings.defaultCity || "Not set")}</p>
+        ${
+          settings.me && (settings.me.name || settings.me.street || settings.me.city)
+            ? `<p>Your details: ${escapeHtml(
+                [settings.me.name, settings.me.street, settings.me.city, settings.me.state]
+                  .filter(Boolean)
+                  .join(", "),
+              )}</p>`
+            : ""
+        }
         <p>Passphrase: ${encryptionKey ? "On" : "Off"}</p>
         <h2>Cities, regions and areas</h2>
         ${rows || "<p>None.</p>"}
@@ -4116,6 +4276,10 @@ const initializeApp = async () => {
     if (!map) return;
     mapMarkers.forEach((marker) => map.removeLayer(marker));
     mapMarkers = [];
+    if (homeMarker) {
+      map.removeLayer(homeMarker);
+      homeMarker = null;
+    }
 
     let validMarkers = [];
     let pinNumber = 0;
@@ -4180,18 +4344,56 @@ const initializeApp = async () => {
       }
     });
 
-    if (validMarkers.length > 0) {
-      lastDefaultCityCenterQuery = null;
-      const contactsWithoutPins = visibleContacts.length - validMarkers.length;
+    const fitPoints = [...validMarkers];
+    const home = getHomePoint();
+    if (home) {
+      const me = settings.me;
+      homeMarker = L.marker(home, {
+        icon: L.divIcon({
+          className: "custom-map-pin custom-home-pin",
+          html: `<div>${iconSvg("home")}</div>`,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+        }),
+        draggable: true,
+        zIndexOffset: 1000,
+      }).addTo(map);
+      homeMarker.bindPopup(
+        `<b>${escapeHtml(me.name || "My home")}</b><br>${escapeHtml(
+          [me.street, me.city, me.state].filter(Boolean).join(", "),
+        )}<br><br>Drag this pin to move it. The new location saves automatically.`,
+      );
+      homeMarker.on("dragend", async () => {
+        const movedTo = homeMarker.getLatLng();
+        settings.me.lat = movedTo.lat.toFixed(6);
+        settings.me.lng = movedTo.lng.toFixed(6);
+        populateMeForm();
+        try {
+          await saveSettings();
+        } catch (error) {
+          showStorageError("save your home pin", error);
+        }
+      });
+      fitPoints.push(home);
+    }
+
+    if (fitPoints.length > 0) {
       const mapIsVisible = map.getContainer().offsetWidth > 0;
       if (!mapIsVisible) {
         // Fit again when the Map page opens.
-      } else if (validMarkers.length === 1) {
-        map.setView(validMarkers[0], 16);
+      } else if (fitPoints.length === 1) {
+        map.setView(fitPoints[0], 16);
       } else {
-        const bounds = L.latLngBounds(validMarkers);
-        map.fitBounds(bounds, { padding: [50, 50], animate: false });
+        map.fitBounds(L.latLngBounds(fitPoints), {
+          padding: [50, 50],
+          animate: false,
+        });
       }
+    }
+
+    if (validMarkers.length > 0) {
+      lastDefaultCityCenterQuery = null;
+      const contactsWithoutPins = visibleContacts.length - validMarkers.length;
       document.getElementById("map-location-status").textContent =
         contactsWithoutPins > 0
           ? `Showing ${validMarkers.length} map pin${validMarkers.length === 1 ? "" : "s"}; ${contactsWithoutPins} matching contact${contactsWithoutPins === 1 ? " has" : "s have"} no saved coordinates.`
@@ -4204,7 +4406,7 @@ const initializeApp = async () => {
         "No matching contacts to show. Change the search or filters, or add map coordinates to a contact.";
     }
 
-    if (currentViewId === "map-view" && mapMarkers.length === 0) {
+    if (currentViewId === "map-view" && mapMarkers.length === 0 && !homeMarker) {
       centerMapOnDefaultCity();
     }
   };
@@ -4974,6 +5176,7 @@ const initializeApp = async () => {
         contacts = restored.contacts;
         resetContactSignatures();
         settings.state = normalizeUsState(settings.state);
+        populateMeForm();
         document.getElementById("setting-state").value = settings.state;
         document.getElementById("setting-default-city").value =
           settings.defaultCity || "Newcastle";

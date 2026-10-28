@@ -222,6 +222,45 @@
               </button>
             </details>
             <details class="settings-section">
+              <summary>Your Details</summary>
+              <form id="me-form">
+                <label for="me-name">Name:</label>
+                <input type="text" id="me-name" autocomplete="name" />
+                <label for="me-street">Street Address:</label>
+                <input type="text" id="me-street" autocomplete="street-address" />
+                <label for="me-city">City:</label>
+                <input type="text" id="me-city" />
+                <label for="me-state">State:</label>
+                <input type="text" id="me-state" placeholder="CA or California" />
+                <div class="coordinate-row">
+                  <label>Latitude:
+                    <input type="text" id="me-lat" inputmode="decimal" />
+                  </label>
+                  <label>Longitude:
+                    <input type="text" id="me-lng" inputmode="decimal" />
+                  </label>
+                </div>
+                <small>
+                  Your name is added to contacts you share. Your home appears on
+                  the Map as a house icon, and the Map opens fitted to include
+                  it. Looking up your address sends it to OpenStreetMap
+                  Nominatim only when you choose the lookup button. Your details
+                  stay on this device and are included in backups.
+                </small>
+                <div class="me-actions">
+                  <button type="button" id="btn-me-find" title="Find home pin from address" aria-label="Find home pin from address">📍 Find from address</button>
+                  <button type="button" id="btn-me-gps" title="Use device location" aria-label="Use device location">📍 Use device location</button>
+                </div>
+                <div class="me-actions">
+                  <button type="submit" id="btn-me-save" title="Save your details" aria-label="Save your details">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l4 4v14H5zM8 3v6h7V3M8 21v-7h8v7"/></svg>
+                  </button>
+                  <button type="button" id="btn-me-clear" title="Clear your details" aria-label="Clear your details">🗑️</button>
+                </div>
+                <p id="me-status" role="status"></p>
+              </form>
+            </details>
+            <details class="settings-section">
               <summary>Defaults</summary>
             <form id="settings-form">
               <label>Default State:</label>

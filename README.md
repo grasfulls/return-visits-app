@@ -141,6 +141,12 @@ matching the current search and filters, and indicates when matching contacts
 have no saved coordinates. Whenever the Map is open with no visible contact
 pins, it centers approximately on the Default City and State from Settings.
 
+Settings -> Your Details stores your name, address and a home pin. The home pin
+appears on the Map as a house icon (draggable), the Map opens fitted to include
+it, your name is added to shared contact text, and the details are included in
+backups and the Settings printout. The address lookup is sent to OpenStreetMap
+Nominatim only when you choose it.
+
 Address text (including partial street-name and city searches) and cross-street
 text are sent to OpenStreetMap Nominatim when you choose the corresponding
 search button. Whenever the Map is open with no visible contact pins, the saved
