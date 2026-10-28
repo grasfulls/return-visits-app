@@ -957,8 +957,10 @@ textarea {
 
 #btn-share-contact,
 #btn-export-contact,
-#btn-print-contact {
+#btn-print-contact,
+.footer-icon-link {
     flex: 1 1 auto;
+    min-height: 48px;
     min-height: 48px;
     background: #004080;
     color: white;
@@ -979,9 +981,15 @@ textarea {
     opacity: 0.6;
 }
 
+.footer-icon-link[hidden] {
+    display: none;
+}
+
 #btn-save-contact,
 #btn-exit-modal {
     min-height: 48px;
+    display: grid;
+    place-items: center;
 }
 
 #btn-save-contact {
@@ -1130,14 +1138,20 @@ textarea {
     opacity: 0.8;
 }
 
-.nav-btn-labeled {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    min-width: 64px;
-    min-height: 48px;
+.nav-map-pin {
+    display: grid;
+    box-sizing: border-box;
+    width: 34px;
+    height: 34px;
+    margin: auto;
+    place-items: center;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: #2b6cb0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    color: #ffffff;
+    font: 700 11px/1 sans-serif;
+    text-shadow: 0 0 3px #000, 0 0 3px #000;
 }
 
 .nav-btn-icon {
@@ -1160,11 +1174,6 @@ textarea {
     color: white;
     font-size: 12px;
     font-weight: 700;
-    line-height: 1;
-}
-
-.nav-btn-label {
-    font-size: 12px;
     line-height: 1;
 }
 

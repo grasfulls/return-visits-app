@@ -2566,15 +2566,18 @@ const initializeApp = async () => {
       maxZoom: 19,
       attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
-    renderMapMarkers();
-    renderMapMarkers();
+    // Wait a tick so the map knows its real size before fitting every pin.
+    setTimeout(() => {
+      map.invalidateSize();
+      renderMapMarkers();
+    }, 50);
   };
 
   // Navigation & Dynamic Footer
   let currentViewId = "contacts-view";
   const navButtonsConfig = [
     { id: "contacts-view", icon: "👥" },
-    { id: "map-view", icon: "📍", label: "Map" },
+    { id: "map-view", icon: "📍", pinLabel: "Map" },
     { id: "settings-view", icon: "⚙️" },
   ];
 
@@ -2640,15 +2643,15 @@ const initializeApp = async () => {
         const icon = document.createElement("span");
         icon.className = "nav-btn-icon";
         icon.setAttribute("aria-hidden", "true");
-        icon.textContent = btnConfig.icon;
-        btn.appendChild(icon);
-        if (btnConfig.label) {
-          btn.classList.add("nav-btn-labeled");
-          const label = document.createElement("span");
-          label.className = "nav-btn-label";
-          label.textContent = btnConfig.label;
-          btn.appendChild(label);
+        if (btnConfig.pinLabel) {
+          const pin = document.createElement("span");
+          pin.className = "nav-map-pin";
+          pin.textContent = btnConfig.pinLabel;
+          icon.appendChild(pin);
+        } else {
+          icon.textContent = btnConfig.icon;
         }
+        btn.appendChild(icon);
         btn.title = btnConfig.id.replace("-view", "");
         if (btnConfig.id === "settings-view" && appUpdateAvailable) {
           btn.title = "Settings — app update available";
@@ -3184,6 +3187,7 @@ const initializeApp = async () => {
   const printContactButton = document.getElementById("btn-print-contact");
   const shareContactButton = document.getElementById("btn-share-contact");
   const exportContactButton = document.getElementById("btn-export-contact");
+  const directionsLink = document.getElementById("btn-directions-contact");
   const contactSecondaryActions = document.getElementById(
     "contact-secondary-actions",
   );
@@ -3193,6 +3197,14 @@ const initializeApp = async () => {
     );
     const hasUnsavedChanges = captureFormState() !== initialFormState;
     contactSecondaryActions.hidden = !hasSavedContact;
+    const savedContact = hasSavedContact ? getSavedContactFromEditor() : null;
+    const directionsUrl = savedContact ? getNavigationUrl(savedContact) : "";
+    if (directionsUrl) {
+      directionsLink.href = directionsUrl;
+    } else {
+      directionsLink.removeAttribute("href");
+    }
+    directionsLink.hidden = !directionsUrl;
     [
       [printContactButton, "printing", "Print this contact"],
       [shareContactButton, "sharing", "Share this contact"],
@@ -4162,11 +4174,14 @@ const initializeApp = async () => {
     if (validMarkers.length > 0) {
       lastDefaultCityCenterQuery = null;
       const contactsWithoutPins = visibleContacts.length - validMarkers.length;
-      if (validMarkers.length === 1) {
+      const mapIsVisible = map.getContainer().offsetWidth > 0;
+      if (!mapIsVisible) {
+        // Fit again when the Map page opens.
+      } else if (validMarkers.length === 1) {
         map.setView(validMarkers[0], 16);
       } else {
         const bounds = L.latLngBounds(validMarkers);
-        map.fitBounds(bounds, { padding: [50, 50] });
+        map.fitBounds(bounds, { padding: [50, 50], animate: false });
       }
       document.getElementById("map-location-status").textContent =
         contactsWithoutPins > 0
