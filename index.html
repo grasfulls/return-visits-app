@@ -202,31 +202,8 @@
         <div id="settings-view" class="view">
           <div class="settings-container">
             <h2>Settings</h2>
-            <details class="settings-section">
-              <summary>Help &amp; Privacy</summary>
-              <p>
-                <a class="user-guide-link" href="./help.html">User Guide</a>
-              </p>
-              <p>
-                <a class="user-guide-link" href="./privacy.html">
-                  Privacy &amp; Data Notice
-                </a>
-              </p>
-            </details>
-            <details class="settings-section">
-              <summary>App updates</summary>
-              <p>
-                The app checks for updates when it opens. Finish any open
-                edits before refreshing.
-              </p>
-              <p id="app-update-notice" role="status" aria-live="polite" hidden>
-                An app update is ready. Choose Update Now to install it.
-              </p>
-              <button type="button" id="btn-check-updates">
-                Check for Updates &amp; Refresh
-              </button>
-              <p id="app-update-status" role="status" aria-live="polite"></p>
-            </details>
+            <h3 class="settings-group-title">Keep your data safe</h3>
+            <p class="settings-group-note">Backups protect you from losing your contacts.</p>
             <details class="settings-section">
               <summary>Backup &amp; Restore</summary>
               <p id="storage-protection-status" role="status"></p>
@@ -247,6 +224,101 @@
                 Restore Selected Backup
               </button>
             </details>
+            <details class="settings-section" id="cloud-section">
+              <summary>Cloud backup (optional)</summary>
+              <div id="cloud-off">
+                <p>
+                  Cloud backup keeps a copy of your contacts outside this
+                  phone, in your own Dropbox, so you can recover them if your
+                  phone is lost, broken or replaced. It is off unless you turn
+                  it on.
+                </p>
+                <p>
+                  <strong>You need a Dropbox account.</strong> The app can send
+                  you to Dropbox to sign up, but it cannot create the account
+                  for you. The free Basic plan is enough.
+                </p>
+                <button type="button" id="btn-cloud-begin">
+                  Set Up Cloud Backup
+                </button>
+                <div id="cloud-question" hidden>
+                  <p><strong>Do you already have a Dropbox account?</strong></p>
+                  <button type="button" id="btn-cloud-have">
+                    Yes, I have one
+                  </button>
+                  <button type="button" id="btn-cloud-need">
+                    No, help me get one
+                  </button>
+                </div>
+                <div id="cloud-signup" hidden>
+                  <p><strong>Create a free Dropbox account</strong></p>
+                  <ol>
+                    <li>
+                      Open
+                      <a
+                        href="https://www.dropbox.com/basic"
+                        target="_blank"
+                        rel="noopener"
+                        >dropbox.com/basic</a
+                      >
+                      (it opens in a new tab or window).
+                    </li>
+                    <li>
+                      Sign up with your email address (or your Google or Apple
+                      account) and choose a password.
+                    </li>
+                    <li>
+                      Choose the free <strong>Basic</strong> plan. If Dropbox
+                      offers a paid trial, skip it. No payment is needed.
+                    </li>
+                    <li>
+                      Check your email and confirm your address if Dropbox asks.
+                    </li>
+                    <li>Come back to this app and tap the button below.</li>
+                  </ol>
+                  <button type="button" id="btn-cloud-signup-done">
+                    I Have My Account, Continue
+                  </button>
+                </div>
+                <div id="cloud-connect" hidden>
+                  <p><strong>Connect your Dropbox</strong></p>
+                  <ol>
+                    <li>Tap <strong>Connect to Dropbox</strong> below.</li>
+                    <li>Sign in to Dropbox when it asks.</li>
+                    <li>
+                      Tap <strong>Allow</strong>. The app can only use its own
+                      folder, called <strong>Return Visits</strong>, and cannot
+                      see anything else in your Dropbox.
+                    </li>
+                    <li>Dropbox sends you back here.</li>
+                  </ol>
+                  <button type="button" id="btn-cloud-connect">
+                    Connect to Dropbox
+                  </button>
+                </div>
+              </div>
+              <div id="cloud-on" hidden>
+                <p id="cloud-account-status" role="status"></p>
+                <p id="cloud-last-backup" role="status"></p>
+                <button type="button" id="btn-cloud-backup-now">
+                  Back Up to Dropbox Now
+                </button>
+                <button type="button" id="btn-cloud-restore">
+                  Restore from Dropbox
+                </button>
+                <button type="button" id="btn-cloud-disconnect">
+                  Disconnect Dropbox
+                </button>
+                <p>
+                  The app backs up when you open it if your last backup is more
+                  than a day old, and shortly after you make changes. Dropbox
+                  keeps your latest copy plus up to 10 dated copies.
+                </p>
+              </div>
+              <p id="cloud-status" role="status" aria-live="polite"></p>
+            </details>
+            <h3 class="settings-group-title">Privacy</h3>
+            <p class="settings-group-note">Optional. This is about who can open the app, not about backups.</p>
             <details class="settings-section">
               <summary>Passphrase</summary>
             <h3 id="passphrase-section-title">Passphrase</h3>
@@ -378,99 +450,8 @@
               </form>
             </div>
             </details>
-            <details class="settings-section" id="cloud-section">
-              <summary>Cloud backup (optional)</summary>
-              <div id="cloud-off">
-                <p>
-                  Cloud backup keeps a copy of your contacts outside this
-                  phone, in your own Dropbox, so you can recover them if your
-                  phone is lost, broken or replaced. It is off unless you turn
-                  it on.
-                </p>
-                <p>
-                  <strong>You need a Dropbox account.</strong> The app can send
-                  you to Dropbox to sign up, but it cannot create the account
-                  for you. The free Basic plan is enough.
-                </p>
-                <button type="button" id="btn-cloud-begin">
-                  Set Up Cloud Backup
-                </button>
-                <div id="cloud-question" hidden>
-                  <p><strong>Do you already have a Dropbox account?</strong></p>
-                  <button type="button" id="btn-cloud-have">
-                    Yes, I have one
-                  </button>
-                  <button type="button" id="btn-cloud-need">
-                    No, help me get one
-                  </button>
-                </div>
-                <div id="cloud-signup" hidden>
-                  <p><strong>Create a free Dropbox account</strong></p>
-                  <ol>
-                    <li>
-                      Open
-                      <a
-                        href="https://www.dropbox.com/basic"
-                        target="_blank"
-                        rel="noopener"
-                        >dropbox.com/basic</a
-                      >
-                      (it opens in a new tab or window).
-                    </li>
-                    <li>
-                      Sign up with your email address (or your Google or Apple
-                      account) and choose a password.
-                    </li>
-                    <li>
-                      Choose the free <strong>Basic</strong> plan. If Dropbox
-                      offers a paid trial, skip it. No payment is needed.
-                    </li>
-                    <li>
-                      Check your email and confirm your address if Dropbox asks.
-                    </li>
-                    <li>Come back to this app and tap the button below.</li>
-                  </ol>
-                  <button type="button" id="btn-cloud-signup-done">
-                    I Have My Account, Continue
-                  </button>
-                </div>
-                <div id="cloud-connect" hidden>
-                  <p><strong>Connect your Dropbox</strong></p>
-                  <ol>
-                    <li>Tap <strong>Connect to Dropbox</strong> below.</li>
-                    <li>Sign in to Dropbox when it asks.</li>
-                    <li>
-                      Tap <strong>Allow</strong>. The app can only use its own
-                      folder, called <strong>Return Visits</strong>, and cannot
-                      see anything else in your Dropbox.
-                    </li>
-                    <li>Dropbox sends you back here.</li>
-                  </ol>
-                  <button type="button" id="btn-cloud-connect">
-                    Connect to Dropbox
-                  </button>
-                </div>
-              </div>
-              <div id="cloud-on" hidden>
-                <p id="cloud-account-status" role="status"></p>
-                <p id="cloud-last-backup" role="status"></p>
-                <button type="button" id="btn-cloud-backup-now">
-                  Back Up to Dropbox Now
-                </button>
-                <button type="button" id="btn-cloud-restore">
-                  Restore from Dropbox
-                </button>
-                <button type="button" id="btn-cloud-disconnect">
-                  Disconnect Dropbox
-                </button>
-                <p>
-                  The app backs up when you open it if your last backup is more
-                  than a day old, and shortly after you make changes. Dropbox
-                  keeps your latest copy plus up to 10 dated copies.
-                </p>
-              </div>
-              <p id="cloud-status" role="status" aria-live="polite"></p>
-            </details>
+            <h3 class="settings-group-title">Your information</h3>
+            <p class="settings-group-note">Your details, defaults and territory.</p>
             <details class="settings-section">
               <summary>Your Details</summary>
               <form id="me-form">
@@ -544,9 +525,6 @@
               </button>
             </form>
             </details>
-
-
-
             <details class="settings-section">
               <summary>Cities, Regions &amp; Areas</summary>
             <h3>Add New City to List</h3>
@@ -649,6 +627,33 @@
               confirm. Locations follow City → Region → Area; each level is optional
               on a contact.
             </small>
+            </details>
+            <h3 class="settings-group-title">Help</h3>
+            <p class="settings-group-note">Guides and app updates.</p>
+            <details class="settings-section">
+              <summary>Help &amp; Privacy</summary>
+              <p>
+                <a class="user-guide-link" href="./help.html">User Guide</a>
+              </p>
+              <p>
+                <a class="user-guide-link" href="./privacy.html">
+                  Privacy &amp; Data Notice
+                </a>
+              </p>
+            </details>
+            <details class="settings-section">
+              <summary>App updates</summary>
+              <p>
+                The app checks for updates when it opens. Finish any open
+                edits before refreshing.
+              </p>
+              <p id="app-update-notice" role="status" aria-live="polite" hidden>
+                An app update is ready. Choose Update Now to install it.
+              </p>
+              <button type="button" id="btn-check-updates">
+                Check for Updates &amp; Refresh
+              </button>
+              <p id="app-update-status" role="status" aria-live="polite"></p>
             </details>
           </div>
         </div>

@@ -2540,7 +2540,7 @@ const initializeApp = async () => {
     document.getElementById("passphrase-section-description").textContent =
       protectedNow
         ? "A passphrase is on for this app copy. You may change it or turn it off."
-        : `A passphrase is currently off. Turn it on to encrypt the data on this device; you will be asked for it each time you open the app. Use at least ${MIN_PASSPHRASE_LENGTH} characters. You will be given a recovery code to keep; without the passphrase or that code, the data cannot be opened.`;
+        : `A passphrase is optional. It locks the app so only you can open it; it does not back anything up. A passphrase is currently off. Turn it on to encrypt the data on this device; you will be asked for it each time you open the app. Use at least ${MIN_PASSPHRASE_LENGTH} characters. You will be given a recovery code to keep; without the passphrase or that code, the data cannot be opened.`;
     document.getElementById("current-passphrase-fields").hidden =
       !protectedNow;
     document.getElementById("current-passphrase").required = protectedNow;
@@ -2562,6 +2562,15 @@ const initializeApp = async () => {
       keepStatus[1];
   };
   updatePassphraseSection();
+  // Clear old result messages once a settings section is closed.
+  document.querySelectorAll(".settings-section").forEach((section) => {
+    section.addEventListener("toggle", () => {
+      if (section.open) return;
+      section.querySelectorAll('[role="status"]').forEach((el) => {
+        if (el.id.endsWith("-status")) el.textContent = "";
+      });
+    });
+  });
   document
     .getElementById("btn-start-turn-on")
     .addEventListener("click", () => {
@@ -3059,6 +3068,10 @@ const initializeApp = async () => {
       "settings-view": "Settings",
     };
     document.title = `Return Visits - ${pageNames[currentViewId] || "Contacts"}`;
+    document.body.classList.toggle(
+      "settings-open",
+      currentViewId === "settings-view",
+    );
     const navContainer = document.getElementById("bottom-nav");
     navContainer.innerHTML = "";
     getPageActions().forEach((action) => {

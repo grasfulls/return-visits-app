@@ -1261,6 +1261,8 @@ textarea {
     border: none;
     cursor: pointer;
     opacity: 0.8;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .nav-map-pin {
@@ -1372,6 +1374,27 @@ textarea {
 
 .settings-section[open] {
     padding-bottom: 12px;
+}
+
+.settings-group-title {
+    margin: 20px 0 2px;
+    font-size: 1.15rem;
+    color: #004080;
+}
+
+.settings-group-note {
+    margin: 0 0 8px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.settings-section button {
+    min-height: 44px;
+    padding: 8px 14px;
+}
+
+body.settings-open #filters-bar {
+    display: none;
 }
 
 .checkbox-row {
