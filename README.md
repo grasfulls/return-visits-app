@@ -211,6 +211,14 @@ app asks you to confirm before connecting. It never backs up an empty device ove
 your Dropbox copy. Use **Restore from Dropbox** to restore the latest or a dated
 copy (it replaces this device's data), and **Disconnect Dropbox** to stop.
 
+With more than one device, each device checks Dropbox when the app opens (and when you
+return to it after a few minutes) and asks before restoring a newer backup from another
+device; **Check for a Newer Backup** does the same on demand. Wait about 15 seconds after
+changes (or close the app) so the backup finishes before opening the other device. If you
+decline, automatic backup stays paused until you restore or choose **Back Up to Dropbox
+Now** to replace the Dropbox copy. Changes made on two devices are not merged; you pick
+which copy to keep.
+
 ## Share one contact
 
 Open a contact with the pencil button and choose the export icon at the bottom

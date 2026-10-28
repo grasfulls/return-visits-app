@@ -5614,6 +5614,10 @@ const initializeApp = async () => {
   const DAY_MS = 24 * 60 * 60 * 1000;
   const CLOUD_LAST_KEY = "return_visits_cloud_last_backup";
   const CLOUD_SNAPSHOT_KEY = "return_visits_cloud_last_snapshot";
+  // Dropbox's own "modified" time of latest.json as of this device's last
+  // upload or restore, and whether this device has changes not yet uploaded.
+  const CLOUD_SEEN_KEY = "return_visits_cloud_seen";
+  const CLOUD_DIRTY_KEY = "return_visits_cloud_dirty";
   const CLOUD_SNAPSHOTS_KEPT = 10;
   const dropbox = window.RVDropbox;
   const cloudSection = document.getElementById("cloud-section");
@@ -5655,19 +5659,69 @@ const initializeApp = async () => {
     }
   };
 
+  const getRemoteLatest = async () => {
+    const file = (await dropbox.list()).find(
+      (entry) => entry.name === "latest.json",
+    );
+    return file
+      ? { path: file.path_lower, modified: Date.parse(file.server_modified) }
+      : null;
+  };
+
+  // A copy that this device has not uploaded or restored is "newer". A device
+  // connected before this check existed adopts the current copy silently.
+  const remoteIsNewer = (remote) => {
+    if (!remote) return false;
+    const seen = Number(localStorage.getItem(CLOUD_SEEN_KEY) || 0);
+    if (!seen) {
+      if (localStorage.getItem(CLOUD_LAST_KEY)) {
+        localStorage.setItem(CLOUD_SEEN_KEY, String(remote.modified));
+        return false;
+      }
+      return true;
+    }
+    return remote.modified > seen + 1000;
+  };
+
   let cloudBackupRunning = false;
   let cloudBackupQueued = false;
   // Uploads the live copy, plus a dated copy at most once a day (or when
-  // forced). Throws on failure.
-  const runCloudBackup = async ({ forceSnapshot = false } = {}) => {
+  // forced). Throws on failure, or with code "cloud-newer" when Dropbox holds
+  // a newer copy from another device (unless overwrite is set).
+  const runCloudBackup = async ({
+    forceSnapshot = false,
+    overwrite = false,
+  } = {}) => {
     if (cloudBackupRunning) {
       cloudBackupQueued = true;
       return;
     }
     cloudBackupRunning = true;
     try {
+      if (!overwrite) {
+        const remote = await getRemoteLatest();
+        if (remoteIsNewer(remote)) {
+          const newer = new Error("Dropbox has a newer backup.");
+          newer.code = "cloud-newer";
+          newer.remote = remote;
+          throw newer;
+        }
+      }
+      localStorage.removeItem(CLOUD_DIRTY_KEY);
       const text = JSON.stringify(await buildBackup(), null, 2);
-      await dropbox.upload("/latest.json", text);
+      let uploaded;
+      try {
+        uploaded = await dropbox.upload("/latest.json", text);
+      } catch (error) {
+        localStorage.setItem(CLOUD_DIRTY_KEY, "1");
+        throw error;
+      }
+      if (uploaded && uploaded.server_modified) {
+        localStorage.setItem(
+          CLOUD_SEEN_KEY,
+          String(Date.parse(uploaded.server_modified)),
+        );
+      }
       const lastSnapshot = Number(
         localStorage.getItem(CLOUD_SNAPSHOT_KEY) || 0,
       );
@@ -5701,6 +5755,12 @@ const initializeApp = async () => {
       await refreshCloudUi();
       return true;
     } catch (error) {
+      if (error.code === "cloud-newer") {
+        setCloudStatus(
+          "Automatic backup is paused because Dropbox has a newer backup from another device. Tap Check for a Newer Backup to restore it, or Back Up to Dropbox Now to replace it with this device's data.",
+        );
+        return false;
+      }
       console.error("Automatic Dropbox backup failed:", error);
       setCloudStatus(
         "The last automatic Dropbox backup did not finish. It will try again.",
@@ -5712,19 +5772,93 @@ const initializeApp = async () => {
   let cloudTimer = null;
   cloudBackupHook = () => {
     if (!dropbox.isConnected()) return;
+    localStorage.setItem(CLOUD_DIRTY_KEY, "1");
     window.clearTimeout(cloudTimer);
     cloudTimer = window.setTimeout(() => {
       cloudTimer = null;
       autoCloudBackup();
     }, 15000);
   };
+
+  const restoreFromCloud = async (path, modified) => {
+    try {
+      const backup = JSON.parse(await dropbox.download(path));
+      setCloudStatus("");
+      if (await restoreBackupObject(backup)) {
+        localStorage.setItem(CLOUD_SEEN_KEY, String(modified));
+        localStorage.removeItem(CLOUD_DIRTY_KEY);
+        await refreshCloudUi();
+        return true;
+      }
+    } catch (error) {
+      setCloudStatus("");
+      reportRestoreError(error);
+    }
+    return false;
+  };
+
+  let cloudChecking = false;
+  let cloudCheckedAt = 0;
+  let cloudDeclinedFor = 0;
+  // Asks before restoring when Dropbox holds a newer copy from another
+  // device. Quiet unless there is something to report (or manual is set).
+  const checkCloudNewer = async ({ manual = false } = {}) => {
+    if (!dropbox.isConnected() || cloudChecking || cloudBackupRunning) return;
+    cloudChecking = true;
+    cloudCheckedAt = Date.now();
+    if (manual) setCloudStatus("Checking Dropbox for a newer backup…");
+    try {
+      const remote = await getRemoteLatest();
+      if (!remoteIsNewer(remote)) {
+        if (manual) setCloudStatus("This device is up to date with Dropbox.");
+        return;
+      }
+      if (!manual && cloudDeclinedFor === remote.modified) return;
+      setCloudStatus("");
+      const when = new Date(remote.modified).toLocaleString();
+      const unsaved =
+        localStorage.getItem(CLOUD_DIRTY_KEY) === "1"
+          ? " This device also has changes that are not in Dropbox yet; restoring will replace them."
+          : "";
+      if (
+        confirm(
+          `Dropbox has a newer backup from another device (${when}).${unsaved} Restore it onto this device now?`,
+        )
+      ) {
+        setCloudStatus("Downloading from Dropbox…");
+        if (await restoreFromCloud(remote.path, remote.modified)) {
+          setCloudStatus("Restored the newer Dropbox backup.");
+          return;
+        }
+      }
+      cloudDeclinedFor = remote.modified;
+      setCloudStatus(
+        "Not restored. Automatic backup stays paused until you restore, or tap Back Up to Dropbox Now to replace the Dropbox copy with this device's data.",
+      );
+    } catch (error) {
+      console.error("Unable to check Dropbox:", error);
+      if (manual) {
+        setCloudStatus("Could not reach Dropbox. Check your connection.");
+      }
+    } finally {
+      cloudChecking = false;
+    }
+  };
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden" && cloudTimer) {
       window.clearTimeout(cloudTimer);
       cloudTimer = null;
       autoCloudBackup();
+    } else if (
+      document.visibilityState === "visible" &&
+      Date.now() - cloudCheckedAt > 120000
+    ) {
+      checkCloudNewer();
     }
   });
+  document
+    .getElementById("btn-cloud-check")
+    .addEventListener("click", () => checkCloudNewer({ manual: true }));
 
   document.getElementById("btn-cloud-begin").addEventListener("click", () => {
     document.getElementById("btn-cloud-begin").hidden = true;
@@ -5771,7 +5905,20 @@ const initializeApp = async () => {
       }
       setCloudStatus("Backing up to Dropbox…");
       try {
-        await runCloudBackup({ forceSnapshot: true });
+        try {
+          await runCloudBackup({ forceSnapshot: true });
+        } catch (error) {
+          if (error.code !== "cloud-newer") throw error;
+          if (
+            !confirm(
+              `Dropbox has a newer backup from another device (${new Date(error.remote.modified).toLocaleString()}). Replace it with this device's data? Older dated copies stay in Dropbox. Choose Cancel, then Check for a Newer Backup, to restore it instead.`,
+            )
+          ) {
+            setCloudStatus("Not backed up. Dropbox still has the newer backup.");
+            return;
+          }
+          await runCloudBackup({ forceSnapshot: true, overwrite: true });
+        }
         await refreshCloudUi();
         setCloudStatus("Backed up to Dropbox.");
       } catch (error) {
@@ -5795,6 +5942,8 @@ const initializeApp = async () => {
       await dropbox.disconnect();
       localStorage.removeItem(CLOUD_LAST_KEY);
       localStorage.removeItem(CLOUD_SNAPSHOT_KEY);
+      localStorage.removeItem(CLOUD_SEEN_KEY);
+      localStorage.removeItem(CLOUD_DIRTY_KEY);
       setCloudStatus("Dropbox disconnected.");
       document.getElementById("btn-cloud-begin").hidden = false;
       showCloudStep("");
@@ -5803,6 +5952,7 @@ const initializeApp = async () => {
 
   const cloudRestoreDialog = document.getElementById("cloud-restore-dialog");
   const cloudRestoreSelect = document.getElementById("cloud-restore-select");
+  let cloudLatestModified = 0;
   const openCloudRestore = async () => {
     setCloudStatus("Looking for backups in Dropbox…");
     let files;
@@ -5825,6 +5975,8 @@ const initializeApp = async () => {
       return;
     }
     setCloudStatus("");
+    const latestFile = backups.find((file) => file.name === "latest.json");
+    cloudLatestModified = latestFile ? Date.parse(latestFile.server_modified) : 0;
     cloudRestoreSelect.innerHTML = "";
     backups.forEach((file) => {
       const option = document.createElement("option");
@@ -5849,14 +6001,7 @@ const initializeApp = async () => {
       const path = cloudRestoreSelect.value;
       cloudRestoreDialog.close();
       setCloudStatus("Downloading from Dropbox…");
-      try {
-        const backup = JSON.parse(await dropbox.download(path));
-        setCloudStatus("");
-        await restoreBackupObject(backup);
-      } catch (error) {
-        setCloudStatus("");
-        reportRestoreError(error);
-      }
+      await restoreFromCloud(path, cloudLatestModified || Date.now());
     });
 
   const showSettingsView = () => {
@@ -5902,9 +6047,34 @@ const initializeApp = async () => {
       setCloudStatus("Dropbox connected. Add contacts and they will be backed up.");
       return;
     }
-    setCloudStatus("Dropbox connected. Making your first backup…");
+    setCloudStatus("Dropbox connected. Checking for an existing backup…");
     try {
-      await runCloudBackup({ forceSnapshot: true });
+      const remote = await getRemoteLatest();
+      let overwrite = false;
+      if (remote) {
+        const when = new Date(remote.modified).toLocaleString();
+        if (
+          confirm(
+            `Dropbox already has a backup (${when}). Restore it onto this device? That replaces the ${contacts.length} contacts here.`,
+          )
+        ) {
+          await openCloudRestore();
+          return;
+        }
+        if (
+          !confirm(
+            "Back up this device to Dropbox instead? That replaces the latest Dropbox copy with this device's data. Older dated copies stay.",
+          )
+        ) {
+          setCloudStatus(
+            "Dropbox connected. Nothing was backed up. Use Restore from Dropbox or Back Up to Dropbox Now when you are ready.",
+          );
+          return;
+        }
+        overwrite = true;
+      }
+      setCloudStatus("Dropbox connected. Making your first backup…");
+      await runCloudBackup({ forceSnapshot: true, overwrite });
       await refreshCloudUi();
       setCloudStatus("Dropbox connected and your first backup is saved.");
     } catch (error) {
@@ -5983,6 +6153,7 @@ const initializeApp = async () => {
   };
   window.setTimeout(async () => {
     await finishDropboxReturn();
+    await checkCloudNewer();
     await checkBackupReminder();
   }, 500);
 };
