@@ -754,15 +754,35 @@ textarea {
 }
 
 #close-modal {
-    position: absolute;
-    right: 15px;
-    top: 12px;
-    font-size: 24px;
+    font-size: 28px;
+    line-height: 1;
     cursor: pointer;
-    z-index: 20;
+    padding: 0 4px;
+}
+
+#btn-add-another-contact {
+    width: 36px;
+    height: 36px;
+    margin-left: auto;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: #004080;
+    color: #ffffff;
+    cursor: pointer;
+}
+
+#btn-add-another-contact .icon {
+    width: 22px;
+    height: 22px;
 }
 
 .modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     padding: 15px 20px;
     border-bottom: 1px solid #eee;
     background: #ffffff;
@@ -985,8 +1005,7 @@ textarea {
     display: none;
 }
 
-#btn-save-contact,
-#btn-exit-modal {
+#btn-save-contact {
     min-height: 48px;
     display: grid;
     place-items: center;
@@ -995,18 +1014,6 @@ textarea {
 #btn-save-contact {
     flex: 2 1 90px;
     background: #28a745;
-    color: white;
-    padding: 12px;
-    border: none;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-#btn-exit-modal {
-    flex: 1 1 70px;
-    background: #6c757d;
     color: white;
     padding: 12px;
     border: none;

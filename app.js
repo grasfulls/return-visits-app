@@ -2714,7 +2714,6 @@ const initializeApp = async () => {
   const btnFindCrossStreet = document.getElementById("btn-find-cross-street");
   const crossStreetSearch = document.getElementById("cross-street-search");
   const closeModal = document.getElementById("close-modal");
-  const btnExitModal = document.getElementById("btn-exit-modal");
   const contactForm = document.getElementById("contact-form");
   const contactModalBody = contactForm.querySelector(".modal-body");
   const phoneInput = document.getElementById("contact-phone");
@@ -3415,7 +3414,17 @@ const initializeApp = async () => {
     .addEventListener("change", updatePickerLocationFromCoordinates);
 
   closeModal.addEventListener("click", attemptExit);
-  btnExitModal.addEventListener("click", attemptExit);
+  document
+    .getElementById("btn-add-another-contact")
+    .addEventListener("click", () => {
+      if (
+        captureFormState() !== initialFormState &&
+        !confirm("Changes were made, discard them and add a new contact?")
+      ) {
+        return;
+      }
+      btnOpenModal.click();
+    });
 
   document.getElementById("btn-gps").addEventListener("click", () => {
     if (!pickerMap) {
