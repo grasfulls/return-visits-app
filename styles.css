@@ -6,6 +6,18 @@ body {
     color: #333;
 }
 
+.location-hint {
+    display: block;
+    margin: 6px 0 10px;
+    padding: 8px 10px;
+    border-left: 4px solid #004080;
+    border-radius: 4px;
+    background: #eef4fb;
+    color: #1f2d3d;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
 #unlock-screen {
     position: fixed;
     inset: 0;

@@ -1194,6 +1194,25 @@ const initializeApp = async () => {
         compareNames(a.name, b.name),
     );
   };
+  const DEFAULT_REGION_NAMES = ["North", "South", "East", "West"];
+  const addCityWithDefaultRegions = (cityName) => {
+    settings.cities.push(cityName);
+    DEFAULT_REGION_NAMES.forEach((name) => {
+      if (
+        !settings.regions.some(
+          (region) => region.city === cityName && region.name === name,
+        )
+      ) {
+        settings.regions.push({ name, city: cityName });
+      }
+    });
+  };
+  const rollbackNewCity = (cityName) => {
+    settings.cities = settings.cities.filter((city) => city !== cityName);
+    settings.regions = settings.regions.filter(
+      (region) => region.city !== cityName,
+    );
+  };
   const populateDropdowns = () => {
     sortLocations();
     const citySelect = document.getElementById("contact-city-select");
@@ -1612,10 +1631,11 @@ const initializeApp = async () => {
           (city) => city.toLowerCase() === val.toLowerCase(),
         );
         if (!existingCity) {
-          settings.cities.push(val);
+          addCityWithDefaultRegions(val);
           try {
             await saveSettings();
           } catch (error) {
+            rollbackNewCity(val);
             showStorageError("save settings", error);
             return;
           }
@@ -1646,16 +1666,19 @@ const initializeApp = async () => {
         (city) => city.toLowerCase() === val.toLowerCase(),
       );
       if (val && !existingCity) {
-        settings.cities.push(val);
+        addCityWithDefaultRegions(val);
         input.value = "";
         try {
           await saveSettings();
         } catch (error) {
+          rollbackNewCity(val);
           showStorageError("save settings", error);
           return;
         }
         populateDropdowns();
-        alert(`City "${val}" added successfully!`);
+        alert(
+          `City "${val}" added with the regions North, South, East, and West.`,
+        );
       } else if (val) {
         alert("That city already exists.");
       }
@@ -1745,7 +1768,7 @@ const initializeApp = async () => {
       if (existingCity) {
         settings.defaultCity = existingCity;
       } else if (settings.defaultCity) {
-        settings.cities.push(settings.defaultCity);
+        addCityWithDefaultRegions(settings.defaultCity);
       }
       try {
         await saveSettings();

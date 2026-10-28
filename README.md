@@ -67,7 +67,9 @@ Region belongs to one City, and an Area belongs to one Region. The contact
 form's Area list always offers **+ Add New Area...**, even when other areas are
 available for the selected City and Region. Each contact has a stable unique
 ID, so different people can share the same name. The Region list also offers
-**+ Add New Region...** for the selected City. In Settings, edit a City,
+**+ Add New Region...** for the selected City. Every new City is automatically
+given the Regions North, South, East, and West. A Region is a large part of a
+city and an Area is a neighborhood within it. In Settings, edit a City,
 Region, or Area to rename it and update existing assignments. Deletion is
 blocked while contacts or child locations still use that entry; reassign or
 remove those first. Contact cards show available

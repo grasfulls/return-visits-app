@@ -310,6 +310,15 @@
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
 
             <h3>Add New City to List</h3>
+            <p class="location-hint">
+              <strong>How locations work:</strong> A <strong>city</strong> is
+              divided into <strong>regions</strong>, which are large parts of
+              the city (such as North, South, East, and West). A region is
+              divided into <strong>areas</strong>, which are smaller
+              neighborhoods within that region. New cities are automatically
+              given the regions North, South, East, and West; you can add
+              more or delete any you don't need.
+            </p>
             <div style="display: flex; gap: 8px">
               <input
                 type="text"
@@ -523,6 +532,11 @@
             <label>City (optional):</label>
             <select id="contact-city-select"></select>
             <div id="new-city-container" style="display: none; margin-top: 6px">
+              <small class="location-hint">
+                Adding a city also adds the regions North, South, East, and
+                West. A region is a large part of the city; an area is a
+                neighborhood within a region.
+              </small>
               <div style="display: flex; gap: 6px">
                 <input
                   type="text"
@@ -569,6 +583,10 @@
             </select>
             <div id="new-contact-region-container" hidden>
               <label for="input-new-contact-region">New region name:</label>
+              <small class="location-hint">
+                A region is a large part of a city, such as North or
+                Downtown. Areas (neighborhoods) go inside a region.
+              </small>
               <input
                 type="text"
                 id="input-new-contact-region"
@@ -590,6 +608,10 @@
             </select>
             <div id="new-contact-area-container" hidden>
               <label for="input-new-contact-area">New area name:</label>
+              <small class="location-hint">
+                An area is a neighborhood or small section within the selected
+                region.
+              </small>
               <input
                 type="text"
                 id="input-new-contact-area"
