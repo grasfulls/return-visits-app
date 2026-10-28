@@ -75,7 +75,7 @@
               type="password"
               id="confirm-encryption-passphrase"
               autocomplete="new-password"
-              minlength="8"
+              minlength="12"
             />
           </div>
           <p id="unlock-error" role="alert"></p>
@@ -326,7 +326,7 @@
             <h3 id="passphrase-section-title">Change Passphrase</h3>
             <p id="passphrase-section-description">
               Enter your current passphrase and choose a new one with at least
-              8 characters. This changes the passphrase for this app copy only.
+              12 characters. This changes the passphrase for this app copy only.
               Existing backup files keep the passphrase they were created with.
             </p>
             <form id="change-passphrase-form">
@@ -344,7 +344,7 @@
                 type="password"
                 id="new-passphrase"
                 autocomplete="new-password"
-                minlength="8"
+                minlength="12"
                 required
               />
               <label for="confirm-new-passphrase">Confirm new passphrase</label>
@@ -352,7 +352,7 @@
                 type="password"
                 id="confirm-new-passphrase"
                 autocomplete="new-password"
-                minlength="8"
+                minlength="12"
                 required
               />
               <button type="submit" id="btn-change-passphrase">
@@ -360,6 +360,30 @@
               </button>
               <p id="change-passphrase-status" role="status" aria-live="polite"></p>
             </form>
+
+            <div id="recovery-code-section">
+              <h3>Recovery Code</h3>
+              <p id="recovery-code-state"></p>
+              <p>
+                A recovery code is a long random code you keep somewhere safe,
+                away from this phone. If you forget your passphrase, type the
+                code in place of the passphrase to open the app. Anyone with the
+                code can open your data, so treat it like the passphrase.
+              </p>
+              <form id="recovery-code-form">
+                <label for="recovery-current-passphrase">Current passphrase</label>
+                <input
+                  type="password"
+                  id="recovery-current-passphrase"
+                  autocomplete="current-password"
+                  required
+                />
+                <button type="submit" id="btn-make-recovery-code">
+                  Make a New Recovery Code
+                </button>
+                <p id="recovery-code-status" role="status" aria-live="polite"></p>
+              </form>
+            </div>
 
             <div id="turn-off-passphrase-section">
               <h3>Turn Off Passphrase</h3>
@@ -937,6 +961,23 @@
       <div class="restore-dialog-actions">
         <button type="button" id="btn-apply-app-update">Update now</button>
         <button type="button" id="btn-later-app-update">Later</button>
+      </div>
+    </dialog>
+
+    <dialog id="recovery-code-dialog" aria-labelledby="recovery-code-title">
+      <h2 id="recovery-code-title">Your recovery code</h2>
+      <p>
+        Write this code down or save it somewhere safe, away from this phone.
+        If you forget your passphrase, type this code in its place to open the
+        app. It is shown only once. Anyone with the code can open your data.
+      </p>
+      <p id="recovery-code-value" class="recovery-code-value"></p>
+      <p id="recovery-code-copy-status" role="status" aria-live="polite"></p>
+      <div class="restore-dialog-actions">
+        <button type="button" id="btn-copy-recovery-code">Copy</button>
+        <button type="button" id="btn-recovery-code-done">
+          I have saved it
+        </button>
       </div>
     </dialog>
 

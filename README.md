@@ -34,8 +34,12 @@ Contacts and settings are stored on the current browser and device in IndexedDB
 and, when a passphrase is turned on, encrypted with AES-GCM. A passphrase is
 optional: by default the app opens without one and stores data unencrypted. To
 turn it on, use **Settings → Passphrase → Turn On Passphrase** and choose a passphrase of at
-least 8 characters; it is then required whenever opening the app. There is no
-passphrase recovery; if it is forgotten, the encrypted data cannot be unlocked.
+least 12 characters; it is then required whenever opening the app. The app shows a
+recovery code once; typing that code in place of the passphrase unlocks the app (and
+also unlocks backups, because a locked copy of the passphrase is stored inside the backup
+file). If both the passphrase and the code are lost, the encrypted data cannot be unlocked.
+Anyone with the code can open the data, so keep it private. **Settings → Passphrase →
+Make a New Recovery Code** replaces it (needed once for passphrases created before this feature).
 Keep the passphrase safe and separate from any backup or contact file. Once on,
 use **Settings → Passphrase → Change Passphrase** and verify the current passphrase first. To stop requiring
 one, use **Settings → Passphrase → Turn Off Passphrase** (the current passphrase is needed

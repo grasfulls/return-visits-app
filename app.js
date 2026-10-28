@@ -9,6 +9,8 @@ const ENCRYPTION_ITERATIONS = 310000;
 const ENCRYPTION_META_KEY = "encryption-meta";
 // Set to true to require a passphrase when no encryption has been set up yet.
 const REQUIRE_PASSPHRASE_ON_FIRST_USE = false;
+// Applies to newly created passphrases only; existing 8+ character ones still unlock.
+const MIN_PASSPHRASE_LENGTH = 12;
 
 // Bump on any change to the stored data shape, and add a migration in
 // normalizeRegionData. Version 2 added contact updatedAt and deletedContacts.
@@ -469,7 +471,8 @@ const replaceStoredValuesIfUnchanged = (
       const request = store.get(key);
       request.onsuccess = () => {
         if (
-          JSON.stringify(request.result?.value) !== JSON.stringify(expectedValue)
+          JSON.stringify(request.result?.value ?? null) !==
+          JSON.stringify(expectedValue ?? null)
         ) {
           dataChanged = true;
           transaction.abort();
@@ -593,6 +596,104 @@ const decryptValue = async (encryptedValue, key) => {
   );
   return JSON.parse(new TextDecoder().decode(plaintext));
 };
+
+// A recovery code is a random 25-character code that unlocks a copy of the
+// passphrase stored in the encryption metadata (and therefore in backups).
+const RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+const generateRecoveryCode = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(25));
+  const chars = Array.from(bytes, (byte) => RECOVERY_ALPHABET[byte % 32]);
+  return [0, 5, 10, 15, 20].map((i) => chars.slice(i, i + 5).join("")).join("-");
+};
+
+const normalizeRecoveryCode = (input) => {
+  const code = String(input ?? "")
+    .toUpperCase()
+    .replace(/[\s-]/g, "");
+  return code.length === 25 && [...code].every((c) => RECOVERY_ALPHABET.includes(c))
+    ? code
+    : null;
+};
+
+const wrapPassphraseWithRecoveryCode = async (passphrase, recoveryCode) => {
+  const salt = bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
+  const key = await deriveEncryptionKey(normalizeRecoveryCode(recoveryCode), {
+    salt,
+    iterations: ENCRYPTION_ITERATIONS,
+  });
+  return {
+    version: 1,
+    salt,
+    iterations: ENCRYPTION_ITERATIONS,
+    ...(await encryptValue(passphrase, key)),
+  };
+};
+
+const withRecoveryCode = async (metadata, passphrase) => {
+  const recoveryCode = generateRecoveryCode();
+  return {
+    recoveryCode,
+    metadata: {
+      ...metadata,
+      recovery: await wrapPassphraseWithRecoveryCode(passphrase, recoveryCode),
+    },
+  };
+};
+
+// Returns the real passphrase when the input is a valid recovery code for this
+// metadata; otherwise returns the input unchanged.
+const resolvePassphrase = async (input, metadata) => {
+  const code = normalizeRecoveryCode(input);
+  const recovery = metadata?.recovery;
+  if (!code || !recovery || recovery.version !== 1) return input;
+  try {
+    if (
+      !Number.isInteger(recovery.iterations) ||
+      recovery.iterations < 100000 ||
+      recovery.iterations > 1000000
+    ) {
+      return input;
+    }
+    const key = await deriveEncryptionKey(code, recovery);
+    const passphrase = await decryptValue(recovery, key);
+    return typeof passphrase === "string" ? passphrase : input;
+  } catch (error) {
+    return input;
+  }
+};
+
+const showRecoveryCodeDialog = (recoveryCode) =>
+  new Promise((resolve) => {
+    const dialog = document.getElementById("recovery-code-dialog");
+    const display = document.getElementById("recovery-code-value");
+    const copyStatus = document.getElementById("recovery-code-copy-status");
+    display.textContent = recoveryCode;
+    copyStatus.textContent = "";
+    const copyButton = document.getElementById("btn-copy-recovery-code");
+    const doneButton = document.getElementById("btn-recovery-code-done");
+    const onCancel = (event) => event.preventDefault();
+    const onCopy = async () => {
+      try {
+        await navigator.clipboard.writeText(recoveryCode);
+        copyStatus.textContent = "Copied. Paste it somewhere safe.";
+      } catch (error) {
+        copyStatus.textContent = "Could not copy. Write the code down instead.";
+      }
+    };
+    const onDone = () => {
+      copyButton.removeEventListener("click", onCopy);
+      doneButton.removeEventListener("click", onDone);
+      dialog.removeEventListener("cancel", onCancel);
+      display.textContent = "";
+      dialog.close();
+      resolve();
+    };
+    copyButton.addEventListener("click", onCopy);
+    doneButton.addEventListener("click", onDone);
+    dialog.addEventListener("cancel", onCancel);
+    dialog.showModal();
+  });
 
 const PLAIN_CONTACT_FORMAT = "return-visits-contact";
 
@@ -962,7 +1063,10 @@ const decryptBackup = async (backup, passphrase) => {
   ) {
     throw new Error("This is not a supported encrypted backup file.");
   }
-  const encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+  const encryptionKey = await deriveEncryptionKey(
+    await resolvePassphrase(passphrase, metadata),
+    metadata,
+  );
   const [settings, contacts] = await Promise.all([
     decryptValue(backup.data.settings, encryptionKey),
     decryptValue(backup.data.contacts, encryptionKey),
@@ -1029,7 +1133,7 @@ const createUnlockPrompt = (hasEncryption) => {
   confirmInput.required = !hasEncryption;
   description.textContent = hasEncryption
     ? "Enter your passphrase to decrypt and open your local contact database."
-    : "Create a passphrase to encrypt this device's contact database. Use at least 8 characters and keep it safe.";
+    : `Create a passphrase to encrypt this device's contact database. Use at least ${MIN_PASSPHRASE_LENGTH} characters and keep it safe.`;
   submitButton.textContent = hasEncryption ? "Unlock" : "Encrypt and Continue";
   screen.hidden = false;
   return { screen, passphraseInput, confirmInput, submitButton, errorMessage };
@@ -1149,8 +1253,19 @@ const initializeAppData = async () => {
           let settings;
           let contacts;
 
+          let usedRecoveryCode = false;
+          let newRecoveryCode = null;
+
           if (metadata) {
-            encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+            const resolvedPassphrase = await resolvePassphrase(
+              passphrase,
+              metadata,
+            );
+            usedRecoveryCode = resolvedPassphrase !== passphrase;
+            encryptionKey = await deriveEncryptionKey(
+              resolvedPassphrase,
+              metadata,
+            );
             const [storedEncryptedSettings, storedEncryptedContacts] = await Promise.all([
               readStoredValue(database, "settings"),
               readStoredValue(database, "contacts"),
@@ -1188,8 +1303,10 @@ const initializeAppData = async () => {
             localStorage.removeItem("return_visits_settings");
             localStorage.removeItem("return_visits_contacts");
           } else {
-            if (passphrase.length < 8) {
-              throw new Error("Use a passphrase with at least 8 characters.");
+            if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+              throw new Error(
+                `Use a passphrase with at least ${MIN_PASSPHRASE_LENGTH} characters.`,
+              );
             }
             if (passphrase !== prompt.confirmInput.value) {
               throw new Error("The passphrases do not match.");
@@ -1210,6 +1327,10 @@ const initializeAppData = async () => {
             ({ settings, contacts } = normalizeRegionData(settings, contacts));
             metadata = createCryptoMetadata();
             encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+            ({ metadata, recoveryCode: newRecoveryCode } = await withRecoveryCode(
+              metadata,
+              passphrase,
+            ));
             const encryptedSettings = await encryptValue(settings, encryptionKey);
             const encryptedContacts = await encryptValue(contacts, encryptionKey);
             await writeStoredValues(database, [
@@ -1246,6 +1367,12 @@ const initializeAppData = async () => {
           }
 
           prompt.screen.remove();
+          if (newRecoveryCode) await showRecoveryCodeDialog(newRecoveryCode);
+          if (usedRecoveryCode) {
+            alert(
+              "Unlocked with your recovery code. Open Settings → Passphrase and choose a new passphrase; you can enter your recovery code as the current passphrase. You will also get a new recovery code.",
+            );
+          }
           resolve({ database, settings, contacts, encryptionKey, metadata });
         } catch (error) {
           console.error("Unable to unlock or encrypt local data:", error);
@@ -2366,8 +2493,8 @@ const initializeApp = async () => {
       protectedNow ? "Change Passphrase" : "Turn On Passphrase";
     document.getElementById("passphrase-section-description").textContent =
       protectedNow
-        ? "Enter your current passphrase and choose a new one with at least 8 characters. This changes the passphrase for this app copy only. Existing backup files keep the passphrase they were created with."
-        : "A passphrase is currently off. Turn it on to encrypt the data on this device; you will be asked for it each time you open the app. Use at least 8 characters. If you forget it, there is no recovery option.";
+        ? `Enter your current passphrase (or your recovery code) and choose a new one with at least ${MIN_PASSPHRASE_LENGTH} characters. This changes the passphrase for this app copy only, and creates a new recovery code. Existing backup files keep the passphrase they were created with.`
+        : `A passphrase is currently off. Turn it on to encrypt the data on this device; you will be asked for it each time you open the app. Use at least ${MIN_PASSPHRASE_LENGTH} characters. You will be given a recovery code to keep; without the passphrase or that code, the data cannot be opened.`;
     document.getElementById("current-passphrase-fields").hidden =
       !protectedNow;
     document.getElementById("current-passphrase").required = protectedNow;
@@ -2375,8 +2502,64 @@ const initializeApp = async () => {
       protectedNow ? "Change Passphrase" : "Turn On Passphrase";
     document.getElementById("turn-off-passphrase-section").hidden =
       !protectedNow;
+    document.getElementById("recovery-code-section").hidden = !protectedNow;
+    document.getElementById("recovery-code-state").textContent =
+      cryptoMetadata?.recovery
+        ? "A recovery code is set for this app copy. It is stored, locked, inside your backups too. If you lost the code, make a new one below."
+        : "No recovery code is set yet. Make one now so a forgotten passphrase does not lock you out.";
   };
   updatePassphraseSection();
+
+  document
+    .getElementById("recovery-code-form")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const currentInput = document.getElementById("recovery-current-passphrase");
+      const submitButton = document.getElementById("btn-make-recovery-code");
+      const status = document.getElementById("recovery-code-status");
+      const appContainer = document.getElementById("app-container");
+      let statusMessage = "";
+      let newRecoveryCode = null;
+      status.textContent = "";
+      submitButton.disabled = true;
+      appContainer.inert = true;
+
+      try {
+        const passphrase = await resolvePassphrase(
+          currentInput.value,
+          cryptoMetadata,
+        );
+        try {
+          const key = await deriveEncryptionKey(passphrase, cryptoMetadata);
+          await decryptValue(await readStoredValue(database, "settings"), key);
+        } catch (error) {
+          console.error("Unable to verify current passphrase:", error);
+          throw new Error(
+            "The passphrase is incorrect. No recovery code was made.",
+          );
+        }
+        const { metadata: newMetadata, recoveryCode } = await withRecoveryCode(
+          cryptoMetadata,
+          passphrase,
+        );
+        await writeStoredValues(database, [[ENCRYPTION_META_KEY, newMetadata]]);
+        cryptoMetadata = newMetadata;
+        newRecoveryCode = recoveryCode;
+        document.getElementById("recovery-code-form").reset();
+        statusMessage =
+          "New recovery code made. Any older recovery code no longer works.";
+        updatePassphraseSection();
+      } catch (error) {
+        console.error("Unable to make a recovery code:", error);
+        statusMessage =
+          error.message || "Could not make a recovery code. Nothing was changed.";
+      } finally {
+        appContainer.inert = false;
+        submitButton.disabled = false;
+        status.textContent = statusMessage;
+      }
+      if (newRecoveryCode) await showRecoveryCodeDialog(newRecoveryCode);
+    });
 
   document
     .getElementById("turn-off-passphrase-form")
@@ -2405,7 +2588,7 @@ const initializeApp = async () => {
         let storedEncryptedContacts;
         try {
           const currentKey = await deriveEncryptionKey(
-            currentInput.value,
+            await resolvePassphrase(currentInput.value, cryptoMetadata),
             cryptoMetadata,
           );
           [storedEncryptedSettings, storedEncryptedContacts] = await Promise.all([
@@ -2477,8 +2660,10 @@ const initializeApp = async () => {
       appContainer.inert = true;
 
       try {
-        if (newPassphrase.value.length < 8) {
-          throw new Error("Use a new passphrase with at least 8 characters.");
+        if (newPassphrase.value.length < MIN_PASSPHRASE_LENGTH) {
+          throw new Error(
+            `Use a new passphrase with at least ${MIN_PASSPHRASE_LENGTH} characters.`,
+          );
         }
         if (newPassphrase.value !== confirmNewPassphrase.value) {
           throw new Error("The new passphrases do not match.");
@@ -2496,7 +2681,10 @@ const initializeApp = async () => {
         try {
           const currentKey = cryptoMetadata
             ? await deriveEncryptionKey(
-                currentPassphrase.value,
+                await resolvePassphrase(
+                  currentPassphrase.value,
+                  cryptoMetadata,
+                ),
                 cryptoMetadata,
               )
             : null;
@@ -2515,11 +2703,13 @@ const initializeApp = async () => {
           );
         }
 
-        const newMetadata = createCryptoMetadata();
+        const baseMetadata = createCryptoMetadata();
         const newKey = await deriveEncryptionKey(
           newPassphrase.value,
-          newMetadata,
+          baseMetadata,
         );
+        const { metadata: newMetadata, recoveryCode: newRecoveryCode } =
+          await withRecoveryCode(baseMetadata, newPassphrase.value);
         const [newEncryptedSettings, newEncryptedContacts] = await Promise.all([
           encryptValue(currentSettings, newKey),
           encryptValue(currentContacts, newKey),
@@ -2551,10 +2741,11 @@ const initializeApp = async () => {
         encryptionKey = newKey;
         cryptoMetadata = newMetadata;
         statusMessage = wasProtected
-          ? "Passphrase changed. Use the new passphrase next time you open this app copy."
-          : "Passphrase turned on. You will be asked for it each time you open this app. There is no recovery option if you forget it.";
+          ? "Passphrase changed. Use the new passphrase next time you open this app copy. Your old recovery code no longer works; keep the new one."
+          : "Passphrase turned on. You will be asked for it each time you open this app. Keep your recovery code safe; it is the only way back in if you forget the passphrase.";
         document.getElementById("change-passphrase-form").reset();
         updatePassphraseSection();
+        await showRecoveryCodeDialog(newRecoveryCode);
       } catch (error) {
         console.error("Unable to change passphrase:", error);
         statusMessage =
