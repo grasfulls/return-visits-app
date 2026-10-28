@@ -5540,32 +5540,45 @@ const initializeApp = async () => {
 
   // Returns true once the backup replaced the current data.
   const restoreBackupObject = async (backup) => {
-    const plainMode = !encryptionKey;
-    const skipPassphrase =
-      plainMode && backup.format === "return-visits-backup";
-    const backupPassphrase = skipPassphrase
-      ? null
-      : await requestBackupPassphrase();
-    if (!skipPassphrase && backupPassphrase === null) return false;
+    const plainBackup = backup.format === "return-visits-backup";
+    const deviceProtected = Boolean(encryptionKey);
+    // A plain backup needs no passphrase to read; an encrypted one does.
+    const backupPassphrase = plainBackup ? null : await requestBackupPassphrase();
+    if (!plainBackup && backupPassphrase === null) return false;
     const restored = await decryptBackup(backup, backupPassphrase);
-    if (plainMode) {
+    if (plainBackup && deviceProtected) {
+      // Keep this device's own passphrase and recovery code.
+      restored.encryptionKey = encryptionKey;
+      restored.metadata = cryptoMetadata;
+      restored.encryptedSettings = await encryptValue(
+        restored.settings,
+        encryptionKey,
+      );
+      restored.encryptedContacts = await encryptValue(
+        restored.contacts,
+        encryptionKey,
+      );
+    } else if (plainBackup) {
       restored.encryptionKey = null;
       restored.metadata = null;
       restored.encryptedSettings = restored.settings;
       restored.encryptedContacts = restored.contacts;
-      restored.wasLegacyPlaintext = false;
+    }
+    restored.wasLegacyPlaintext = false;
+    let passphraseNote = "";
+    if (!plainBackup && !deviceProtected) {
+      passphraseNote =
+        " This backup is protected by a passphrase, so restoring it turns the passphrase on for this device. It will be the backup's passphrase and recovery code, and you will be asked for it each time you open the app.";
+    } else if (!plainBackup) {
+      passphraseNote =
+        " This device will switch to the passphrase and recovery code of this backup.";
+    } else if (deviceProtected) {
+      passphraseNote =
+        " This backup is not encrypted; the restored data will be protected by this device's passphrase.";
     }
     if (
-      restored.wasLegacyPlaintext &&
       !confirm(
-        "This older backup is not encrypted. It will be encrypted with its passphrase after import. Continue?",
-      )
-    ) {
-      return false;
-    }
-    if (
-      !confirm(
-        `This will replace all ${contacts.length} current contacts with ${restored.contacts.length} contacts from the backup. Continue?`,
+        `This will replace all ${contacts.length} current contacts with ${restored.contacts.length} contacts from the backup.${passphraseNote} Continue?`,
       )
     ) {
       return false;
@@ -5588,8 +5601,13 @@ const initializeApp = async () => {
       settings.defaultCity || "Newcastle";
     populateDropdowns();
     renderContacts();
+    updatePassphraseSection();
     markBackupDone();
-    alert("Encrypted backup restored successfully.");
+    alert(
+      encryptionKey && !restored.metadata?.recovery
+        ? "Backup restored. It has no recovery code yet; open Settings → Passphrase and choose Make a New Recovery Code."
+        : "Backup restored successfully.",
+    );
     return true;
   };
 

@@ -179,8 +179,14 @@ for it. Restore
 replaces the current local contacts and settings only after confirmation. On a
 new device, you can choose **Choose Backup to Restore** on the initial unlock
 screen; the restored backup’s passphrase becomes the passphrase for that
-device. Older unencrypted full-app backups are supported and encrypted when
-imported, with a warning.
+device. Older unencrypted full-app backups are supported; restoring one onto a device
+with a passphrase keeps that device's own passphrase and recovery code.
+
+All devices that share your data use one passphrase and one recovery code. Restoring an
+encrypted backup onto a device with no passphrase turns the passphrase on there (after a
+confirmation message) with the backup's passphrase and recovery code; restoring onto a
+device with a different passphrase switches it to the backup's. After you change the
+passphrase on one device, the others keep the old one until they restore a newer backup.
 
 Full backups cannot be merged directly. To combine several browser or app
 copies, choose one as the base and import individual contacts from the other
