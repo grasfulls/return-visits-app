@@ -1180,7 +1180,22 @@ const initializeApp = async () => {
   // Populate All Dropdowns (Filters & Modal Selects)
   let selectedContactArea = "";
   let selectedContactRegion = "";
+  const compareNames = (a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+  const sortLocations = () => {
+    settings.cities.sort(compareNames);
+    settings.regions.sort(
+      (a, b) => compareNames(a.city, b.city) || compareNames(a.name, b.name),
+    );
+    settings.areas.sort(
+      (a, b) =>
+        compareNames(a.city, b.city) ||
+        compareNames(a.region, b.region) ||
+        compareNames(a.name, b.name),
+    );
+  };
   const populateDropdowns = () => {
+    sortLocations();
     const citySelect = document.getElementById("contact-city-select");
     const currentCityVal = citySelect.value;
     citySelect.innerHTML = "";
