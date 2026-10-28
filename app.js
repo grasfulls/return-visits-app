@@ -1398,7 +1398,22 @@ const showStorageError = (action, error) => {
   );
 };
 
+const LAST_BACKUP_KEY = "return_visits_last_backup_at";
+const LAST_BACKUP_PROMPT_KEY = "return_visits_last_backup_prompt";
+const markBackupDone = () => {
+  try {
+    localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
+    localStorage.removeItem(LAST_BACKUP_PROMPT_KEY);
+  } catch (error) {
+    console.error("Unable to save the backup time:", error);
+  }
+};
+// Set once the app is running; called after saves so a connected Dropbox
+// backup can follow.
+let cloudBackupHook = () => {};
+
 const initializeApp = async () => {
+  if (window.RVDropbox) await window.RVDropbox.ready;
   const {
     database,
     settings: savedSettings,
@@ -1414,7 +1429,12 @@ const initializeApp = async () => {
   let settings = savedSettings;
   settings.state = normalizeUsState(settings.state);
   const saveSettings = () =>
-    encryptStoredValue(database, "settings", settings, encryptionKey);
+    encryptStoredValue(database, "settings", settings, encryptionKey).then(
+      (result) => {
+        cloudBackupHook();
+        return result;
+      },
+    );
 
   // Populate Settings View Form
   document.getElementById("setting-state").value = settings.state;
@@ -2265,6 +2285,7 @@ const initializeApp = async () => {
       renderContacts();
       return false;
     }
+    cloudBackupHook();
     populateDropdowns();
     renderContacts();
     return true;
@@ -3053,6 +3074,7 @@ const initializeApp = async () => {
       showStorageError("save contacts", error);
       return false;
     }
+    cloudBackupHook();
     renderContacts();
     return true;
   };
@@ -4963,25 +4985,29 @@ const initializeApp = async () => {
     .getElementById("sort-select")
     .addEventListener("change", renderContacts);
 
+  const buildBackup = async (encrypt = Boolean(encryptionKey)) => {
+    const useKey = encrypt && encryptionKey;
+    return {
+      format: useKey
+        ? "return-visits-encrypted-backup"
+        : "return-visits-backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      ...(useKey
+        ? {
+            encryption: cryptoMetadata,
+            data: {
+              settings: await encryptValue(settings, encryptionKey),
+              contacts: await encryptValue(contacts, encryptionKey),
+            },
+          }
+        : { settings, contacts }),
+    };
+  };
+
   const downloadEncryptedBackup = async (encrypt = Boolean(encryptionKey)) => {
     try {
-      const useKey = encrypt && encryptionKey;
-      const backup = {
-        format: useKey
-          ? "return-visits-encrypted-backup"
-          : "return-visits-backup",
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        ...(useKey
-          ? {
-              encryption: cryptoMetadata,
-              data: {
-                settings: await encryptValue(settings, encryptionKey),
-                contacts: await encryptValue(contacts, encryptionKey),
-              },
-            }
-          : { settings, contacts }),
-      };
+      const backup = await buildBackup(encrypt);
       const file = new Blob([JSON.stringify(backup, null, 2)], {
         type: "application/json",
       });
@@ -4993,7 +5019,7 @@ const initializeApp = async () => {
         .slice(0, 10)}.json`;
       link.click();
       window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
-      localStorage.setItem("return_visits_last_backup_reminder", Date.now());
+      markBackupDone();
     } catch (error) {
       showStorageError("export encrypted backup", error);
     }
@@ -5416,6 +5442,70 @@ const initializeApp = async () => {
       restorePassphraseInput.focus();
     });
 
+  const reportRestoreError = (error) => {
+    console.error("Unable to restore encrypted backup:", error);
+    alert(
+      error instanceof NewerDataVersionError
+        ? `${error.message} Your current data was not replaced.`
+        : "Could not restore that backup. Check that the file is valid and the passphrase is correct. Your current data was not replaced.",
+    );
+  };
+
+  // Returns true once the backup replaced the current data.
+  const restoreBackupObject = async (backup) => {
+    const plainMode = !encryptionKey;
+    const skipPassphrase =
+      plainMode && backup.format === "return-visits-backup";
+    const backupPassphrase = skipPassphrase
+      ? null
+      : await requestBackupPassphrase();
+    if (!skipPassphrase && backupPassphrase === null) return false;
+    const restored = await decryptBackup(backup, backupPassphrase);
+    if (plainMode) {
+      restored.encryptionKey = null;
+      restored.metadata = null;
+      restored.encryptedSettings = restored.settings;
+      restored.encryptedContacts = restored.contacts;
+      restored.wasLegacyPlaintext = false;
+    }
+    if (
+      restored.wasLegacyPlaintext &&
+      !confirm(
+        "This older backup is not encrypted. It will be encrypted with its passphrase after import. Continue?",
+      )
+    ) {
+      return false;
+    }
+    if (
+      !confirm(
+        `This will replace all ${contacts.length} current contacts with ${restored.contacts.length} contacts from the backup. Continue?`,
+      )
+    ) {
+      return false;
+    }
+
+    await writeStoredValues(database, [
+      ["settings", restored.encryptedSettings],
+      ["contacts", restored.encryptedContacts],
+      ...(restored.metadata ? [[ENCRYPTION_META_KEY, restored.metadata]] : []),
+    ]);
+    encryptionKey = restored.encryptionKey;
+    cryptoMetadata = restored.metadata;
+    settings = restored.settings;
+    contacts = restored.contacts;
+    resetContactSignatures();
+    settings.state = normalizeUsState(settings.state);
+    populateMeForm();
+    document.getElementById("setting-state").value = settings.state;
+    document.getElementById("setting-default-city").value =
+      settings.defaultCity || "Newcastle";
+    populateDropdowns();
+    renderContacts();
+    markBackupDone();
+    alert("Encrypted backup restored successfully.");
+    return true;
+  };
+
   document
     .getElementById("btn-restore-backup")
     .addEventListener("click", async () => {
@@ -5427,68 +5517,318 @@ const initializeApp = async () => {
 
       try {
         const backup = JSON.parse(await file.text());
-        const plainMode = !encryptionKey;
-        const skipPassphrase =
-          plainMode && backup.format === "return-visits-backup";
-        const backupPassphrase = skipPassphrase
-          ? null
-          : await requestBackupPassphrase();
-        if (!skipPassphrase && backupPassphrase === null) return;
-        const restored = await decryptBackup(backup, backupPassphrase);
-        if (plainMode) {
-          restored.encryptionKey = null;
-          restored.metadata = null;
-          restored.encryptedSettings = restored.settings;
-          restored.encryptedContacts = restored.contacts;
-          restored.wasLegacyPlaintext = false;
-        }
-        if (
-          restored.wasLegacyPlaintext &&
-          !confirm(
-            "This older backup is not encrypted. It will be encrypted with its passphrase after import. Continue?",
-          )
-        ) {
-          return;
-        }
-        if (
-          !confirm(
-            `This will replace all ${contacts.length} current contacts with ${restored.contacts.length} contacts from the backup. Continue?`,
-          )
-        ) {
-          return;
-        }
-
-        await writeStoredValues(database, [
-          ["settings", restored.encryptedSettings],
-          ["contacts", restored.encryptedContacts],
-          ...(restored.metadata
-            ? [[ENCRYPTION_META_KEY, restored.metadata]]
-            : []),
-        ]);
-        encryptionKey = restored.encryptionKey;
-        cryptoMetadata = restored.metadata;
-        settings = restored.settings;
-        contacts = restored.contacts;
-        resetContactSignatures();
-        settings.state = normalizeUsState(settings.state);
-        populateMeForm();
-        document.getElementById("setting-state").value = settings.state;
-        document.getElementById("setting-default-city").value =
-          settings.defaultCity || "Newcastle";
-        populateDropdowns();
-        renderContacts();
-        localStorage.setItem("return_visits_last_backup_reminder", Date.now());
-        backupFileInput.value = "";
-        alert("Encrypted backup restored successfully.");
+        if (await restoreBackupObject(backup)) backupFileInput.value = "";
       } catch (error) {
-        console.error("Unable to restore encrypted backup:", error);
-        alert(
-          error instanceof NewerDataVersionError
-            ? `${error.message} Your current data was not replaced.`
-            : "Could not restore that backup. Check that the file is valid and the passphrase is correct. Your current data was not replaced.",
+        reportRestoreError(error);
+      }
+    });
+
+  // ---- Cloud backup (Dropbox, optional) ----
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const CLOUD_LAST_KEY = "return_visits_cloud_last_backup";
+  const CLOUD_SNAPSHOT_KEY = "return_visits_cloud_last_snapshot";
+  const CLOUD_SNAPSHOTS_KEPT = 10;
+  const dropbox = window.RVDropbox;
+  const cloudSection = document.getElementById("cloud-section");
+  const cloudStatus = document.getElementById("cloud-status");
+  const setCloudStatus = (message) => {
+    cloudStatus.textContent = message;
+  };
+  const showCloudStep = (stepId) => {
+    ["cloud-question", "cloud-signup", "cloud-connect"].forEach((id) => {
+      document.getElementById(id).hidden = id !== stepId;
+    });
+  };
+
+  const refreshCloudUi = async () => {
+    const connected = dropbox.isConnected();
+    document.getElementById("cloud-off").hidden = connected;
+    document.getElementById("cloud-on").hidden = !connected;
+    if (!connected) return;
+    const last = Number(localStorage.getItem(CLOUD_LAST_KEY) || 0);
+    document.getElementById("cloud-last-backup").textContent = last
+      ? `Last Dropbox backup: ${new Date(last).toLocaleString()}`
+      : "No Dropbox backup yet.";
+    const accountStatus = document.getElementById("cloud-account-status");
+    accountStatus.textContent = "Connected to Dropbox.";
+    try {
+      const email = await dropbox.accountEmail();
+      if (email) accountStatus.textContent = `Connected to Dropbox as ${email}.`;
+    } catch (error) {
+      console.error("Unable to read the Dropbox account:", error);
+    }
+  };
+
+  const pruneCloudSnapshots = async () => {
+    const files = (await dropbox.list())
+      .filter((file) => /^backup-.*\.json$/.test(file.name))
+      .sort((a, b) => b.name.localeCompare(a.name));
+    for (const file of files.slice(CLOUD_SNAPSHOTS_KEPT)) {
+      await dropbox.remove(file.path_lower);
+    }
+  };
+
+  let cloudBackupRunning = false;
+  let cloudBackupQueued = false;
+  // Uploads the live copy, plus a dated copy at most once a day (or when
+  // forced). Throws on failure.
+  const runCloudBackup = async ({ forceSnapshot = false } = {}) => {
+    if (cloudBackupRunning) {
+      cloudBackupQueued = true;
+      return;
+    }
+    cloudBackupRunning = true;
+    try {
+      const text = JSON.stringify(await buildBackup(), null, 2);
+      await dropbox.upload("/latest.json", text);
+      const lastSnapshot = Number(
+        localStorage.getItem(CLOUD_SNAPSHOT_KEY) || 0,
+      );
+      if (forceSnapshot || Date.now() - lastSnapshot >= DAY_MS) {
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        await dropbox.upload(`/backup-${stamp}.json`, text);
+        localStorage.setItem(CLOUD_SNAPSHOT_KEY, String(Date.now()));
+        try {
+          await pruneCloudSnapshots();
+        } catch (error) {
+          console.error("Unable to remove old Dropbox backups:", error);
+        }
+      }
+      localStorage.setItem(CLOUD_LAST_KEY, String(Date.now()));
+      markBackupDone();
+    } finally {
+      cloudBackupRunning = false;
+      if (cloudBackupQueued) {
+        cloudBackupQueued = false;
+        cloudBackupHook();
+      }
+    }
+  };
+
+  // Never overwrite Dropbox with an empty app, for example a new phone that
+  // has not restored yet.
+  const autoCloudBackup = async () => {
+    if (!dropbox.isConnected() || !contacts.length) return false;
+    try {
+      await runCloudBackup();
+      await refreshCloudUi();
+      return true;
+    } catch (error) {
+      console.error("Automatic Dropbox backup failed:", error);
+      setCloudStatus(
+        "The last automatic Dropbox backup did not finish. It will try again.",
+      );
+      return false;
+    }
+  };
+
+  let cloudTimer = null;
+  cloudBackupHook = () => {
+    if (!dropbox.isConnected()) return;
+    window.clearTimeout(cloudTimer);
+    cloudTimer = window.setTimeout(() => {
+      cloudTimer = null;
+      autoCloudBackup();
+    }, 15000);
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && cloudTimer) {
+      window.clearTimeout(cloudTimer);
+      cloudTimer = null;
+      autoCloudBackup();
+    }
+  });
+
+  document.getElementById("btn-cloud-begin").addEventListener("click", () => {
+    document.getElementById("btn-cloud-begin").hidden = true;
+    showCloudStep("cloud-question");
+  });
+  document
+    .getElementById("btn-cloud-have")
+    .addEventListener("click", () => showCloudStep("cloud-connect"));
+  document
+    .getElementById("btn-cloud-need")
+    .addEventListener("click", () => showCloudStep("cloud-signup"));
+  document
+    .getElementById("btn-cloud-signup-done")
+    .addEventListener("click", () => showCloudStep("cloud-connect"));
+  document
+    .getElementById("btn-cloud-connect")
+    .addEventListener("click", async () => {
+      if (
+        !encryptionKey &&
+        !confirm(
+          "No passphrase is turned on, so your backups in Dropbox will not be encrypted. They stay in your own Dropbox, but for extra protection you can turn on a passphrase first (Settings → Passphrase). Connect without encryption?",
+        )
+      ) {
+        return;
+      }
+      try {
+        await dropbox.startConnect();
+      } catch (error) {
+        console.error(error);
+        setCloudStatus("Could not start the Dropbox sign-in. Please try again.");
+      }
+    });
+
+  document
+    .getElementById("btn-cloud-backup-now")
+    .addEventListener("click", async () => {
+      if (
+        !contacts.length &&
+        !confirm(
+          "There are no contacts on this device. Backing up now could replace your latest Dropbox copy with an empty one. Continue?",
+        )
+      ) {
+        return;
+      }
+      setCloudStatus("Backing up to Dropbox…");
+      try {
+        await runCloudBackup({ forceSnapshot: true });
+        await refreshCloudUi();
+        setCloudStatus("Backed up to Dropbox.");
+      } catch (error) {
+        console.error(error);
+        setCloudStatus(
+          "Could not back up to Dropbox. Check your connection and try again.",
         );
       }
     });
+
+  document
+    .getElementById("btn-cloud-disconnect")
+    .addEventListener("click", async () => {
+      if (
+        !confirm(
+          "Disconnect Dropbox? Your existing backups stay in your Dropbox, but the app will stop backing up there.",
+        )
+      ) {
+        return;
+      }
+      await dropbox.disconnect();
+      localStorage.removeItem(CLOUD_LAST_KEY);
+      localStorage.removeItem(CLOUD_SNAPSHOT_KEY);
+      setCloudStatus("Dropbox disconnected.");
+      document.getElementById("btn-cloud-begin").hidden = false;
+      showCloudStep("");
+      await refreshCloudUi();
+    });
+
+  const cloudRestoreDialog = document.getElementById("cloud-restore-dialog");
+  const cloudRestoreSelect = document.getElementById("cloud-restore-select");
+  const openCloudRestore = async () => {
+    setCloudStatus("Looking for backups in Dropbox…");
+    let files;
+    try {
+      files = await dropbox.list();
+    } catch (error) {
+      console.error(error);
+      setCloudStatus("Could not reach Dropbox. Check your connection.");
+      return;
+    }
+    const backups = files
+      .filter((file) => /^(latest|backup-.*)\.json$/.test(file.name))
+      .sort((a, b) => {
+        if (a.name === "latest.json") return -1;
+        if (b.name === "latest.json") return 1;
+        return b.name.localeCompare(a.name);
+      });
+    if (!backups.length) {
+      setCloudStatus("No backups were found in your Dropbox yet.");
+      return;
+    }
+    setCloudStatus("");
+    cloudRestoreSelect.innerHTML = "";
+    backups.forEach((file) => {
+      const option = document.createElement("option");
+      option.value = file.path_lower;
+      const when = new Date(file.server_modified).toLocaleString();
+      option.textContent =
+        file.name === "latest.json" ? `Latest copy (${when})` : when;
+      cloudRestoreSelect.appendChild(option);
+    });
+    cloudRestoreDialog.showModal();
+  };
+  document
+    .getElementById("btn-cloud-restore")
+    .addEventListener("click", openCloudRestore);
+  document
+    .getElementById("cancel-cloud-restore")
+    .addEventListener("click", () => cloudRestoreDialog.close());
+  document
+    .getElementById("cloud-restore-form")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const path = cloudRestoreSelect.value;
+      cloudRestoreDialog.close();
+      setCloudStatus("Downloading from Dropbox…");
+      try {
+        const backup = JSON.parse(await dropbox.download(path));
+        setCloudStatus("");
+        await restoreBackupObject(backup);
+      } catch (error) {
+        setCloudStatus("");
+        reportRestoreError(error);
+      }
+    });
+
+  const showSettingsView = () => {
+    currentViewId = "settings-view";
+    document
+      .querySelectorAll(".view")
+      .forEach((view) => view.classList.remove("active"));
+    document.getElementById(currentViewId).classList.add("active");
+    renderBottomNav();
+  };
+
+  // Dropbox just sent the user back after connecting (or declining).
+  const finishDropboxReturn = async () => {
+    const result = dropbox.takeConnectResult();
+    if (!result) return;
+    showSettingsView();
+    cloudSection.open = true;
+    if (!result.ok) {
+      await refreshCloudUi();
+      setCloudStatus(result.message);
+      cloudSection.scrollIntoView({ block: "start" });
+      return;
+    }
+    await refreshCloudUi();
+    cloudSection.scrollIntoView({ block: "start" });
+    if (!contacts.length) {
+      try {
+        const existing = (await dropbox.list()).filter((file) =>
+          /^(latest|backup-.*)\.json$/.test(file.name),
+        );
+        if (
+          existing.length &&
+          confirm(
+            "Dropbox connected. It already has a backup. Restore it onto this device now?",
+          )
+        ) {
+          await openCloudRestore();
+          return;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+      setCloudStatus("Dropbox connected. Add contacts and they will be backed up.");
+      return;
+    }
+    setCloudStatus("Dropbox connected. Making your first backup…");
+    try {
+      await runCloudBackup({ forceSnapshot: true });
+      await refreshCloudUi();
+      setCloudStatus("Dropbox connected and your first backup is saved.");
+    } catch (error) {
+      console.error(error);
+      setCloudStatus(
+        "Dropbox connected, but the first backup did not finish. Tap Back Up to Dropbox Now.",
+      );
+    }
+  };
+
+  refreshCloudUi();
 
   renderContacts();
   if (contacts.length > 0) {
@@ -5500,28 +5840,64 @@ const initializeApp = async () => {
     }
     document.getElementById("install-banner").hidden = true;
   }
-  const reminderKey = "return_visits_last_backup_reminder";
-  const lastReminder = Number(localStorage.getItem(reminderKey) || 0);
-  const reminderInterval = 30 * 24 * 60 * 60 * 1000;
-  if (!contacts.length || !lastReminder) {
-    localStorage.setItem(reminderKey, Date.now());
-  } else if (Date.now() - lastReminder >= reminderInterval) {
-    localStorage.setItem(reminderKey, Date.now());
-    window.setTimeout(() => {
-      if (
-        confirm(
-          "It's time for a backup. Open Settings to export an encrypted backup now?",
-        )
-      ) {
-        currentViewId = "settings-view";
-        document
-          .querySelectorAll(".view")
-          .forEach((view) => view.classList.remove("active"));
-        document.getElementById(currentViewId).classList.add("active");
-        renderBottomNav();
-      }
-    }, 500);
+  // Remind after 10 days without a backup, at most once a day. Only a
+  // successful backup resets the count.
+  const REMIND_AFTER_DAYS = 10;
+  let lastBackupAt = Number(localStorage.getItem(LAST_BACKUP_KEY) || 0);
+  if (!lastBackupAt || !contacts.length) {
+    lastBackupAt =
+      Number(localStorage.getItem("return_visits_last_backup_reminder") || 0) ||
+      Date.now();
+    if (!contacts.length) lastBackupAt = Date.now();
+    localStorage.setItem(LAST_BACKUP_KEY, String(lastBackupAt));
   }
+  const checkBackupReminder = async () => {
+    if (
+      dropbox.isConnected() &&
+      contacts.length &&
+      Date.now() - Number(localStorage.getItem(CLOUD_LAST_KEY) || 0) >= DAY_MS
+    ) {
+      await autoCloudBackup();
+    }
+    const lastAt = Number(localStorage.getItem(LAST_BACKUP_KEY) || 0);
+    const days = Math.floor((Date.now() - lastAt) / DAY_MS);
+    const today = new Date().toDateString();
+    if (
+      days < REMIND_AFTER_DAYS ||
+      localStorage.getItem(LAST_BACKUP_PROMPT_KEY) === today
+    ) {
+      return;
+    }
+    localStorage.setItem(LAST_BACKUP_PROMPT_KEY, today);
+    if (
+      !confirm(
+        `You haven't backed up in ${days} days. Back up now?`,
+      )
+    ) {
+      return;
+    }
+    if (dropbox.isConnected()) {
+      try {
+        await runCloudBackup({ forceSnapshot: true });
+        await refreshCloudUi();
+        alert("Backed up to Dropbox.");
+      } catch (error) {
+        console.error(error);
+        alert("Could not back up to Dropbox. Check your connection and try again.");
+      }
+      return;
+    }
+    showSettingsView();
+    const backupSection = document
+      .getElementById("btn-export-backup")
+      .closest("details");
+    backupSection.open = true;
+    backupSection.scrollIntoView({ block: "start" });
+  };
+  window.setTimeout(async () => {
+    await finishDropboxReturn();
+    await checkBackupReminder();
+  }, 500);
 };
 
 document.addEventListener("DOMContentLoaded", () => {

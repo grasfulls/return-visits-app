@@ -247,6 +247,99 @@
                 Restore Selected Backup
               </button>
             </details>
+            <details class="settings-section" id="cloud-section">
+              <summary>Cloud backup (optional)</summary>
+              <div id="cloud-off">
+                <p>
+                  Cloud backup keeps a copy of your contacts outside this
+                  phone, in your own Dropbox, so you can recover them if your
+                  phone is lost, broken or replaced. It is off unless you turn
+                  it on.
+                </p>
+                <p>
+                  <strong>You need a Dropbox account.</strong> The app can send
+                  you to Dropbox to sign up, but it cannot create the account
+                  for you. The free Basic plan is enough.
+                </p>
+                <button type="button" id="btn-cloud-begin">
+                  Set Up Cloud Backup
+                </button>
+                <div id="cloud-question" hidden>
+                  <p><strong>Do you already have a Dropbox account?</strong></p>
+                  <button type="button" id="btn-cloud-have">
+                    Yes, I have one
+                  </button>
+                  <button type="button" id="btn-cloud-need">
+                    No, help me get one
+                  </button>
+                </div>
+                <div id="cloud-signup" hidden>
+                  <p><strong>Create a free Dropbox account</strong></p>
+                  <ol>
+                    <li>
+                      Open
+                      <a
+                        href="https://www.dropbox.com/basic"
+                        target="_blank"
+                        rel="noopener"
+                        >dropbox.com/basic</a
+                      >
+                      (it opens in a new tab or window).
+                    </li>
+                    <li>
+                      Sign up with your email address (or your Google or Apple
+                      account) and choose a password.
+                    </li>
+                    <li>
+                      Choose the free <strong>Basic</strong> plan. If Dropbox
+                      offers a paid trial, skip it. No payment is needed.
+                    </li>
+                    <li>
+                      Check your email and confirm your address if Dropbox asks.
+                    </li>
+                    <li>Come back to this app and tap the button below.</li>
+                  </ol>
+                  <button type="button" id="btn-cloud-signup-done">
+                    I Have My Account, Continue
+                  </button>
+                </div>
+                <div id="cloud-connect" hidden>
+                  <p><strong>Connect your Dropbox</strong></p>
+                  <ol>
+                    <li>Tap <strong>Connect to Dropbox</strong> below.</li>
+                    <li>Sign in to Dropbox when it asks.</li>
+                    <li>
+                      Tap <strong>Allow</strong>. The app can only use its own
+                      folder, called <strong>Return Visits</strong>, and cannot
+                      see anything else in your Dropbox.
+                    </li>
+                    <li>Dropbox sends you back here.</li>
+                  </ol>
+                  <button type="button" id="btn-cloud-connect">
+                    Connect to Dropbox
+                  </button>
+                </div>
+              </div>
+              <div id="cloud-on" hidden>
+                <p id="cloud-account-status" role="status"></p>
+                <p id="cloud-last-backup" role="status"></p>
+                <button type="button" id="btn-cloud-backup-now">
+                  Back Up to Dropbox Now
+                </button>
+                <button type="button" id="btn-cloud-restore">
+                  Restore from Dropbox
+                </button>
+                <button type="button" id="btn-cloud-disconnect">
+                  Disconnect Dropbox
+                </button>
+                <p>
+                  The app backs up when you open it if your last backup is more
+                  than a day old, and shortly after you make changes. Dropbox
+                  keeps your latest copy plus up to 10 dated copies.
+                </p>
+              </div>
+              <p id="cloud-status" role="status" aria-live="polite"></p>
+            </details>
             <details class="settings-section">
               <summary>Your Details</summary>
               <form id="me-form">
@@ -571,6 +664,22 @@
         <div class="restore-dialog-actions">
           <button type="submit">Decrypt Backup</button>
           <button type="button" id="cancel-restore-passphrase">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="cloud-restore-dialog">
+      <form id="cloud-restore-form">
+        <h2>Restore from Dropbox</h2>
+        <p>
+          Choose which copy to restore. This replaces all contacts on this
+          device.
+        </p>
+        <label for="cloud-restore-select">Backup</label>
+        <select id="cloud-restore-select" required></select>
+        <div class="restore-dialog-actions">
+          <button type="submit">Restore</button>
+          <button type="button" id="cancel-cloud-restore">Cancel</button>
         </div>
       </form>
     </dialog>
@@ -993,6 +1102,7 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="dropbox.js"></script>
     <script src="app.js"></script>
     <script>
       if ("serviceWorker" in navigator) {

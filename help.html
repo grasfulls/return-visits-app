@@ -212,7 +212,8 @@
       <p>
         Contacts and settings are stored in the browser on the device where you
         use the app. They do not automatically sync to your other devices or
-        browsers.
+        browsers. You can optionally turn on a backup to your own Dropbox; see
+        <a href="#cloud-backup">Cloud backup (optional)</a>.
       </p>
       <p class="notice">
         Before changing devices or browsers, clearing browser data, or removing
@@ -536,7 +537,8 @@
       <p>
         Your contacts and settings are stored in this device's browser, and
         are encrypted if you have turned on a passphrase. They are not uploaded to an account and are not automatically
-        backed up. Clearing browser data, losing the device, or forgetting the
+        backed up unless you turn on the optional
+        <a href="#cloud-backup">cloud backup</a>. Clearing browser data, losing the device, or forgetting the
         passphrase (if one is on) can make the local records unavailable. Make
         backups regularly and keep them somewhere safe.
       </p>
@@ -584,6 +586,94 @@
           contacts without replacing any existing ones.
         </li>
       </ul>
+
+      <h2 id="cloud-backup">Cloud backup (optional)</h2>
+      <p>
+        Cloud backup keeps a copy of your contacts and settings in your own
+        Dropbox account, outside your phone. If your phone is lost, broken or
+        replaced, you can restore from Dropbox instead of needing a file you
+        saved earlier. It is off unless you turn it on, and the file backups
+        described above keep working either way.
+      </p>
+      <p class="notice">
+        <strong>You need a Dropbox account.</strong> The app can send you to
+        Dropbox to sign up, but it cannot create the account for you. The free
+        Basic plan is enough. Dropbox may offer a paid trial; you can skip it.
+      </p>
+      <h3>Turn it on</h3>
+      <ol>
+        <li>
+          Open <strong>Settings → Cloud backup (optional)</strong> and choose
+          <strong>Set Up Cloud Backup</strong>.
+        </li>
+        <li>
+          Choose <strong>Yes, I have one</strong> if you already have a Dropbox
+          account. If not, choose <strong>No, help me get one</strong> and follow
+          the steps: open dropbox.com/basic, sign up, choose the free
+          <strong>Basic</strong> plan, confirm your email if asked, then come
+          back to the app and choose <strong>I Have My Account,
+          Continue</strong>.
+        </li>
+        <li>
+          Choose <strong>Connect to Dropbox</strong>. Sign in to Dropbox when it
+          asks and tap <strong>Allow</strong>. The app can only use its own
+          folder, <strong>Return Visits</strong>, and cannot see anything else
+          in your Dropbox. Dropbox then sends you back to the app.
+        </li>
+        <li>
+          The app makes your first backup and shows when it finished. If you
+          connect on a new device with no contacts and Dropbox already has a
+          backup, the app offers to restore it.
+        </li>
+      </ol>
+      <h3>How it works</h3>
+      <ul>
+        <li>
+          When you open the app and your last Dropbox backup is more than a day
+          old, it backs up. It also backs up about 15 seconds after you make
+          changes, or as you leave the app. A web app cannot back up while it
+          is closed, so the backup happens when you use it.
+        </li>
+        <li>
+          Dropbox keeps a <strong>latest copy</strong> plus up to 10 dated
+          copies (at most one new dated copy per day). Older dated copies are
+          removed automatically.
+        </li>
+        <li>
+          <strong>Encryption:</strong> if a passphrase is on, backups sent to
+          Dropbox are encrypted with it. Without a passphrase the backups in
+          your Dropbox are not encrypted, so the app asks you to confirm
+          before connecting. Your Dropbox sign-in is separate from your app
+          passphrase. Dropbox copies saved before you turned a passphrase on
+          stay unencrypted until they age out, so consider turning the
+          passphrase on before you connect.
+        </li>
+        <li>
+          To restore, choose <strong>Settings → Cloud backup → Restore from
+          Dropbox</strong>, pick the latest copy or a dated one, and confirm.
+          Restoring replaces the contacts and settings on this device. If the
+          backup is encrypted, you enter its passphrase or recovery code.
+        </li>
+        <li>
+          <strong>Back Up to Dropbox Now</strong> makes a backup immediately.
+          <strong>Disconnect Dropbox</strong> stops backing up; your existing
+          copies stay in your Dropbox. To remove the app's access completely,
+          you can also remove Return Visits in your Dropbox account's
+          connected apps.
+        </li>
+        <li>
+          The app never replaces your Dropbox copy with an empty one: it does
+          not back up automatically when this device has no contacts.
+        </li>
+      </ul>
+      <h3>Backup reminder</h3>
+      <p>
+        If 10 days or more pass without a successful backup (file or Dropbox),
+        the app asks "You haven't backed up in N days. Back up now?". It asks at
+        most once a day. With Dropbox connected, choosing Yes backs up
+        immediately; otherwise it opens <strong>Settings → Backup &amp;
+        Restore</strong>. Only a successful backup resets the count.
+      </p>
 
       <h2 id="consolidate">Consolidate copies and remove unused data</h2>
       <p>

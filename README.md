@@ -187,9 +187,27 @@ contacts, create a fresh backup of the combined destination, then clear unused
 source data. See the [User Guide](./help.html) for a step-by-step consolidation
 and data-removal checklist.
 
-The app prompts for a backup about once a month after initial setup, and only
-when the device has at least one contact. It does not create or upload backups
-automatically.
+The app reminds you about a backup after 10 days without one (a file or Dropbox
+backup), showing the number of days and asking at most once a day. Only a
+successful backup resets the count.
+
+## Cloud backup (optional)
+
+**Settings → Cloud backup (optional)** can keep a copy of your contacts and
+settings in your own Dropbox. It is off unless you turn it on, and file backups
+keep working. You need a Dropbox account (the free Basic plan is enough); the app
+can send you to dropbox.com/basic to sign up but cannot create the account. The
+setup asks whether you already have an account, shows the sign-up steps if not,
+then connects through Dropbox's own sign-in page. The app can only use its own
+**Return Visits** folder in your Dropbox.
+
+The app backs up on open when the last Dropbox backup is more than a day old, and
+about 15 seconds after changes (or when you leave the app); a web app cannot back
+up while closed. Dropbox keeps a latest copy plus up to 10 dated copies. Backups
+are encrypted when a passphrase is on; with no passphrase they are not, and the
+app asks you to confirm before connecting. It never backs up an empty device over
+your Dropbox copy. Use **Restore from Dropbox** to restore the latest or a dated
+copy (it replaces this device's data), and **Disconnect Dropbox** to stop.
 
 ## Share one contact
 

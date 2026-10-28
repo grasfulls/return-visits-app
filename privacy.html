@@ -209,7 +209,9 @@
       </p>
       <p>
         The app does not automatically upload or synchronize your contact
-        database. Each browser and device keeps its own data. The app's code
+        database. Each browser and device keeps its own data. The only upload
+        is the optional Dropbox cloud backup, which you must turn on and which
+        goes to your own Dropbox account. The app's code
         does not create an account or provide a central contact database.
       </p>
       <p>
@@ -283,6 +285,12 @@
           contact's pin. This uses your device's current location, not the
           contact address typed into the form. Location accuracy can vary.
         </li>
+        <li>
+          <strong>Dropbox (optional):</strong> Only if you connect Dropbox in
+          Settings, your browser contacts Dropbox to sign in and sends your
+          backups to the app folder in your Dropbox account. See
+          Backups, exports, printing, and sharing below.
+        </li>
       </ul>
       <p>
         The app does not include analytics, advertising, registration, or an
@@ -305,7 +313,21 @@
           Backups and contact exports are created only when you choose the
           relevant export action. The app downloads a file (encrypted when a
           passphrase is on; unencrypted otherwise); it does
-          not automatically upload a backup.
+          not upload a backup anywhere unless you turn on the optional Dropbox
+          cloud backup.
+        </li>
+        <li>
+          <strong>Dropbox cloud backup (optional, off by default):</strong> if
+          you connect your own Dropbox account in Settings, the app uploads
+          full backups (a latest copy and up to 10 dated copies) to the
+          Return Visits app folder in your Dropbox, directly from your browser
+          to Dropbox. The app can only access that folder. The backups are
+          encrypted with your passphrase when one is on; otherwise they are
+          not encrypted. The app stores a Dropbox access token in your
+          browser so it can keep backing up; disconnecting removes it and
+          asks Dropbox to revoke it. Dropbox's own terms and privacy policy
+          apply to files in your Dropbox account. I do not receive your
+          Dropbox credentials or your backups.
         </li>
         <li>
           You choose where to save, store, or share exported files. Anyone who
