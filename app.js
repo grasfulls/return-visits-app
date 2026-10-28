@@ -1893,6 +1893,10 @@ const initializeApp = async () => {
       document.getElementById("setting-default-city").value =
         settings.defaultCity;
       alert("Master settings saved successfully!");
+      if (localStorage.getItem("return_visits_setup_pending") === "true") {
+        localStorage.removeItem("return_visits_setup_pending");
+        document.getElementById("setup-done-notice").hidden = false;
+      }
     });
 
   const meFields = {
@@ -5198,6 +5202,15 @@ const initializeApp = async () => {
     });
 
   renderContacts();
+  if (contacts.length > 0) {
+    // Existing users don't need the first-run setup banner.
+    try {
+      localStorage.setItem("return_visits_install_banner_dismissed", "true");
+    } catch (error) {
+      console.error("Unable to save the install tip status:", error);
+    }
+    document.getElementById("install-banner").hidden = true;
+  }
   const reminderKey = "return_visits_last_backup_reminder";
   const lastReminder = Number(localStorage.getItem(reminderKey) || 0);
   const reminderInterval = 30 * 24 * 60 * 60 * 1000;
@@ -5225,25 +5238,47 @@ const initializeApp = async () => {
 document.addEventListener("DOMContentLoaded", () => {
   const installBanner = document.getElementById("install-banner");
   const installBannerKey = "return_visits_install_banner_dismissed";
-  const isInstalled =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    navigator.standalone === true;
+  const setupPendingKey = "return_visits_setup_pending";
   let dismissed = false;
   try {
     dismissed = localStorage.getItem(installBannerKey) === "true";
   } catch (error) {
     console.error("Unable to read the install tip status:", error);
   }
-  installBanner.hidden = isInstalled || dismissed;
+  installBanner.hidden = dismissed;
+
+  const goToView = (viewId) => {
+    const navButton = Array.from(
+      document.querySelectorAll("#bottom-nav .nav-btn"),
+    ).find((button) =>
+      button.title.toLowerCase().startsWith(viewId.replace("-view", "")),
+    );
+    navButton?.click();
+  };
+  const startSetup = () => {
+    installBanner.hidden = true;
+    try {
+      localStorage.setItem(installBannerKey, "true");
+      localStorage.setItem(setupPendingKey, "true");
+    } catch (error) {
+      console.error("Unable to save the setup status:", error);
+    }
+    goToView("settings-view");
+    const defaults = document.getElementById("defaults-section");
+    defaults.open = true;
+    defaults.scrollIntoView({ block: "start" });
+  };
   document
     .getElementById("btn-dismiss-install-banner")
+    .addEventListener("click", startSetup);
+  document
+    .querySelector('#install-banner [data-go="settings-view"]')
+    .addEventListener("click", startSetup);
+  document
+    .querySelector('#setup-done-notice [data-go="contacts-view"]')
     .addEventListener("click", () => {
-      installBanner.hidden = true;
-      try {
-        localStorage.setItem(installBannerKey, "true");
-      } catch (error) {
-        console.error("Unable to save the install tip status:", error);
-      }
+      document.getElementById("setup-done-notice").hidden = true;
+      goToView("contacts-view");
     });
 });
 

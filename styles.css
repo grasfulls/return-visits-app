@@ -132,9 +132,20 @@ body {
 }
 
 @media (display-mode: standalone) {
-    .install-banner {
+    #install-tips {
         display: none !important;
     }
+}
+
+.inline-icon-link {
+    min-height: 0 !important;
+    padding: 0 4px !important;
+    border: none;
+    background: none !important;
+    color: inherit !important;
+    font-size: 1.2em;
+    cursor: pointer;
+    vertical-align: middle;
 }
 
 @media (display-mode: standalone) {

@@ -136,20 +136,28 @@
         <!-- Contacts View -->
         <div id="contacts-view" class="view active">
           <aside id="install-banner" class="install-banner" hidden>
-            <strong>Add Return Visits to your Home Screen</strong>
+            <div id="install-tips">
+              <strong>Add Return Visits to your Home Screen</strong>
+              <p>
+                <strong>iPhone:</strong> open this page in Safari, tap
+                <strong>Share → Add to Home Screen</strong>.<br />
+                <strong>Android:</strong> in Chrome, choose
+                <strong>Install app</strong> or
+                <strong>Add to Home screen</strong>.<br />
+                <strong>Computer:</strong> in Chrome or Edge, use the install
+                icon in the address bar.
+              </p>
+              <small>
+                Free, with no account. Your contacts stay on this device.
+                <a href="./help.html#phone-setup">Setup details</a>
+              </small>
+            </div>
             <p>
-              <strong>iPhone:</strong> open this page in Safari, tap
-              <strong>Share → Add to Home Screen</strong>.<br />
-              <strong>Android:</strong> in Chrome, choose
-              <strong>Install app</strong> or
-              <strong>Add to Home screen</strong>.<br />
-              <strong>Computer:</strong> in Chrome or Edge, use the install
-              icon in the address bar.
+              <strong>First, set up your defaults.</strong> Please go to
+              Settings
+              <button type="button" class="inline-icon-link" data-go="settings-view" title="Open Settings" aria-label="Open Settings">⚙️</button>
+              and set your default information before adding any contacts.
             </p>
-            <small>
-              Free, with no account. Your contacts stay on this device.
-              <a href="./help.html#phone-setup">Setup details</a>
-            </small>
             <button type="button" id="btn-dismiss-install-banner">Got it</button>
           </aside>
           <div class="contact-list-actions">
@@ -277,8 +285,13 @@
                 <p id="me-status" role="status"></p>
               </form>
             </details>
-            <details class="settings-section">
+            <details class="settings-section" id="defaults-section">
               <summary>Defaults</summary>
+              <p id="setup-done-notice" class="install-banner" role="status" hidden>
+                <strong>All set.</strong> You may now add contacts: tap
+                <button type="button" class="inline-icon-link" data-go="contacts-view" title="Go to Contacts" aria-label="Go to Contacts">👥</button>
+                in the footer to return to your contacts.
+              </p>
             <form id="settings-form">
               <label>Default State:</label>
               <input type="text" id="setting-state" placeholder="CA or California" />
