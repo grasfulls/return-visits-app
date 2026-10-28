@@ -3502,6 +3502,12 @@ const initializeApp = async () => {
   appUpdatePromptHandler = showAppUpdatePrompt;
 
   document
+    .getElementById("btn-ok-no-update")
+    .addEventListener("click", () =>
+      document.getElementById("app-no-update-dialog").close(),
+    );
+
+  document
     .getElementById("btn-check-updates")
     .addEventListener("click", async (event) => {
       const button = event.currentTarget;
@@ -3531,6 +3537,24 @@ const initializeApp = async () => {
           throw new Error("The app's update service is not registered.");
         }
         await registration.update();
+        const incoming = registration.installing || registration.waiting;
+        if (!incoming && !appUpdateAvailable) {
+          status.textContent = "You have the latest version.";
+          button.disabled = false;
+          document.getElementById("app-no-update-dialog").showModal();
+          return;
+        }
+        if (incoming && incoming.state !== "activated") {
+          await new Promise((resolve) => {
+            const timer = window.setTimeout(resolve, 15000);
+            incoming.addEventListener("statechange", () => {
+              if (incoming.state === "activated") {
+                window.clearTimeout(timer);
+                resolve();
+              }
+            });
+          });
+        }
         status.textContent =
           "Update check complete. Refreshing the app now; saved contacts are kept on this device.";
         try {

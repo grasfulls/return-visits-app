@@ -230,7 +230,8 @@ The app is published on GitHub Pages:
 The app checks for updates when it opens and shows any update prompt once it has
 finished opening (after unlocking, if a passphrase is on). If an update is ready, it prompts you to update now or later; an
 exclamation mark also appears by Settings. To check or refresh manually, open
-**Settings → App updates → Check for Updates & Refresh** while online. Save or finish any
+**Settings → App updates → Check for Updates & Refresh** while online. If there is no
+update, a "No update available" message appears with an OK button. Save or finish any
 open contact or Settings edits before refreshing; if something is unsaved, the app
 names the exact section and field and opens it. Leaving Settings with unsaved edits
 asks "Discard unsaved changes?" (OK discards, Cancel stays so you can finish). The app reloads its code
