@@ -1337,6 +1337,13 @@ textarea {
     display: none;
 }
 
+#change-passphrase-form[hidden],
+#turn-off-explain[hidden],
+#turn-off-passphrase-section[hidden],
+#passphrase-choices[hidden] {
+    display: none;
+}
+
 .icon {
     width: 24px;
     height: 24px;

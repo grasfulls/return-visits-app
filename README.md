@@ -42,8 +42,10 @@ Anyone with the code can open the data, so keep it private. **Settings → Passp
 Make a New Recovery Code** replaces it (needed once for passphrases created before this feature).
 Keep the passphrase safe and separate from any backup or contact file. Once on,
 use **Settings → Passphrase → Change Passphrase** and verify the current passphrase first. To stop requiring
-one, use **Settings → Passphrase → Turn Off Passphrase** (the current passphrase is needed
-once to decrypt the data); it can be turned on again later.
+one, use **Settings → Passphrase → Turn Off Passphrase**; the app explains the consequences
+(unencrypted storage, recovery code stops working, later backups unencrypted) and offers
+**Continue** or **Cancel**. Continuing asks for the current passphrase once to decrypt the data;
+it can be turned on again later.
 The change does not affect other copies or previously exported backup files;
 those backups continue to require the passphrase they were created with.
 

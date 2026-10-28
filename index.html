@@ -249,16 +249,20 @@
             </details>
             <details class="settings-section">
               <summary>Passphrase</summary>
-            <h3 id="passphrase-section-title">Change Passphrase</h3>
-            <p id="passphrase-section-description">
-              Enter your current passphrase and choose a new one with at least
-              12 characters. This changes the passphrase for this app copy only.
-              Existing backup files keep the passphrase they were created with.
-            </p>
+            <h3 id="passphrase-section-title">Passphrase</h3>
+            <p id="passphrase-section-description"></p>
             <button type="button" id="btn-start-turn-on" hidden>
               Turn On Passphrase
             </button>
-            <form id="change-passphrase-form">
+            <div id="passphrase-choices" hidden>
+              <button type="button" id="btn-show-change">
+                Change Passphrase
+              </button>
+              <button type="button" id="btn-show-turn-off">
+                Turn Off Passphrase
+              </button>
+            </div>
+            <form id="change-passphrase-form" hidden>
               <div id="current-passphrase-fields">
                 <label for="current-passphrase">Current passphrase</label>
                 <input
@@ -284,11 +288,71 @@
                 minlength="12"
                 required
               />
-              <button type="submit" id="btn-change-passphrase">
-                Change Passphrase
-              </button>
-              <p id="change-passphrase-status" role="status" aria-live="polite"></p>
+              <div class="restore-dialog-actions">
+                <button type="submit" id="btn-change-passphrase">
+                  Change Passphrase
+                </button>
+                <button type="button" id="btn-cancel-change-passphrase">
+                  Cancel
+                </button>
+              </div>
             </form>
+
+            <div id="turn-off-explain" hidden>
+              <h3>Turn Off Passphrase?</h3>
+              <p>If you turn the passphrase off:</p>
+              <ul>
+                <li>
+                  The contacts and settings on this device are decrypted and
+                  stored <strong>without encryption</strong>. Anyone who can
+                  open this browser or app on this device could read them.
+                </li>
+                <li>
+                  The app opens right away and no longer asks for a passphrase.
+                </li>
+                <li>
+                  Your recovery code stops working, because there is no
+                  passphrase left to recover.
+                </li>
+                <li>
+                  Backups you make from now on, including Dropbox backups, are
+                  not encrypted. Backups you already made keep the passphrase
+                  they were created with.
+                </li>
+                <li>You can turn a passphrase on again at any time.</li>
+              </ul>
+              <div class="restore-dialog-actions">
+                <button type="button" id="btn-turn-off-continue">
+                  Continue
+                </button>
+                <button type="button" id="btn-turn-off-cancel">Cancel</button>
+              </div>
+            </div>
+
+            <div id="turn-off-passphrase-section" hidden>
+              <form id="turn-off-passphrase-form">
+                <label for="turn-off-current-passphrase">
+                  Enter your current passphrase (or recovery code) to confirm
+                </label>
+                <input
+                  type="password"
+                  id="turn-off-current-passphrase"
+                  autocomplete="current-password"
+                  required
+                />
+                <div class="restore-dialog-actions">
+                  <button type="submit" id="btn-turn-off-passphrase">
+                    Turn Off Passphrase
+                  </button>
+                  <button type="button" id="btn-turn-off-confirm-cancel">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <p id="change-passphrase-status" role="status" aria-live="polite"></p>
+            <p id="turn-off-passphrase-status" role="status" aria-live="polite"></p>
 
             <div id="recovery-code-section">
               <h3>Recovery Code</h3>
@@ -311,28 +375,6 @@
                   Make a New Recovery Code
                 </button>
                 <p id="recovery-code-status" role="status" aria-live="polite"></p>
-              </form>
-            </div>
-
-            <div id="turn-off-passphrase-section">
-              <h3>Turn Off Passphrase</h3>
-              <p>
-                Stop requiring a passphrase on this device. Enter your current
-                passphrase to decrypt your data. It will then be stored without
-                encryption, and you can turn the passphrase on again later.
-              </p>
-              <form id="turn-off-passphrase-form">
-                <label for="turn-off-current-passphrase">Current passphrase</label>
-                <input
-                  type="password"
-                  id="turn-off-current-passphrase"
-                  autocomplete="current-password"
-                  required
-                />
-                <button type="submit" id="btn-turn-off-passphrase">
-                  Turn Off Passphrase
-                </button>
-                <p id="turn-off-passphrase-status" role="status" aria-live="polite"></p>
               </form>
             </div>
             </details>

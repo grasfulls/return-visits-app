@@ -2508,38 +2508,91 @@ const initializeApp = async () => {
     await persistLocationChanges(previousState);
   };
 
+  // Passphrase panel: "menu" shows the Change / Turn Off choices; the other
+  // modes show one flow at a time.
+  let passphraseMode = "menu";
+  const setPassphraseMode = (mode) => {
+    passphraseMode = mode;
+    const protectedNow = Boolean(cryptoMetadata);
+    const show = (id, visible) => {
+      document.getElementById(id).hidden = !visible;
+    };
+    const menu = mode === "menu";
+    show("btn-start-turn-on", !protectedNow && menu);
+    show("passphrase-choices", protectedNow && menu);
+    show("change-passphrase-form", mode === "change" || mode === "turn-on");
+    show("turn-off-explain", protectedNow && mode === "turn-off-explain");
+    show("turn-off-passphrase-section", protectedNow && mode === "turn-off-confirm");
+    show("recovery-code-section", protectedNow && menu);
+    show("passphrase-section-description", menu);
+    const title = document.getElementById("passphrase-section-title");
+    title.textContent = protectedNow
+      ? "Passphrase is on"
+      : mode === "turn-on"
+        ? "Turn On Passphrase"
+        : "Passphrase is off";
+    document.getElementById("change-passphrase-status").textContent = "";
+    document.getElementById("turn-off-passphrase-status").textContent = "";
+  };
+
   const updatePassphraseSection = () => {
     const protectedNow = Boolean(cryptoMetadata);
-    document.getElementById("passphrase-section-title").textContent =
-      protectedNow ? "Change Passphrase" : "Turn On Passphrase";
-    document.getElementById("passphrase-section-title").hidden = !protectedNow;
-    document.getElementById("btn-start-turn-on").hidden = protectedNow;
-    document.getElementById("change-passphrase-form").hidden = !protectedNow;
     document.getElementById("passphrase-section-description").textContent =
       protectedNow
-        ? `Enter your current passphrase (or your recovery code) and choose a new one with at least ${MIN_PASSPHRASE_LENGTH} characters. This changes the passphrase for this app copy only, and creates a new recovery code. Existing backup files keep the passphrase they were created with.`
+        ? "A passphrase is on for this app copy. You may change it or turn it off."
         : `A passphrase is currently off. Turn it on to encrypt the data on this device; you will be asked for it each time you open the app. Use at least ${MIN_PASSPHRASE_LENGTH} characters. You will be given a recovery code to keep; without the passphrase or that code, the data cannot be opened.`;
     document.getElementById("current-passphrase-fields").hidden =
       !protectedNow;
     document.getElementById("current-passphrase").required = protectedNow;
     document.getElementById("btn-change-passphrase").textContent =
       protectedNow ? "Change Passphrase" : "Save Passphrase";
-    document.getElementById("turn-off-passphrase-section").hidden =
-      !protectedNow;
-    document.getElementById("recovery-code-section").hidden = !protectedNow;
     document.getElementById("recovery-code-state").textContent =
       cryptoMetadata?.recovery
         ? "A recovery code is set for this app copy. It is stored, locked, inside your backups too. If you lost the code, make a new one below."
         : "No recovery code is set yet. Make one now so a forgotten passphrase does not lock you out.";
+    const keepStatus = [
+      document.getElementById("change-passphrase-status").textContent,
+      document.getElementById("turn-off-passphrase-status").textContent,
+    ];
+    setPassphraseMode("menu");
+    // Keep a result message that was just written by a successful flow.
+    document.getElementById("change-passphrase-status").textContent =
+      keepStatus[0];
+    document.getElementById("turn-off-passphrase-status").textContent =
+      keepStatus[1];
   };
   updatePassphraseSection();
   document
     .getElementById("btn-start-turn-on")
     .addEventListener("click", () => {
-      document.getElementById("btn-start-turn-on").hidden = true;
-      document.getElementById("change-passphrase-form").hidden = false;
+      setPassphraseMode("turn-on");
       document.getElementById("new-passphrase").focus();
     });
+  document.getElementById("btn-show-change").addEventListener("click", () => {
+    setPassphraseMode("change");
+    document.getElementById("current-passphrase").focus();
+  });
+  document
+    .getElementById("btn-show-turn-off")
+    .addEventListener("click", () => setPassphraseMode("turn-off-explain"));
+  document
+    .getElementById("btn-turn-off-continue")
+    .addEventListener("click", () => {
+      setPassphraseMode("turn-off-confirm");
+      document.getElementById("turn-off-current-passphrase").focus();
+    });
+  const backToPassphraseMenu = () => {
+    document.getElementById("change-passphrase-form").reset();
+    document.getElementById("turn-off-passphrase-form").reset();
+    setPassphraseMode("menu");
+  };
+  [
+    "btn-cancel-change-passphrase",
+    "btn-turn-off-cancel",
+    "btn-turn-off-confirm-cancel",
+  ].forEach((id) =>
+    document.getElementById(id).addEventListener("click", backToPassphraseMenu),
+  );
 
   document
     .getElementById("recovery-code-form")
