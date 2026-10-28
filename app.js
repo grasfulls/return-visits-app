@@ -3380,14 +3380,19 @@ const initializeApp = async () => {
     const contactEditorOpen = getComputedStyle(modal).display !== "none";
     const hasUnsavedSettingsChanges =
       normalizeUsState(settingStateInput.value) !== settings.state ||
-      toTitleCase(settingDefaultCityInput.value) !== settings.defaultCity;
+      toTitleCase(settingDefaultCityInput.value) !== settings.defaultCity ||
+      Object.entries(meFields).some(
+        ([key, input]) => input.value.trim() !== (settings.me?.[key] || ""),
+      );
     const hasPendingSettingsInput = Array.from(
       document.querySelectorAll(
         '#settings-view input:not(#setting-state):not(#setting-default-city)',
       ),
-    ).some((input) =>
-      input.type === "file" ? input.files.length > 0 : input.value.trim(),
-    );
+    )
+      .filter((input) => !input.closest("#me-form"))
+      .some((input) =>
+        input.type === "file" ? input.files.length > 0 : input.value.trim(),
+      );
     if (contactEditorOpen) {
       return "Save or exit the open contact before refreshing the app. Your saved contacts will remain on this device.";
     }
