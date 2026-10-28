@@ -927,10 +927,9 @@ textarea {
     flex-wrap: wrap;
 }
 
+/* Lets the three buttons sit in the same row as Save and Exit. */
 #contact-secondary-actions {
-    flex: 1 1 100%;
-    display: flex;
-    gap: 10px;
+    display: contents;
 }
 
 #contact-secondary-actions[hidden] {
@@ -940,16 +939,17 @@ textarea {
 #btn-share-contact,
 #btn-export-contact,
 #btn-print-contact {
-    flex: 1;
-    min-height: 44px;
+    flex: 1 1 auto;
+    min-height: 48px;
     background: #004080;
     color: white;
-    padding: 10px;
+    padding: 10px 12px;
     border: none;
     font-size: 15px;
     font-weight: bold;
     border-radius: 4px;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 #btn-share-contact:disabled,
@@ -965,7 +965,7 @@ textarea {
 }
 
 #btn-save-contact {
-    flex: 2;
+    flex: 2 1 90px;
     background: #28a745;
     color: white;
     padding: 12px;
@@ -977,7 +977,7 @@ textarea {
 }
 
 #btn-exit-modal {
-    flex: 1;
+    flex: 1 1 70px;
     background: #6c757d;
     color: white;
     padding: 12px;
