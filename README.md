@@ -75,16 +75,16 @@ blocked while any contact is assigned to that entry or its child locations;
 reassign those contacts first. Deleting a City or Region with no assigned
 contacts also deletes its Regions and Areas, after confirmation. Contact cards show available
 phone and email details along with the address, location
-hierarchy, urgency, and visit history; they include actions to edit, export,
-delete, and navigate to a contact. Navigate opens Google Maps directions using
+hierarchy, urgency, last visit date, and note count; they include actions to
+edit, export, delete, and navigate to a contact. Notes themselves are viewed,
+added, edited, and deleted (including their date and time) in the contact
+editor, not on the card. Navigate opens Google Maps directions using
 saved coordinates when available, or the contact address otherwise. Visit
 cards also have a Share action for preparing a plain-text contact summary in
 Text/SMS, WhatsApp, or Email. The summary includes available contact details
 and a directions link. Visit notes are left out unless you choose to include
 the most recent note or all notes in the Share dialog. This message is not
-encrypted by the app; use the contact export action for app-to-app transfer. Visit
-logs can be added from the contact form or quickly from a card, and existing
-logs can be edited or deleted.
+encrypted by the app; use the contact export action for app-to-app transfer.
 
 On the contacts page, **Print Visible Contacts** prints exactly the contacts
 shown by the current search and filters. It confirms the number first, groups

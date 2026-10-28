@@ -3577,25 +3577,31 @@ const initializeApp = async () => {
       if (status.class === "immediate") urgencyClass += " immediate";
       card.className = urgencyClass;
 
-      let historyHtml = '<div class="contact-notes-history">';
-      if (contact.notesHistory && contact.notesHistory.length > 0) {
-        const sortedNotes = [...contact.notesHistory].sort(
-          (a, b) =>
-            new Date(b.rawDate || b.date) - new Date(a.rawDate || a.date),
+      const sortedNotes = [...(contact.notesHistory || [])].sort(
+        (a, b) =>
+          new Date(b.rawDate || b.date) - new Date(a.rawDate || a.date),
+      );
+      const lastNote = sortedNotes[0];
+      const lastVisitDate = lastNote
+        ? new Date(lastNote.rawDate || lastNote.date)
+        : null;
+      const lastVisitHtml =
+        lastVisitDate && !Number.isNaN(lastVisitDate.getTime())
+          ? `<br><small>Last visit: ${escapeHtml(lastVisitDate.toLocaleDateString())} • ${sortedNotes.length} visit note${sortedNotes.length === 1 ? "" : "s"}</small>`
+          : '<br><small style="color: #888;">No visit notes yet</small>';
+      const contactFullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+      const matchedOnlyInNotes =
+        searchTerm &&
+        !contactFullName.includes(searchTerm) &&
+        !(contact.email || "").toLowerCase().includes(searchTerm) &&
+        !(contact.phone || "").includes(searchTerm) &&
+        !(contact.address || "").toLowerCase().includes(searchTerm) &&
+        !getContactAreas(contact).some((area) =>
+          area.toLowerCase().includes(searchTerm),
         );
-        sortedNotes.forEach((note) => {
-          historyHtml += `
-                        <div class="note-entry">
-                            <small style="color: #6c757d; font-weight: bold;">${escapeHtml(note.date)}</small><br>
-                            <span>${escapeHtml(note.text)}</span>
-                        </div>
-                    `;
-        });
-      } else {
-        historyHtml +=
-          '<span style="color: #888;">No visit logs recorded yet.</span>';
-      }
-      historyHtml += "</div>";
+      const noteMatchHtml = matchedOnlyInNotes
+        ? '<br><small style="color: #004080; font-weight: bold;">Matches a visit note</small>'
+        : "";
 
       card.innerHTML = `
                 <strong>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</strong><br>
@@ -3604,11 +3610,8 @@ const initializeApp = async () => {
                 ${contact.phone ? `<small>Phone: ${escapeHtml(contact.phone)}</small><br>` : ""}
                 ${contact.email ? `<small>Email: ${escapeHtml(contact.email)}</small><br>` : ""}
                 <span>Days Since Last Contact: <strong>${status.days} days</strong> (${status.label})</span>
-                ${historyHtml}
-                <div class="quick-add-note-box">
-                    <input type="text" id="quick-note-${contact.id}" placeholder="Add visit log...">
-                    <button onclick="addQuickNote(${contact.id})" title="Add Note" aria-label="Add visit note">+</button>
-                </div>
+                ${lastVisitHtml}
+                ${noteMatchHtml}
                 <div class="card-actions">
                     <button class="btn-icon" onclick="editContact(${contact.id})" title="Edit Details">✏️</button>
                     ${navigationUrl ? `<a class="btn-icon navigate-contact" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}" title="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2" fill="currentColor"/><path d="M6 16V9a4 4 0 0 1 4-4h8m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></a>` : ""}
@@ -3947,26 +3950,6 @@ const initializeApp = async () => {
   };
 
   // Global Action Handlers
-  window.addQuickNote = async (id) => {
-    const input = document.getElementById(`quick-note-${id}`);
-    const text = input.value.trim();
-    if (!text) return;
-
-    const contact = contacts.find((c) => c.id == id);
-    if (contact) {
-      if (!contact.notesHistory) contact.notesHistory = [];
-      const now = new Date();
-      contact.notesHistory.push({
-        id: "log_" + Date.now(),
-        rawDate: now.toISOString(),
-        date: now.toLocaleString(),
-        text: text,
-      });
-      if (!(await saveContacts())) return;
-      input.value = "";
-    }
-  };
-
   // Inline Visit Log Editor Functions
   window.deleteVisitLog = async (contactId, logId) => {
     if (confirm("Are you sure you want to delete this visit log?")) {
@@ -4183,7 +4166,7 @@ const initializeApp = async () => {
   };
 
   window.deleteContact = async (id) => {
-    if (confirm("Are you sure you want to delete this contact?")) {
+    if (confirm("Delete this contact and all of its data?")) {
       const previousState = cloneLocationState();
       contacts = contacts.filter((c) => c.id != id);
       settings.deletedContacts = [

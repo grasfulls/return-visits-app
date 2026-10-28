@@ -639,52 +639,10 @@ textarea {
     border-left-color: #dc3545;
 }
 
-.contact-notes-history {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    padding: 10px;
-    margin-top: 6px;
-    margin-bottom: 6px;
-    max-height: 140px;
-    overflow-y: auto;
-    font-size: 13px;
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-}
-
 .note-entry {
     border-bottom: 1px solid #dee2e6;
     padding-bottom: 6px;
     margin-bottom: 6px;
-}
-
-.quick-add-note-box {
-    margin-top: 8px;
-    display: flex;
-    gap: 6px;
-}
-
-.quick-add-note-box input {
-    flex: 1;
-    padding: 6px;
-    font-size: 13px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-.quick-add-note-box button {
-    min-width: 40px;
-    padding: 6px 12px;
-    background: #004080;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 22px;
-    font-weight: 700;
-    line-height: 1;
 }
 
 .card-actions {
