@@ -469,9 +469,25 @@
       <form method="dialog">
         <h2 id="contact-share-title">Share Contact</h2>
         <p>
-          Choose how to share this contact's details. Visit notes are not
-          included.
+          Choose how to share this contact's details and which visit notes, if
+          any, to include.
         </p>
+        <fieldset id="share-notes-options">
+          <legend>Visit notes to include</legend>
+          <label>
+            <input type="radio" name="share-notes" value="none" checked />
+            No notes
+          </label>
+          <label id="share-notes-latest-label">
+            <input type="radio" name="share-notes" value="latest" />
+            Most recent note only
+          </label>
+          <label id="share-notes-all-label">
+            <input type="radio" name="share-notes" value="all" />
+            All notes
+          </label>
+        </fieldset>
+        <p id="share-notes-count" role="status"></p>
         <div class="restore-dialog-actions">
           <a id="share-contact-sms" class="dialog-action-button">Text / SMS</a>
           <a

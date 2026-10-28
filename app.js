@@ -386,7 +386,7 @@ const getNavigationUrl = (contact) => {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
 };
 
-const getContactShareText = (contact) => {
+const getContactShareText = (contact, notes = []) => {
   const fullName = `${contact.firstName} ${contact.lastName || ""}`.trim();
   const lines = [fullName];
   if (contact.phone) lines.push(`Phone: ${contact.phone}`);
@@ -395,6 +395,14 @@ const getContactShareText = (contact) => {
   if (address) lines.push(`Address: ${address}`);
   const navigationUrl = getNavigationUrl(contact);
   if (navigationUrl) lines.push(`Directions: ${navigationUrl}`);
+  notes.forEach((note, index) => {
+    const parsedDate = new Date(note.rawDate || note.date || "");
+    const dateLabel = Number.isNaN(parsedDate.getTime())
+      ? note.date || ""
+      : parsedDate.toLocaleString();
+    if (index === 0) lines.push("");
+    lines.push(`${notes.length > 1 ? "Visit note" : "Last visit note"}${dateLabel ? ` (${dateLabel})` : ""}: ${note.text}`);
+  });
   return lines.join("\n");
 };
 
@@ -2626,12 +2634,20 @@ const initializeApp = async () => {
       .addEventListener("click", () => contactShareDialog.close());
   });
 
-  const openContactShareDialog = (contact) => {
+  let contactBeingShared = null;
+  const updateContactShareLinks = () => {
+    if (!contactBeingShared) return;
+    const contact = contactBeingShared;
     const fullName = `${contact.firstName} ${contact.lastName || ""}`.trim();
-    const shareText = getContactShareText(contact);
+    const notes = getSortedVisitNotes(contact).filter((note) => note.text);
+    const choice =
+      contactShareDialog.querySelector('input[name="share-notes"]:checked')
+        ?.value || "none";
+    const selectedNotes =
+      choice === "all" ? notes : choice === "latest" ? notes.slice(0, 1) : [];
+    const shareText = getContactShareText(contact, selectedNotes);
     const encodedText = encodeURIComponent(shareText);
     const encodedSubject = encodeURIComponent(`Contact: ${fullName}`);
-    contactShareTitle.textContent = `Share: ${fullName}`;
     setShareLink("share-contact-sms", `sms:?body=${encodedText}`);
     setShareLink(
       "share-contact-whatsapp",
@@ -2641,8 +2657,35 @@ const initializeApp = async () => {
       "share-contact-email",
       `mailto:?subject=${encodedSubject}&body=${encodedText}`,
     );
+  };
+  contactShareDialog
+    .querySelectorAll('input[name="share-notes"]')
+    .forEach((radio) => {
+      radio.addEventListener("change", updateContactShareLinks);
+    });
+
+  const openContactShareDialog = (contact) => {
+    const fullName = `${contact.firstName} ${contact.lastName || ""}`.trim();
+    const noteCount = (contact.notesHistory || []).filter(
+      (note) => note.text,
+    ).length;
+    contactBeingShared = contact;
+    contactShareTitle.textContent = `Share: ${fullName}`;
+    contactShareDialog.querySelector(
+      'input[name="share-notes"][value="none"]',
+    ).checked = true;
+    document.getElementById("share-notes-options").hidden = noteCount === 0;
+    document.getElementById("share-notes-latest-label").hidden = noteCount < 1;
+    document.getElementById("share-notes-all-label").hidden = noteCount < 2;
+    document.getElementById("share-notes-count").textContent = noteCount
+      ? `This contact has ${noteCount} visit note${noteCount === 1 ? "" : "s"}.`
+      : "";
+    updateContactShareLinks();
     contactShareDialog.showModal();
   };
+  contactShareDialog.addEventListener("close", () => {
+    contactBeingShared = null;
+  });
 
   const formatPhoneNumber = (value) => {
     let digits = value.replace(/\D/g, "");

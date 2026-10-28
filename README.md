@@ -80,8 +80,9 @@ delete, and navigate to a contact. Navigate opens Google Maps directions using
 saved coordinates when available, or the contact address otherwise. Visit
 cards also have a Share action for preparing a plain-text contact summary in
 Text/SMS, WhatsApp, or Email. The summary includes available contact details
-and a directions link, but not visit notes. This message is not encrypted by
-the app; use the contact export action for encrypted app-to-app transfer. Visit
+and a directions link. Visit notes are left out unless you choose to include
+the most recent note or all notes in the Share dialog. This message is not
+encrypted by the app; use the contact export action for app-to-app transfer. Visit
 logs can be added from the contact form or quickly from a card, and existing
 logs can be edited or deleted.
 

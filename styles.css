@@ -505,12 +505,31 @@ main {
     margin: 0;
 }
 
-#contact-print-form fieldset {
+#contact-print-form fieldset,
+#contact-share-dialog fieldset {
     display: grid;
     gap: 12px;
     border: 1px solid #ccc;
     border-radius: 6px;
     padding: 12px;
+}
+
+#contact-share-dialog fieldset[hidden],
+#contact-share-dialog label[hidden] {
+    display: none;
+}
+
+#contact-share-dialog label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+#contact-share-dialog input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex: 0 0 auto;
 }
 
 #contact-print-form label {
