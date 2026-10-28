@@ -136,10 +136,31 @@
         <!-- Contacts View -->
         <div id="contacts-view" class="view active">
           <div class="contact-list-actions">
-            <button id="btn-open-modal">➕ Add Contact</button>
-            <button type="button" id="btn-print-visible" disabled>
-              🖨️ Print Visible Contacts (0)
+            <button
+              type="button"
+              id="btn-open-modal"
+              class="icon-action icon-action-add"
+              title="Add contact"
+              aria-label="Add contact"
+            >
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             </button>
+            <button
+              type="button"
+              id="btn-import-contact"
+              class="icon-action"
+              title="Import contacts from file"
+              aria-label="Import contacts from file"
+            >
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4M4 14v6h16v-6"/></svg>
+            </button>
+            <input
+              type="file"
+              id="contact-file-input"
+              accept="application/json,.json"
+              multiple
+              hidden
+            />
           </div>
           <div id="contacts-list"></div>
         </div>
@@ -155,72 +176,53 @@
         <!-- Settings View -->
         <div id="settings-view" class="view">
           <div class="settings-container">
-            <h2>Settings & Master Lists</h2>
-            <p>
-              Contacts and settings are stored on this device in this browser.
-              A passphrase is optional. If you turn one on below, your data is
-              encrypted with it; keep it private. You can turn it off again in
-              this section. Export backups regularly.
-            </p>
-            <p>
-              <a class="user-guide-link" href="./help.html">
-                Read the plain-language User Guide
-              </a>
-            </p>
-            <p>
-              <a class="user-guide-link" href="./privacy.html">
-                Read the Privacy &amp; Data Notice
-              </a>
-            </p>
-            <h3>App updates</h3>
-            <p>
-              The app checks for updates when it opens. If an update is ready,
-              you can install it now or later. You can also check manually
-              while online. Save or finish any open edits before refreshing;
-              after it reloads, unlock with your passphrase if you have turned
-              one on. Saved contacts remain on this device.
-            </p>
-            <p id="app-update-notice" role="status" aria-live="polite" hidden>
-              An app update is ready. Choose Update Now to install it.
-            </p>
-            <button type="button" id="btn-check-updates">
-              Check for Updates &amp; Refresh
-            </button>
-            <p id="app-update-status" role="status" aria-live="polite"></p>
-            <button type="button" id="btn-export-backup">
-              ⬇️ Export Data Backup
-            </button>
-            <p>
-              The backup (encrypted if a passphrase is on) downloads to this device's usual download
-              location. On iPhone, look in Files → Downloads; on other devices,
-              check the browser's Downloads location.
-            </p>
-            <label for="backup-file-input">Restore from encrypted backup</label>
-            <input
-              type="file"
-              id="backup-file-input"
-              accept="application/json,.json"
-            />
-            <button type="button" id="btn-restore-backup">
-              Restore Selected Backup
-            </button>
-            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
-            <h3>Share a Contact</h3>
-            <p>
-              Export one contact, including its visit history, as a file. If
-              this device has a passphrase, the file is encrypted and the
-              recipient needs its passphrase to import it. With no passphrase,
-              the file is plain and needs none.
-            </p>
-            <label for="contact-file-input">Import a contact file</label>
-            <input
-              type="file"
-              id="contact-file-input"
-              accept="application/json,.json"
-            />
-            <button type="button" id="btn-import-contact">
-              Import Selected Contact
-            </button>
+            <h2>Settings</h2>
+            <details class="settings-section">
+              <summary>Help &amp; Privacy</summary>
+              <p>
+                <a class="user-guide-link" href="./help.html">User Guide</a>
+              </p>
+              <p>
+                <a class="user-guide-link" href="./privacy.html">
+                  Privacy &amp; Data Notice
+                </a>
+              </p>
+            </details>
+            <details class="settings-section">
+              <summary>App updates</summary>
+              <p>
+                The app checks for updates when it opens. Finish any open
+                edits before refreshing.
+              </p>
+              <p id="app-update-notice" role="status" aria-live="polite" hidden>
+                An app update is ready. Choose Update Now to install it.
+              </p>
+              <button type="button" id="btn-check-updates">
+                Check for Updates &amp; Refresh
+              </button>
+              <p id="app-update-status" role="status" aria-live="polite"></p>
+            </details>
+            <details class="settings-section">
+              <summary>Backup &amp; Restore</summary>
+              <button type="button" id="btn-export-backup">
+                Back up everything
+              </button>
+              <p>
+                Encrypted if a passphrase is on. You can also export from the
+                Contacts page footer.
+              </p>
+              <label for="backup-file-input">Restore from a backup file</label>
+              <input
+                type="file"
+                id="backup-file-input"
+                accept="application/json,.json"
+              />
+              <button type="button" id="btn-restore-backup">
+                Restore Selected Backup
+              </button>
+            </details>
+            <details class="settings-section">
+              <summary>Defaults</summary>
             <form id="settings-form">
               <label>Default State:</label>
               <input type="text" id="setting-state" placeholder="CA or California" />
@@ -247,8 +249,10 @@
                 💾 Save Settings
               </button>
             </form>
+            </details>
 
-            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
+            <details class="settings-section">
+              <summary>Passphrase</summary>
             <h3 id="passphrase-section-title">Change Passphrase</h3>
             <p id="passphrase-section-description">
               Enter your current passphrase and choose a new one with at least
@@ -308,9 +312,10 @@
                 <p id="turn-off-passphrase-status" role="status" aria-live="polite"></p>
               </form>
             </div>
+            </details>
 
-            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
-
+            <details class="settings-section">
+              <summary>Cities, Regions &amp; Areas</summary>
             <h3>Add New City to List</h3>
             <p class="location-hint">
               <strong>How locations work:</strong> A <strong>city</strong> is
@@ -411,6 +416,7 @@
               confirm. Locations follow City → Region → Area; each level is optional
               on a contact.
             </small>
+            </details>
           </div>
         </div>
       </main>
@@ -418,6 +424,44 @@
       <!-- Bottom Navigation Bar -->
       <nav id="bottom-nav"></nav>
     </div>
+
+    <dialog id="map-print-dialog">
+      <form id="map-print-form">
+        <h2>Print Map List</h2>
+        <fieldset>
+          <legend>Include</legend>
+          <label class="checkbox-row">
+            <input type="radio" name="map-print-detail" value="pins" checked />
+            Numbered pins and addresses only
+          </label>
+          <label class="checkbox-row">
+            <input type="radio" name="map-print-detail" value="details" />
+            Pins with contact details
+          </label>
+        </fieldset>
+        <div class="restore-dialog-actions">
+          <button type="submit">Print</button>
+          <button type="button" id="cancel-map-print">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="export-encrypt-dialog">
+      <form id="export-encrypt-form">
+        <h2>Export</h2>
+        <label class="checkbox-row">
+          <input type="checkbox" id="export-encrypt-check" checked />
+          Encrypt with my passphrase
+        </label>
+        <p id="export-encrypt-warning" hidden>
+          Warning: this file will be readable by anyone who has it.
+        </p>
+        <div class="restore-dialog-actions">
+          <button type="submit">Export</button>
+          <button type="button" id="cancel-export-encrypt">Cancel</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="restore-passphrase-dialog">
       <form id="restore-passphrase-form">
@@ -745,25 +789,28 @@
                 type="button"
                 id="btn-share-contact"
                 title="Share this saved contact"
+                aria-label="Share this saved contact"
                 disabled
               >
-                📤 Share
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.6M8.2 13.2l7.6 4.6"/></svg>
               </button>
               <button
                 type="button"
                 id="btn-export-contact"
                 title="Export this saved contact"
+                aria-label="Export this saved contact"
                 disabled
               >
-                ⬇️ Export
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4M4 14v6h16v-6"/></svg>
               </button>
               <button
                 type="button"
                 id="btn-print-contact"
                 title="Print this saved contact"
+                aria-label="Print this saved contact"
                 disabled
               >
-                🖨️ Print
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z"/></svg>
               </button>
             </div>
             <button type="submit" id="btn-save-contact" title="Save Contact">

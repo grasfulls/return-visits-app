@@ -362,15 +362,29 @@ main {
     pointer-events: none;
 }
 
-#btn-open-modal {
+#btn-open-modal,
+.icon-action {
     background: #004080;
     color: white;
-    padding: 8px 14px;
+    width: 48px;
+    height: 48px;
+    padding: 0;
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 20px;
-    margin-bottom: 15px;
+    display: grid;
+    place-items: center;
+}
+
+.icon-action .icon {
+    width: 26px;
+    height: 26px;
+}
+
+.icon-action:not(.icon-action-add) {
+    background: white;
+    color: #004080;
+    border: 2px solid #004080;
 }
 
 /* Default Settings / Form Sections Mobile Clean-up */
@@ -694,11 +708,16 @@ textarea {
 
 /* Custom Map Pin Styling */
 .custom-map-pin div {
-    width: 22px;
-    height: 22px;
+    box-sizing: border-box;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    border: 3px solid #ffffff;
+    border: 2px solid #ffffff;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    color: #ffffff;
+    font: 700 12px/24px sans-serif;
+    text-align: center;
+    text-shadow: 0 0 3px #000, 0 0 3px #000;
 }
 
 /* Modal Layout - Perfect Mobile Scrolling & Pinned Footer */
@@ -949,7 +968,8 @@ textarea {
     font-weight: bold;
     border-radius: 4px;
     cursor: pointer;
-    white-space: nowrap;
+    display: grid;
+    place-items: center;
 }
 
 #btn-share-contact:disabled,
@@ -1146,6 +1166,82 @@ textarea {
 .nav-btn-label {
     font-size: 12px;
     line-height: 1;
+}
+
+.nav-action {
+    position: relative;
+    color: #004080;
+    min-width: 48px;
+    min-height: 48px;
+}
+
+.nav-action .icon {
+    width: 26px;
+    height: 26px;
+}
+
+.nav-action:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.nav-action-count {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    min-width: 17px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #004080;
+    color: white;
+    font-size: 11px;
+    line-height: 17px;
+    text-align: center;
+}
+
+.nav-action-count[hidden] {
+    display: none;
+}
+
+.icon {
+    width: 24px;
+    height: 24px;
+    display: block;
+}
+
+.settings-section {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 0 12px;
+    margin-bottom: 10px;
+}
+
+.settings-section > summary {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    font-size: 1.05rem;
+    cursor: pointer;
+}
+
+.settings-section[open] > summary {
+    margin-bottom: 8px;
+}
+
+.settings-section[open] {
+    padding-bottom: 12px;
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#export-encrypt-warning {
+    color: #8a1f11;
+    font-weight: 600;
 }
 
 .user-guide-link {

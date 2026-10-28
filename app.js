@@ -590,6 +590,29 @@ const decryptValue = async (encryptedValue, key) => {
 
 const PLAIN_CONTACT_FORMAT = "return-visits-contact";
 
+const ICON_PATHS = {
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  print: '<path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z"/>',
+  export: '<path d="M12 15V3M8 7l4-4 4 4M4 14v6h16v-6"/>',
+  import: '<path d="M12 3v12M8 11l4 4 4-4M4 14v6h16v-6"/>',
+  share:
+    '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.6M8.2 13.2l7.6 4.6"/>',
+};
+
+const iconSvg = (name) =>
+  `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]}</svg>`;
+const PLAIN_CONTACTS_FORMAT = "return-visits-contacts";
+const ENCRYPTED_CONTACTS_FORMAT = "return-visits-encrypted-contacts";
+
+const isSupportedEncryptionMetadata = (metadata) =>
+  metadata?.version === 1 &&
+  metadata.algorithm === "AES-GCM" &&
+  metadata.keyDerivation === "PBKDF2-SHA-256" &&
+  Number.isInteger(metadata.iterations) &&
+  metadata.iterations >= 100000 &&
+  metadata.iterations <= 1000000 &&
+  base64ToBytes(metadata.salt).length === 16;
+
 const decryptContactTransfer = async (transfer, passphrase) => {
   let contact;
   if (transfer.format === PLAIN_CONTACT_FORMAT && transfer.version === 1) {
@@ -612,6 +635,10 @@ const decryptContactTransfer = async (transfer, passphrase) => {
     const encryptionKey = await deriveEncryptionKey(passphrase, metadata);
     contact = await decryptValue(transfer.data, encryptionKey);
   }
+  return normalizeTransferredContact(contact);
+};
+
+const normalizeTransferredContact = (contact) => {
   if (
     !contact ||
     (typeof contact.id !== "number" && typeof contact.id !== "string") ||
@@ -667,6 +694,32 @@ const decryptContactTransfer = async (transfer, passphrase) => {
     areaAssignments: contact.areaAssignments || [],
     notesHistory: contact.notesHistory || [],
   };
+};
+
+// Reads a file holding one contact or several, plain or encrypted.
+const decryptContactsTransfer = async (transfer, passphrase) => {
+  let contactList;
+  if (transfer.format === PLAIN_CONTACTS_FORMAT && transfer.version === 1) {
+    contactList = transfer.data?.contacts;
+  } else if (
+    transfer.format === ENCRYPTED_CONTACTS_FORMAT &&
+    transfer.version === 1
+  ) {
+    if (!isSupportedEncryptionMetadata(transfer.encryption)) {
+      throw new Error("This is not a supported contact file.");
+    }
+    const transferKey = await deriveEncryptionKey(
+      passphrase,
+      transfer.encryption,
+    );
+    contactList = (await decryptValue(transfer.data, transferKey))?.contacts;
+  } else {
+    return [await decryptContactTransfer(transfer, passphrase)];
+  }
+  if (!Array.isArray(contactList) || !contactList.length) {
+    throw new Error("The contact file contains no contacts.");
+  }
+  return contactList.map(normalizeTransferredContact);
 };
 
 const getContactLastActivity = (contact) => {
@@ -2400,9 +2453,17 @@ const initializeApp = async () => {
     "No location hierarchy assigned";
 
   const updatePrintVisibleButton = () => {
-    const button = document.getElementById("btn-print-visible");
-    button.textContent = `🖨️ Print Visible Contacts (${visibleContacts.length})`;
-    button.disabled = visibleContacts.length === 0;
+    const count = visibleContacts.length;
+    ["btn-print-visible", "btn-export-visible"].forEach((id) => {
+      const button = document.getElementById(id);
+      if (!button) return;
+      button.disabled = count === 0;
+    });
+    const badge = document.querySelector("#btn-print-visible .nav-action-count");
+    if (badge) {
+      badge.textContent = count;
+      badge.hidden = count === 0;
+    }
   };
 
   const toLocalDateTimeString = (dateObj) => {
@@ -2517,9 +2578,61 @@ const initializeApp = async () => {
     { id: "settings-view", icon: "⚙️" },
   ];
 
+  const getPageActions = () => {
+    if (currentViewId === "contacts-view") {
+      return [
+        {
+          id: "btn-print-visible",
+          icon: "print",
+          title: "Print the contacts shown",
+          onClick: () => printVisibleContacts(),
+        },
+        {
+          id: "btn-export-visible",
+          icon: "export",
+          title: "Export the contacts shown",
+          onClick: () => exportVisibleContacts(),
+        },
+      ];
+    }
+    if (currentViewId === "map-view") {
+      return [
+        {
+          id: "btn-print-map",
+          icon: "print",
+          title: "Print the map contacts",
+          onClick: () => requestMapPrint(),
+        },
+      ];
+    }
+    if (currentViewId === "settings-view") {
+      return [
+        {
+          id: "btn-print-settings",
+          icon: "print",
+          title: "Print all settings",
+          onClick: () => printSettings(),
+        },
+      ];
+    }
+    return [];
+  };
+
   const renderBottomNav = () => {
     const navContainer = document.getElementById("bottom-nav");
     navContainer.innerHTML = "";
+    getPageActions().forEach((action) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = action.id;
+      btn.className = "nav-btn nav-action";
+      btn.title = action.title;
+      btn.setAttribute("aria-label", action.title);
+      btn.innerHTML = `<span class="nav-btn-icon" aria-hidden="true">${iconSvg(action.icon)}</span><span class="nav-action-count" hidden></span>`;
+      btn.addEventListener("click", action.onClick);
+      navContainer.appendChild(btn);
+    });
+    updatePrintVisibleButton();
     navButtonsConfig.forEach((btnConfig) => {
       if (btnConfig.id !== currentViewId) {
         const btn = document.createElement("button");
@@ -2554,6 +2667,9 @@ const initializeApp = async () => {
           document.getElementById(currentViewId).classList.add("active");
           renderBottomNav();
           if (currentViewId === "settings-view" && appUpdateAvailable) {
+            document
+              .getElementById("app-update-notice")
+              .closest("details").open = true;
             appUpdatePromptDismissed = false;
             appUpdatePromptHandler?.();
           }
@@ -3728,9 +3844,36 @@ const initializeApp = async () => {
     printContainer.replaceChildren();
   });
 
-  document
-    .getElementById("btn-print-visible")
-    .addEventListener("click", () => {
+  const printSettings = () => {
+    const rows = settings.cities
+      .map((city) => {
+        const regions = settings.regions.filter((r) => r.city === city);
+        const body = regions
+          .map((region) => {
+            const areas = settings.areas
+              .filter((a) => a.city === city && a.region === region.name)
+              .map((a) => escapeHtml(a.name))
+              .join(", ");
+            return `<li>${escapeHtml(region.name)}${areas ? `: ${areas}` : ""}</li>`;
+          })
+          .join("");
+        return `<h3>${escapeHtml(city)}</h3><ul>${body}</ul>`;
+      })
+      .join("");
+    printContent(
+      "Settings",
+      new Date().toLocaleDateString(),
+      `<section class="print-location-group">
+        <p>Default state: ${escapeHtml(settings.state || "Not set")}</p>
+        <p>Default city: ${escapeHtml(settings.defaultCity || "Not set")}</p>
+        <p>Passphrase: ${encryptionKey ? "On" : "Off"}</p>
+        <h2>Cities, regions and areas</h2>
+        ${rows || "<p>None.</p>"}
+      </section>`,
+    );
+  };
+
+  const printVisibleContacts = () => {
       if (!visibleContacts.length) return;
       const count = visibleContacts.length;
       if (
@@ -3775,7 +3918,67 @@ const initializeApp = async () => {
         `${count} contact${count === 1 ? "" : "s"} • most recent note per contact • ${new Date().toLocaleDateString()}`,
         content,
       );
-    });
+    };
+
+  // Prints the same numbered list the map pins use, then any contacts
+  // that have no pin.
+  const printMapList = (detail) => {
+    const pinned = visibleContacts.filter((c) => c.lat && c.lng);
+    const unpinned = visibleContacts.filter((c) => !(c.lat && c.lng));
+    const entry = (contact, number) => {
+      const name = `${contact.firstName} ${contact.lastName}`.trim();
+      const address =
+        normalizeStreetName(getStreetAddress(contact)) ||
+        "No street address recorded";
+      const latestNote = getSortedVisitNotes(contact)[0];
+      return `
+        <article class="print-contact-entry">
+          <h3>${number ? `${number}. ` : ""}${escapeHtml(name)}</h3>
+          <p class="print-contact-address">${escapeHtml(address)}</p>
+          ${
+            detail === "details"
+              ? `${contact.phone ? `<p>Phone: ${escapeHtml(contact.phone)}</p>` : ""}
+                 ${contact.email ? `<p>Email: ${escapeHtml(contact.email)}</p>` : ""}
+                 <p>Location: ${escapeHtml(getContactLocationSummary(contact))}</p>
+                 <p>${latestNote ? `Last visit ${escapeHtml(getPrintableNoteDate(latestNote))}: ${escapeHtml(latestNote.text)}` : "No visit notes recorded."}</p>`
+              : ""
+          }
+        </article>`;
+    };
+    const content = `
+      <section class="print-location-group">
+        <h2>Map pins</h2>
+        ${pinned.map((c, i) => entry(c, i + 1)).join("") || "<p>No pins.</p>"}
+      </section>
+      ${
+        unpinned.length
+          ? `<section class="print-location-group"><h2>No map pin</h2>${unpinned.map((c) => entry(c, 0)).join("")}</section>`
+          : ""
+      }`;
+    printContent(
+      "Map Contacts",
+      `${pinned.length} pin${pinned.length === 1 ? "" : "s"} • ${new Date().toLocaleDateString()}`,
+      content,
+    );
+  };
+
+  const mapPrintDialog = document.getElementById("map-print-dialog");
+  const requestMapPrint = () => {
+    if (!visibleContacts.length) {
+      alert("There are no contacts to print.");
+      return;
+    }
+    mapPrintDialog.showModal();
+  };
+  document.getElementById("map-print-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const detail = new FormData(e.target).get("map-print-detail");
+    mapPrintDialog.close();
+    printMapList(detail);
+  });
+  document
+    .getElementById("cancel-map-print")
+    .addEventListener("click", () => mapPrintDialog.close());
 
   const contactPrintDialog = document.getElementById("contact-print-dialog");
   const contactPrintForm = document.getElementById("contact-print-form");
@@ -3894,18 +4097,20 @@ const initializeApp = async () => {
     mapMarkers = [];
 
     let validMarkers = [];
+    let pinNumber = 0;
 
     visibleContacts.forEach((contact) => {
       if (contact.lat && contact.lng) {
+        pinNumber += 1;
         const latNum = parseFloat(contact.lat);
         const lngNum = parseFloat(contact.lng);
         const status = getContactStatus(contact);
 
         const svgIcon = L.divIcon({
           className: "custom-map-pin",
-          html: `<div style="background-color: ${status.color};"></div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
+          html: `<div style="background-color: ${status.color};">${pinNumber}</div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
         });
 
         const marker = L.marker([latNum, lngNum], {
@@ -3915,7 +4120,7 @@ const initializeApp = async () => {
         const navigationUrl = getNavigationUrl(contact);
         const popupContent = `
                     <div>
-                        <b>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</b><br>
+                        <b>${pinNumber}. ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</b><br>
                         ${escapeHtml(getFormattedContactAddress(contact))}<br>
                         ${contact.phone ? `Phone: ${escapeHtml(contact.phone)}<br>` : ""}
                         ${contact.email ? `Email: ${escapeHtml(contact.email)}<br>` : ""}
@@ -4237,15 +4442,16 @@ const initializeApp = async () => {
     .getElementById("sort-select")
     .addEventListener("change", renderContacts);
 
-  const downloadEncryptedBackup = async () => {
+  const downloadEncryptedBackup = async (encrypt = Boolean(encryptionKey)) => {
     try {
+      const useKey = encrypt && encryptionKey;
       const backup = {
-        format: encryptionKey
+        format: useKey
           ? "return-visits-encrypted-backup"
           : "return-visits-backup",
         version: 1,
         exportedAt: new Date().toISOString(),
-        ...(encryptionKey
+        ...(useKey
           ? {
               encryption: cryptoMetadata,
               data: {
@@ -4272,9 +4478,93 @@ const initializeApp = async () => {
     }
   };
 
+  const downloadContactsSubset = async (list, encrypt) => {
+    try {
+      const useKey = encrypt && encryptionKey;
+      const data = { contacts: list };
+      const transfer = {
+        format: useKey ? ENCRYPTED_CONTACTS_FORMAT : PLAIN_CONTACTS_FORMAT,
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        ...(useKey
+          ? {
+              encryption: cryptoMetadata,
+              data: await encryptValue(data, encryptionKey),
+            }
+          : { data }),
+      };
+      const downloadUrl = URL.createObjectURL(
+        new Blob([JSON.stringify(transfer, null, 2)], {
+          type: "application/json",
+        }),
+      );
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `return-visits-contacts-${new Date()
+        .toISOString()
+        .slice(0, 10)}.json`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (error) {
+      showStorageError("export contacts", error);
+    }
+  };
+
+  const exportEncryptDialog = document.getElementById("export-encrypt-dialog");
+  const exportEncryptForm = document.getElementById("export-encrypt-form");
+  const exportEncryptCheckbox = document.getElementById("export-encrypt-check");
+  const exportEncryptWarning = document.getElementById("export-encrypt-warning");
+
+  exportEncryptCheckbox.addEventListener("change", () => {
+    exportEncryptWarning.hidden = exportEncryptCheckbox.checked;
+  });
+
+  // Resolves true (encrypt), false (plain) or null (cancelled).
+  const requestExportEncryption = () =>
+    new Promise((resolve) => {
+      exportEncryptCheckbox.checked = true;
+      exportEncryptWarning.hidden = true;
+      const finish = (value) => {
+        exportEncryptDialog.close();
+        exportEncryptForm.removeEventListener("submit", onSubmit);
+        exportEncryptDialog.removeEventListener("cancel", onCancel);
+        document
+          .getElementById("cancel-export-encrypt")
+          .removeEventListener("click", onCancel);
+        resolve(value);
+      };
+      const onSubmit = (event) => {
+        event.preventDefault();
+        finish(exportEncryptCheckbox.checked);
+      };
+      const onCancel = () => finish(null);
+      exportEncryptForm.addEventListener("submit", onSubmit);
+      exportEncryptDialog.addEventListener("cancel", onCancel);
+      document
+        .getElementById("cancel-export-encrypt")
+        .addEventListener("click", onCancel);
+      exportEncryptDialog.showModal();
+    });
+
+  // Exports exactly what the Contacts page shows: everything as a full backup
+  // when unfiltered, otherwise just the shown contacts.
+  const exportVisibleContacts = async () => {
+    if (!visibleContacts.length) return;
+    let encrypt = false;
+    if (encryptionKey) {
+      encrypt = await requestExportEncryption();
+      if (encrypt === null) return;
+    }
+    if (visibleContacts.length === contacts.length) {
+      await downloadEncryptedBackup(encrypt);
+    } else {
+      await downloadContactsSubset(visibleContacts, encrypt);
+    }
+  };
+
   document
     .getElementById("btn-export-backup")
-    .addEventListener("click", downloadEncryptedBackup);
+    .addEventListener("click", () => downloadEncryptedBackup());
 
   const contactTransferDialog = document.getElementById(
     "contact-transfer-dialog",
@@ -4426,26 +4716,50 @@ const initializeApp = async () => {
   const contactFileInput = document.getElementById("contact-file-input");
   document
     .getElementById("btn-import-contact")
-    .addEventListener("click", async () => {
-      const file = contactFileInput.files[0];
-      if (!file) {
-        alert("Choose an encrypted contact file first.");
-        return;
-      }
+    .addEventListener("click", () => contactFileInput.click());
+  contactFileInput.addEventListener("change", async () => {
+      const files = [...contactFileInput.files];
+      if (!files.length) return;
 
       try {
-        const transfer = JSON.parse(await file.text());
-        const passphrase =
-          transfer.format === PLAIN_CONTACT_FORMAT
-            ? null
-            : await requestContactTransferPassphrase("import");
-        if (passphrase === null && transfer.format !== PLAIN_CONTACT_FORMAT) {
+        const importedList = [];
+        let passphrase;
+        for (const file of files) {
+          const transfer = JSON.parse(await file.text());
+          const isPlain =
+            transfer.format === PLAIN_CONTACT_FORMAT ||
+            transfer.format === PLAIN_CONTACTS_FORMAT;
+          if (!isPlain && passphrase === undefined) {
+            passphrase = await requestContactTransferPassphrase("import");
+            if (passphrase === null) {
+              contactFileInput.value = "";
+              return;
+            }
+          }
+          importedList.push(
+            ...(await decryptContactsTransfer(
+              transfer,
+              isPlain ? null : passphrase,
+            )),
+          );
+        }
+        if (
+          !confirm(
+            `Import ${importedList.length} contact${importedList.length === 1 ? "" : "s"} as new? Visit history is included. Existing contacts will not be changed.`,
+          )
+        ) {
+          contactFileInput.value = "";
           return;
         }
-        const importedContact = await decryptContactTransfer(
-          transfer,
-          passphrase,
-        );
+        const updatedSettings = {
+          ...settings,
+          cities: [...settings.cities],
+          regions: [...settings.regions],
+          areas: [...settings.areas],
+        };
+        const updatedContacts = [...contacts];
+        let nextId = Date.now();
+        for (const importedContact of importedList) {
         const importedAreaName =
           importedContact.area || importedContact.areas?.[0] || "";
         const legacyAssignment =
@@ -4511,26 +4825,19 @@ const initializeApp = async () => {
         importedContact.streetAddress = getStreetAddress(importedContact);
         delete importedContact.areas;
         delete importedContact.areaAssignments;
-        if (
-          !confirm(
-            `Import ${importedContact.firstName} ${importedContact.lastName} as a new contact? Its visit history will be included. Existing contacts will not be changed.`,
-          )
-        ) {
-          return;
-        }
 
-        let newId = Date.now();
-        while (contacts.some((contact) => String(contact.id) === String(newId))) {
-          newId += 1;
+        while (
+          updatedContacts.some((contact) => String(contact.id) === String(nextId))
+        ) {
+          nextId += 1;
         }
-        const updatedContacts = [
-          ...contacts,
-          {
-            ...importedContact,
-            id: newId,
-            updatedAt: new Date().toISOString(),
-          },
-        ];
+        updatedContacts.push({
+          ...importedContact,
+          id: nextId,
+          updatedAt: new Date().toISOString(),
+        });
+        nextId += 1;
+        }
         await writeStoredValues(database, [
           ["settings", await encryptValue(updatedSettings, encryptionKey)],
           ["contacts", await encryptValue(updatedContacts, encryptionKey)],
@@ -4541,11 +4848,14 @@ const initializeApp = async () => {
         populateDropdowns();
         renderContacts();
         contactFileInput.value = "";
-        alert("Contact imported successfully.");
-      } catch (error) {
-        console.error("Unable to import encrypted contact:", error);
         alert(
-          `Could not import that contact. ${error.message || "Check that the file is valid and the passphrase is correct."} Your current contacts were not changed.`,
+          `${importedList.length} contact${importedList.length === 1 ? "" : "s"} imported.`,
+        );
+      } catch (error) {
+        contactFileInput.value = "";
+        console.error("Unable to import contacts:", error);
+        alert(
+          `Could not import. ${error.message || "Check that the file is valid and the passphrase is correct."} Your current contacts were not changed.`,
         );
       }
     });
