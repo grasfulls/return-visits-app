@@ -2512,6 +2512,9 @@ const initializeApp = async () => {
     const protectedNow = Boolean(cryptoMetadata);
     document.getElementById("passphrase-section-title").textContent =
       protectedNow ? "Change Passphrase" : "Turn On Passphrase";
+    document.getElementById("passphrase-section-title").hidden = !protectedNow;
+    document.getElementById("btn-start-turn-on").hidden = protectedNow;
+    document.getElementById("change-passphrase-form").hidden = !protectedNow;
     document.getElementById("passphrase-section-description").textContent =
       protectedNow
         ? `Enter your current passphrase (or your recovery code) and choose a new one with at least ${MIN_PASSPHRASE_LENGTH} characters. This changes the passphrase for this app copy only, and creates a new recovery code. Existing backup files keep the passphrase they were created with.`
@@ -2520,7 +2523,7 @@ const initializeApp = async () => {
       !protectedNow;
     document.getElementById("current-passphrase").required = protectedNow;
     document.getElementById("btn-change-passphrase").textContent =
-      protectedNow ? "Change Passphrase" : "Turn On Passphrase";
+      protectedNow ? "Change Passphrase" : "Save Passphrase";
     document.getElementById("turn-off-passphrase-section").hidden =
       !protectedNow;
     document.getElementById("recovery-code-section").hidden = !protectedNow;
@@ -2530,6 +2533,13 @@ const initializeApp = async () => {
         : "No recovery code is set yet. Make one now so a forgotten passphrase does not lock you out.";
   };
   updatePassphraseSection();
+  document
+    .getElementById("btn-start-turn-on")
+    .addEventListener("click", () => {
+      document.getElementById("btn-start-turn-on").hidden = true;
+      document.getElementById("change-passphrase-form").hidden = false;
+      document.getElementById("new-passphrase").focus();
+    });
 
   document
     .getElementById("recovery-code-form")
@@ -2990,6 +3000,12 @@ const initializeApp = async () => {
   };
 
   const renderBottomNav = () => {
+    const pageNames = {
+      "contacts-view": "Contacts",
+      "map-view": "Map",
+      "settings-view": "Settings",
+    };
+    document.title = `Return Visits - ${pageNames[currentViewId] || "Contacts"}`;
     const navContainer = document.getElementById("bottom-nav");
     navContainer.innerHTML = "";
     getPageActions().forEach((action) => {

@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <title>Return Visits App</title>
+    <title>Return Visits - Contacts</title>
     <meta name="theme-color" content="#004080" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -247,6 +247,95 @@
                 Restore Selected Backup
               </button>
             </details>
+            <details class="settings-section">
+              <summary>Passphrase</summary>
+            <h3 id="passphrase-section-title">Change Passphrase</h3>
+            <p id="passphrase-section-description">
+              Enter your current passphrase and choose a new one with at least
+              12 characters. This changes the passphrase for this app copy only.
+              Existing backup files keep the passphrase they were created with.
+            </p>
+            <button type="button" id="btn-start-turn-on" hidden>
+              Turn On Passphrase
+            </button>
+            <form id="change-passphrase-form">
+              <div id="current-passphrase-fields">
+                <label for="current-passphrase">Current passphrase</label>
+                <input
+                  type="password"
+                  id="current-passphrase"
+                  autocomplete="current-password"
+                  required
+                />
+              </div>
+              <label for="new-passphrase">New passphrase</label>
+              <input
+                type="password"
+                id="new-passphrase"
+                autocomplete="new-password"
+                minlength="12"
+                required
+              />
+              <label for="confirm-new-passphrase">Confirm new passphrase</label>
+              <input
+                type="password"
+                id="confirm-new-passphrase"
+                autocomplete="new-password"
+                minlength="12"
+                required
+              />
+              <button type="submit" id="btn-change-passphrase">
+                Change Passphrase
+              </button>
+              <p id="change-passphrase-status" role="status" aria-live="polite"></p>
+            </form>
+
+            <div id="recovery-code-section">
+              <h3>Recovery Code</h3>
+              <p id="recovery-code-state"></p>
+              <p>
+                A recovery code is a long random code you keep somewhere safe,
+                away from this phone. If you forget your passphrase, type the
+                code in place of the passphrase to open the app. Anyone with the
+                code can open your data, so treat it like the passphrase.
+              </p>
+              <form id="recovery-code-form">
+                <label for="recovery-current-passphrase">Current passphrase</label>
+                <input
+                  type="password"
+                  id="recovery-current-passphrase"
+                  autocomplete="current-password"
+                  required
+                />
+                <button type="submit" id="btn-make-recovery-code">
+                  Make a New Recovery Code
+                </button>
+                <p id="recovery-code-status" role="status" aria-live="polite"></p>
+              </form>
+            </div>
+
+            <div id="turn-off-passphrase-section">
+              <h3>Turn Off Passphrase</h3>
+              <p>
+                Stop requiring a passphrase on this device. Enter your current
+                passphrase to decrypt your data. It will then be stored without
+                encryption, and you can turn the passphrase on again later.
+              </p>
+              <form id="turn-off-passphrase-form">
+                <label for="turn-off-current-passphrase">Current passphrase</label>
+                <input
+                  type="password"
+                  id="turn-off-current-passphrase"
+                  autocomplete="current-password"
+                  required
+                />
+                <button type="submit" id="btn-turn-off-passphrase">
+                  Turn Off Passphrase
+                </button>
+                <p id="turn-off-passphrase-status" role="status" aria-live="polite"></p>
+              </form>
+            </div>
+            </details>
             <details class="settings-section" id="cloud-section">
               <summary>Cloud backup (optional)</summary>
               <div id="cloud-off">
@@ -414,92 +503,7 @@
             </form>
             </details>
 
-            <details class="settings-section">
-              <summary>Passphrase</summary>
-            <h3 id="passphrase-section-title">Change Passphrase</h3>
-            <p id="passphrase-section-description">
-              Enter your current passphrase and choose a new one with at least
-              12 characters. This changes the passphrase for this app copy only.
-              Existing backup files keep the passphrase they were created with.
-            </p>
-            <form id="change-passphrase-form">
-              <div id="current-passphrase-fields">
-                <label for="current-passphrase">Current passphrase</label>
-                <input
-                  type="password"
-                  id="current-passphrase"
-                  autocomplete="current-password"
-                  required
-                />
-              </div>
-              <label for="new-passphrase">New passphrase</label>
-              <input
-                type="password"
-                id="new-passphrase"
-                autocomplete="new-password"
-                minlength="12"
-                required
-              />
-              <label for="confirm-new-passphrase">Confirm new passphrase</label>
-              <input
-                type="password"
-                id="confirm-new-passphrase"
-                autocomplete="new-password"
-                minlength="12"
-                required
-              />
-              <button type="submit" id="btn-change-passphrase">
-                Change Passphrase
-              </button>
-              <p id="change-passphrase-status" role="status" aria-live="polite"></p>
-            </form>
 
-            <div id="recovery-code-section">
-              <h3>Recovery Code</h3>
-              <p id="recovery-code-state"></p>
-              <p>
-                A recovery code is a long random code you keep somewhere safe,
-                away from this phone. If you forget your passphrase, type the
-                code in place of the passphrase to open the app. Anyone with the
-                code can open your data, so treat it like the passphrase.
-              </p>
-              <form id="recovery-code-form">
-                <label for="recovery-current-passphrase">Current passphrase</label>
-                <input
-                  type="password"
-                  id="recovery-current-passphrase"
-                  autocomplete="current-password"
-                  required
-                />
-                <button type="submit" id="btn-make-recovery-code">
-                  Make a New Recovery Code
-                </button>
-                <p id="recovery-code-status" role="status" aria-live="polite"></p>
-              </form>
-            </div>
-
-            <div id="turn-off-passphrase-section">
-              <h3>Turn Off Passphrase</h3>
-              <p>
-                Stop requiring a passphrase on this device. Enter your current
-                passphrase to decrypt your data. It will then be stored without
-                encryption, and you can turn the passphrase on again later.
-              </p>
-              <form id="turn-off-passphrase-form">
-                <label for="turn-off-current-passphrase">Current passphrase</label>
-                <input
-                  type="password"
-                  id="turn-off-current-passphrase"
-                  autocomplete="current-password"
-                  required
-                />
-                <button type="submit" id="btn-turn-off-passphrase">
-                  Turn Off Passphrase
-                </button>
-                <p id="turn-off-passphrase-status" role="status" aria-live="polite"></p>
-              </form>
-            </div>
-            </details>
 
             <details class="settings-section">
               <summary>Cities, Regions &amp; Areas</summary>

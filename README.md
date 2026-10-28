@@ -33,7 +33,7 @@ when possible, since browser and Home Screen copies may keep separate data.
 Contacts and settings are stored on the current browser and device in IndexedDB
 and, when a passphrase is turned on, encrypted with AES-GCM. A passphrase is
 optional: by default the app opens without one and stores data unencrypted. To
-turn it on, use **Settings → Passphrase → Turn On Passphrase** and choose a passphrase of at
+turn it on, use **Settings → Passphrase → Turn On Passphrase**, enter and confirm a passphrase of at
 least 12 characters; it is then required whenever opening the app. The app shows a
 recovery code once; typing that code in place of the passphrase unlocks the app (and
 also unlocks backups, because a locked copy of the passphrase is stored inside the backup
