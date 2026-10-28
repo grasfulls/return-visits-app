@@ -173,14 +173,15 @@ automatically.
 ## Share one contact
 
 Select the download button on a contact card to export that contact, including
-its visit history, as an encrypted file. Create a separate sharing passphrase
-of at least 8 characters and give it to the recipient through a different
-channel from the file.
+its visit history, as a file. If the device has a passphrase, the file is
+encrypted: create a separate sharing passphrase of at least 8 characters and
+give it to the recipient through a different channel. With no passphrase, the
+file is plain and no passphrase is asked for.
 
 The recipient can use the regular website or install the PWA. In **Settings →
-Share a Contact**, select the file, enter its sharing passphrase, and confirm
-the import. It adds a new contact without replacing existing contacts and
-stores it encrypted using the recipient device’s passphrase.
+Share a Contact**, select the file, enter its sharing passphrase if it is
+encrypted, and confirm the import. It adds a new contact without replacing
+existing contacts.
 
 ## Stop using the app and remove data
 

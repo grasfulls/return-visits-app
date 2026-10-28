@@ -207,10 +207,12 @@
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc" />
             <h3>Share a Contact</h3>
             <p>
-              Export one contact, including its visit history, as an encrypted
-              file. The recipient needs the file and its passphrase to import it.
+              Export one contact, including its visit history, as a file. If
+              this device has a passphrase, the file is encrypted and the
+              recipient needs its passphrase to import it. With no passphrase,
+              the file is plain and needs none.
             </p>
-            <label for="contact-file-input">Import an encrypted contact file</label>
+            <label for="contact-file-input">Import a contact file</label>
             <input
               type="file"
               id="contact-file-input"

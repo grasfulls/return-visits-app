@@ -580,23 +580,30 @@ const decryptValue = async (encryptedValue, key) => {
   return JSON.parse(new TextDecoder().decode(plaintext));
 };
 
+const PLAIN_CONTACT_FORMAT = "return-visits-contact";
+
 const decryptContactTransfer = async (transfer, passphrase) => {
-  const metadata = transfer.encryption;
-  if (
-    transfer.format !== "return-visits-encrypted-contact" ||
-    transfer.version !== 1 ||
-    metadata?.version !== 1 ||
-    metadata.algorithm !== "AES-GCM" ||
-    metadata.keyDerivation !== "PBKDF2-SHA-256" ||
-    !Number.isInteger(metadata.iterations) ||
-    metadata.iterations < 100000 ||
-    metadata.iterations > 1000000 ||
-    base64ToBytes(metadata.salt).length !== 16
-  ) {
-    throw new Error("This is not a supported encrypted contact file.");
+  let contact;
+  if (transfer.format === PLAIN_CONTACT_FORMAT && transfer.version === 1) {
+    contact = transfer.data;
+  } else {
+    const metadata = transfer.encryption;
+    if (
+      transfer.format !== "return-visits-encrypted-contact" ||
+      transfer.version !== 1 ||
+      metadata?.version !== 1 ||
+      metadata.algorithm !== "AES-GCM" ||
+      metadata.keyDerivation !== "PBKDF2-SHA-256" ||
+      !Number.isInteger(metadata.iterations) ||
+      metadata.iterations < 100000 ||
+      metadata.iterations > 1000000 ||
+      base64ToBytes(metadata.salt).length !== 16
+    ) {
+      throw new Error("This is not a supported contact file.");
+    }
+    const encryptionKey = await deriveEncryptionKey(passphrase, metadata);
+    contact = await decryptValue(transfer.data, encryptionKey);
   }
-  const encryptionKey = await deriveEncryptionKey(passphrase, metadata);
-  const contact = await decryptValue(transfer.data, encryptionKey);
   if (
     !contact ||
     (typeof contact.id !== "number" && typeof contact.id !== "string") ||
@@ -4295,34 +4302,45 @@ const initializeApp = async () => {
   }
 
   const exportContact = async (contact) => {
-    const passphrase = await requestContactTransferPassphrase("export");
-    if (passphrase === null) return;
+    // With no passphrase on this device, export a plain file with no prompts.
+    const passphrase = encryptionKey
+      ? await requestContactTransferPassphrase("export")
+      : null;
+    if (encryptionKey && passphrase === null) return;
     try {
-      const metadata = createCryptoMetadata();
-      const transferKey = await deriveEncryptionKey(passphrase, metadata);
-      const transfer = {
-        format: "return-visits-encrypted-contact",
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        encryption: metadata,
-        data: await encryptValue(
-          {
-            ...contact,
-            areas: getContactAreas(contact),
-            areaAssignments: contact.area
-              ? [
-                  {
-                    name: contact.area,
-                    region: contact.region,
-                    city: contact.city,
-                  },
-                ]
-              : [],
-            notesHistory: contact.notesHistory || [],
-          },
-          transferKey,
-        ),
+      const contactData = {
+        ...contact,
+        areas: getContactAreas(contact),
+        areaAssignments: contact.area
+          ? [
+              {
+                name: contact.area,
+                region: contact.region,
+                city: contact.city,
+              },
+            ]
+          : [],
+        notesHistory: contact.notesHistory || [],
       };
+      let transfer;
+      if (passphrase === null) {
+        transfer = {
+          format: PLAIN_CONTACT_FORMAT,
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          data: contactData,
+        };
+      } else {
+        const metadata = createCryptoMetadata();
+        const transferKey = await deriveEncryptionKey(passphrase, metadata);
+        transfer = {
+          format: "return-visits-encrypted-contact",
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          encryption: metadata,
+          data: await encryptValue(contactData, transferKey),
+        };
+      }
       const downloadUrl = URL.createObjectURL(
         new Blob([JSON.stringify(transfer, null, 2)], {
           type: "application/json",
@@ -4356,8 +4374,13 @@ const initializeApp = async () => {
 
       try {
         const transfer = JSON.parse(await file.text());
-        const passphrase = await requestContactTransferPassphrase("import");
-        if (passphrase === null) return;
+        const passphrase =
+          transfer.format === PLAIN_CONTACT_FORMAT
+            ? null
+            : await requestContactTransferPassphrase("import");
+        if (passphrase === null && transfer.format !== PLAIN_CONTACT_FORMAT) {
+          return;
+        }
         const importedContact = await decryptContactTransfer(
           transfer,
           passphrase,
