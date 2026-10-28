@@ -403,8 +403,10 @@
             <div id="region-area-list"></div>
             <small>
               Edit renames a location and updates its existing references.
-              Delete is available only when no contact or child location uses
-              it. Locations follow City → Region → Area; each level is optional
+              Delete is blocked while any contact is assigned to it or to a
+              location beneath it. Deleting a city or region with no assigned
+              contacts also deletes the regions and areas under it, after you
+              confirm. Locations follow City → Region → Area; each level is optional
               on a contact.
             </small>
           </div>

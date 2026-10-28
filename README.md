@@ -71,8 +71,9 @@ ID, so different people can share the same name. The Region list also offers
 given the Regions North, South, East, and West. A Region is a large part of a
 city and an Area is a neighborhood within it. In Settings, edit a City,
 Region, or Area to rename it and update existing assignments. Deletion is
-blocked while contacts or child locations still use that entry; reassign or
-remove those first. Contact cards show available
+blocked while any contact is assigned to that entry or its child locations;
+reassign those contacts first. Deleting a City or Region with no assigned
+contacts also deletes its Regions and Areas, after confirmation. Contact cards show available
 phone and email details along with the address, location
 hierarchy, urgency, and visit history; they include actions to edit, export,
 delete, and navigate to a contact. Navigate opens Google Maps directions using

@@ -2014,29 +2014,36 @@ const initializeApp = async () => {
                 area.city === location.city && area.region === location.name,
             ).length
           : 0;
-    if (assignedContacts.length || childLocations) {
-      const usage = [];
-      if (assignedContacts.length) {
-        usage.push(
-          `${assignedContacts.length} assigned contact${assignedContacts.length === 1 ? "" : "s"}`,
-        );
-      }
-      if (childLocations) {
-        usage.push(
-          `${childLocations} child location${childLocations === 1 ? "" : "s"}`,
-        );
-      }
+    if (assignedContacts.length) {
       alert(
-        `Cannot delete this ${type.toLowerCase()} while it has ${usage.join(" and ")}. Reassign or remove those first.`,
+        `Cannot delete this ${type.toLowerCase()} while it has ${assignedContacts.length} assigned contact${assignedContacts.length === 1 ? "" : "s"}. Reassign those contacts first.`,
       );
       return;
     }
-    if (!confirm(`Delete ${type.toLowerCase()} "${location.name}"?`)) return;
+    const childDescription =
+      type === "City"
+        ? `${settings.regions.filter((region) => region.city === location.name).length} region(s) and ${settings.areas.filter((area) => area.city === location.name).length} area(s)`
+        : `${childLocations} area(s)`;
+    if (
+      !confirm(
+        childLocations
+          ? `Delete ${type.toLowerCase()} "${location.name}" and its ${childDescription}? No contacts are assigned to them.`
+          : `Delete ${type.toLowerCase()} "${location.name}"?`,
+      )
+    ) {
+      return;
+    }
 
     const previousState = cloneLocationState();
     if (type === "City") {
       settings.cities = settings.cities.filter(
         (city) => city !== location.name,
+      );
+      settings.regions = settings.regions.filter(
+        (region) => region.city !== location.name,
+      );
+      settings.areas = settings.areas.filter(
+        (area) => area.city !== location.name,
       );
       if (settings.defaultCity === location.name) {
         settings.defaultCity = settings.cities[0] || "";
@@ -2047,6 +2054,10 @@ const initializeApp = async () => {
       settings.regions = settings.regions.filter(
         (region) =>
           region.city !== location.city || region.name !== location.name,
+      );
+      settings.areas = settings.areas.filter(
+        (area) =>
+          area.city !== location.city || area.region !== location.name,
       );
     } else {
       settings.areas = settings.areas.filter(
