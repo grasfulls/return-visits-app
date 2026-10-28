@@ -68,10 +68,11 @@ document
     document.getElementById("app-update-dialog").close();
   });
 try {
-  appUpdateAvailable =
-    localStorage.getItem(APP_UPDATE_PENDING_KEY) === "true";
+  // A fresh page load already runs the newest files, so any earlier pending
+  // flag is stale. The flag is set again only if an update activates later.
+  localStorage.removeItem(APP_UPDATE_PENDING_KEY);
 } catch (error) {
-  console.error("Unable to read the pending app update status:", error);
+  console.error("Unable to clear the pending app update status:", error);
 }
 document.addEventListener("app-update-available", () => {
   appUpdateAvailable = true;
@@ -3392,6 +3393,7 @@ const initializeApp = async () => {
     return "";
   };
   const showAppUpdatePrompt = () => {
+    if (!appUpdateAvailable) return;
     renderBottomNav();
     document.getElementById("app-update-notice").hidden = false;
     document.getElementById("btn-check-updates").textContent = "Update Now";
@@ -5219,6 +5221,31 @@ const initializeApp = async () => {
     }, 500);
   }
 };
+
+document.addEventListener("DOMContentLoaded", () => {
+  const installBanner = document.getElementById("install-banner");
+  const installBannerKey = "return_visits_install_banner_dismissed";
+  const isInstalled =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    navigator.standalone === true;
+  let dismissed = false;
+  try {
+    dismissed = localStorage.getItem(installBannerKey) === "true";
+  } catch (error) {
+    console.error("Unable to read the install tip status:", error);
+  }
+  installBanner.hidden = isInstalled || dismissed;
+  document
+    .getElementById("btn-dismiss-install-banner")
+    .addEventListener("click", () => {
+      installBanner.hidden = true;
+      try {
+        localStorage.setItem(installBannerKey, "true");
+      } catch (error) {
+        console.error("Unable to save the install tip status:", error);
+      }
+    });
+});
 
 document.addEventListener("DOMContentLoaded", () => {
   initializeApp()
