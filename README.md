@@ -210,10 +210,11 @@ The plain-language user guide is available from **Settings → Read the
 plain-language User Guide** or directly at
 **https://grasfulls.github.io/return-visits-app/help.html**. It is an
 accessible, responsive HTML page that can be read in a standard web browser.
+PDF and Word copies are in the [docs/](./docs) folder and linked from the page.
 
 The **Privacy & Data Notice** is available from Settings or directly at
 **https://grasfulls.github.io/return-visits-app/privacy.html**. The page also
-provides a downloadable Word copy. It explains what information the app stores
+provides downloadable PDF and Word copies. It explains what information the app stores
 on the user's device, what may be sent to hosting and mapping providers, and
 that the app owner does not collect information identifying who downloads or
 uses the app.
