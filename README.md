@@ -164,6 +164,9 @@ or **Settings → Backup & Restore → Back up everything**, to download a JSON 
 (encrypted when a passphrase is on) of all contacts and settings. The browser saves it to its usual download
 location—for example, **Files → Downloads** on iPhone or the browser’s
 **Downloads** location on other devices. The app cannot choose a save folder.
+At app start it asks the browser to protect its storage from automatic clearing
+(persistent storage); the result is shown at the top of **Settings → Backup & Restore**.
+This lowers but does not remove the risk of data loss, so keep backups.
 
 To restore, select the backup and, if it is encrypted, enter the passphrase used
 for it. Restore

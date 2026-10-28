@@ -5380,9 +5380,32 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+const updateStorageProtectionStatus = async () => {
+  const statusEl = document.getElementById("storage-protection-status");
+  if (!statusEl) return;
+  if (!navigator.storage?.persist) {
+    statusEl.textContent =
+      "Storage protection: not supported by this browser. Keep regular backups.";
+    return;
+  }
+  try {
+    const granted =
+      (await navigator.storage.persisted()) ||
+      (await navigator.storage.persist());
+    statusEl.textContent = granted
+      ? "Storage protection: on. Your browser will not clear your contacts to free space. Backups are still recommended."
+      : "Storage protection: not granted by this browser. Your contacts could be cleared if the device runs low on space, so keep regular backups.";
+  } catch (error) {
+    console.error("Unable to request persistent storage:", error);
+    statusEl.textContent =
+      "Storage protection: could not be checked. Keep regular backups.";
+  }
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   initializeApp()
     .then(() => {
+      updateStorageProtectionStatus();
       appReadyForUpdates = true;
       if (appUpdateAvailable) appUpdatePromptHandler();
     })
