@@ -29,6 +29,8 @@ let appReadyForUpdates = false;
 let appUpdatePromptDismissed = false;
 let appUpdatePromptTimer = null;
 let getAppRefreshBlockMessage = () => "";
+let revealAppRefreshBlock = () => {};
+let confirmLeaveSettings = () => true;
 let appUpdatePromptHandler = () => {
   if (!appReadyForUpdates) return;
   const dialog = document.getElementById("app-update-dialog");
@@ -52,6 +54,8 @@ document
     if (blockMessage) {
       document.getElementById("app-update-dialog").close();
       document.getElementById("app-update-status").textContent = blockMessage;
+      alert(blockMessage);
+      revealAppRefreshBlock();
       return;
     }
     try {
@@ -2815,6 +2819,9 @@ const initializeApp = async () => {
           icon.appendChild(badge);
         }
         btn.addEventListener("click", () => {
+          if (currentViewId === "settings-view" && !confirmLeaveSettings()) {
+            return;
+          }
           currentViewId = btnConfig.id;
           document
             .querySelectorAll(".view")
@@ -3376,28 +3383,89 @@ const initializeApp = async () => {
 
   const appUpdateDialog = document.getElementById("app-update-dialog");
   const appUpdateStatus = document.getElementById("app-update-status");
+  const describeSettingsField = (input) => {
+    const label =
+      (input.id &&
+        document.querySelector(`label[for="${input.id}"]`)?.firstChild
+          ?.textContent) ||
+      input.closest("label")?.firstChild?.textContent ||
+      input.getAttribute("aria-label") ||
+      input.placeholder ||
+      input.id;
+    return String(label).replace(/:\s*$/, "").trim();
+  };
+  const findPendingSettingsEdit = () => {
+    const inputs = Array.from(
+      document.querySelectorAll("#settings-view input"),
+    ).filter(
+      (input) => !["checkbox", "radio", "hidden", "button", "submit"].includes(input.type),
+    );
+    for (const input of inputs) {
+      let changed;
+      if (input.id === "setting-state") {
+        changed = normalizeUsState(input.value) !== settings.state;
+      } else if (input.id === "setting-default-city") {
+        changed = toTitleCase(input.value) !== settings.defaultCity;
+      } else if (input.closest("#me-form")) {
+        changed =
+          input.value.trim() !==
+          (settings.me?.[input.id.replace("me-", "")] || "");
+      } else if (input.type === "file") {
+        changed = input.files.length > 0;
+      } else {
+        changed = input.value.trim() !== "";
+      }
+      if (changed) {
+        return {
+          input,
+          field: describeSettingsField(input),
+          section:
+            input.closest("details")?.querySelector("summary")?.textContent.trim() ||
+            "Settings",
+        };
+      }
+    }
+    return null;
+  };
+  const revealSettingsEdit = (pending) => {
+    if (!pending || currentViewId !== "settings-view") return;
+    const section = pending.input.closest("details");
+    if (section) section.open = true;
+    pending.input.scrollIntoView({ block: "center" });
+    pending.input.focus();
+  };
+  const discardSettingsEdits = () => {
+    document.querySelectorAll("#settings-view input").forEach((input) => {
+      if (["checkbox", "radio", "hidden", "button", "submit"].includes(input.type)) return;
+      input.value = "";
+    });
+    populateMeForm();
+    settingStateInput.value = settings.state;
+    settingDefaultCityInput.value = settings.defaultCity;
+  };
+  confirmLeaveSettings = () => {
+    const pending = findPendingSettingsEdit();
+    if (!pending) return true;
+    if (
+      confirm(
+        `Discard unsaved changes?\n\n"${pending.field}" in ${pending.section} has not been saved.\n\nChoose OK to discard, or Cancel to go back and finish it.`,
+      )
+    ) {
+      discardSettingsEdits();
+      return true;
+    }
+    revealSettingsEdit(pending);
+    return false;
+  };
+  revealAppRefreshBlock = () => revealSettingsEdit(findPendingSettingsEdit());
   getAppRefreshBlockMessage = () => {
     const contactEditorOpen = getComputedStyle(modal).display !== "none";
-    const hasUnsavedSettingsChanges =
-      normalizeUsState(settingStateInput.value) !== settings.state ||
-      toTitleCase(settingDefaultCityInput.value) !== settings.defaultCity ||
-      Object.entries(meFields).some(
-        ([key, input]) => input.value.trim() !== (settings.me?.[key] || ""),
-      );
-    const hasPendingSettingsInput = Array.from(
-      document.querySelectorAll(
-        '#settings-view input:not(#setting-state):not(#setting-default-city)',
-      ),
-    )
-      .filter((input) => !input.closest("#me-form"))
-      .some((input) =>
-        input.type === "file" ? input.files.length > 0 : input.value.trim(),
-      );
+    const pending = findPendingSettingsEdit();
     if (contactEditorOpen) {
       return "Save or exit the open contact before refreshing the app. Your saved contacts will remain on this device.";
     }
-    if (hasUnsavedSettingsChanges || hasPendingSettingsInput) {
-      return "Finish or save your current edits in Settings before refreshing the app.";
+    if (pending) {
+      return `Before refreshing, finish or clear "${pending.field}" in Settings → ${pending.section}. It has changes that are not saved.`;
     }
     return "";
   };
@@ -3446,6 +3514,7 @@ const initializeApp = async () => {
       const blockMessage = getAppRefreshBlockMessage();
       if (blockMessage) {
         status.textContent = blockMessage;
+        revealAppRefreshBlock();
         return;
       }
       if (!("serviceWorker" in navigator)) {

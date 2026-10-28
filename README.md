@@ -231,7 +231,9 @@ The app checks for updates when it opens and shows any update prompt once it has
 finished opening (after unlocking, if a passphrase is on). If an update is ready, it prompts you to update now or later; an
 exclamation mark also appears by Settings. To check or refresh manually, open
 **Settings → App updates → Check for Updates & Refresh** while online. Save or finish any
-open contact or Settings edits before refreshing. The app reloads its code
+open contact or Settings edits before refreshing; if something is unsaved, the app
+names the exact section and field and opens it. Leaving Settings with unsaved edits
+asks "Discard unsaved changes?" (OK discards, Cancel stays so you can finish). The app reloads its code
 while keeping the contacts and settings stored in that app copy on the device.
 After the reload, unlock with the same passphrase if one is turned on.
 
