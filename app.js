@@ -9,6 +9,20 @@ const ENCRYPTION_ITERATIONS = 310000;
 const ENCRYPTION_META_KEY = "encryption-meta";
 // Set to true to require a passphrase when no encryption has been set up yet.
 const REQUIRE_PASSPHRASE_ON_FIRST_USE = false;
+
+// Bump on any change to the stored data shape, and add a migration in
+// normalizeRegionData. Version 2 added contact updatedAt and deletedContacts.
+const SCHEMA_VERSION = 2;
+const EPOCH_TIMESTAMP = "1970-01-01T00:00:00.000Z";
+
+class NewerDataVersionError extends Error {
+  constructor() {
+    super(
+      "This data was saved by a newer version of the app. Update the app (reload it) before opening this data. Nothing was changed.",
+    );
+    this.name = "NewerDataVersionError";
+  }
+}
 const APP_UPDATE_PENDING_KEY = "return_visits_app_update_pending";
 let appUpdateAvailable = false;
 let appReadyForUpdates = false;
@@ -640,7 +654,24 @@ const decryptContactTransfer = async (transfer, passphrase) => {
   };
 };
 
+const getContactLastActivity = (contact) => {
+  const noteDates = (contact.notesHistory || [])
+    .map((note) => note?.rawDate)
+    .filter((date) => date && !Number.isNaN(new Date(date).getTime()));
+  const candidates = [contact.createdAt, ...noteDates].filter(
+    (date) => date && !Number.isNaN(new Date(date).getTime()),
+  );
+  if (!candidates.length) return EPOCH_TIMESTAMP;
+  return candidates
+    .map((date) => new Date(date).toISOString())
+    .sort()
+    .pop();
+};
+
 const normalizeRegionData = (settings, contacts) => {
+  if ((Number(settings.schemaVersion) || 1) > SCHEMA_VERSION) {
+    throw new NewerDataVersionError();
+  }
   const normalizedSettings = { ...settings };
   const cities = Array.isArray(settings.cities)
     ? [...new Set(settings.cities.filter((city) => typeof city === "string"))]
@@ -766,9 +797,16 @@ const normalizeRegionData = (settings, contacts) => {
       region,
       area: areaDefinition && areaDefinition.region === region ? areaName : "",
       streetAddress: getStreetAddress(contact),
+      updatedAt: contact.updatedAt || getContactLastActivity(contact),
     };
   });
 
+  normalizedSettings.schemaVersion = SCHEMA_VERSION;
+  normalizedSettings.deletedContacts = Array.isArray(settings.deletedContacts)
+    ? settings.deletedContacts.filter(
+        (entry) => entry && entry.id !== undefined && entry.deletedAt,
+      )
+    : [];
   normalizedSettings.cities = cities;
   normalizedSettings.defaultCity = defaultCity;
   normalizedSettings.regions = regionDefinitions;
@@ -1012,7 +1050,8 @@ const initializeAppData = async () => {
       } catch (error) {
         console.error("Unable to restore encrypted backup during startup:", error);
         prompt.errorMessage.textContent =
-          error.message === "Enter the backup passphrase before restoring."
+          error.message === "Enter the backup passphrase before restoring." ||
+          error instanceof NewerDataVersionError
             ? error.message
             : "Could not restore that backup. Check that the file is valid and the passphrase is correct.";
       } finally {
@@ -1135,7 +1174,10 @@ const initializeAppData = async () => {
           resolve({ database, settings, contacts, encryptionKey, metadata });
         } catch (error) {
           console.error("Unable to unlock or encrypt local data:", error);
-          prompt.errorMessage.textContent = existingMetadata
+          prompt.errorMessage.textContent =
+            error instanceof NewerDataVersionError
+              ? error.message
+              : existingMetadata
             ? "The passphrase was incorrect, or the encrypted data could not be read."
             : error.message ||
               "Could not encrypt existing data. The original data was preserved.";
@@ -1785,6 +1827,31 @@ const initializeApp = async () => {
   let contacts = savedContacts;
   let visibleContacts = [];
 
+  // Stamp updatedAt only on contacts whose content actually changed.
+  const getContactSignature = (contact) =>
+    JSON.stringify({ ...contact, updatedAt: undefined });
+  let contactSignatures = new Map();
+  const resetContactSignatures = () => {
+    contactSignatures = new Map(
+      contacts.map((contact) => [
+        String(contact.id),
+        getContactSignature(contact),
+      ]),
+    );
+  };
+  const stampChangedContacts = () => {
+    const now = new Date().toISOString();
+    const nextSignatures = new Map();
+    contacts.forEach((contact) => {
+      const key = String(contact.id);
+      const signature = getContactSignature(contact);
+      if (contactSignatures.get(key) !== signature) contact.updatedAt = now;
+      nextSignatures.set(key, signature);
+    });
+    return nextSignatures;
+  };
+  resetContactSignatures();
+
   const cloneLocationState = () => ({
     settings: JSON.parse(JSON.stringify(settings)),
     contacts: JSON.parse(JSON.stringify(contacts)),
@@ -1834,16 +1901,21 @@ const initializeApp = async () => {
     input.select();
   };
 
-  const persistLocationChanges = async (previousState) => {
+  const persistLocationChanges = async (
+    previousState,
+    action = "save location changes",
+  ) => {
     try {
+      const nextSignatures = stampChangedContacts();
       await writeStoredValues(database, [
         ["settings", await encryptValue(settings, encryptionKey)],
         ["contacts", await encryptValue(contacts, encryptionKey)],
       ]);
+      contactSignatures = nextSignatures;
     } catch (error) {
       settings = previousState.settings;
       contacts = previousState.contacts;
-      showStorageError("save location changes", error);
+      showStorageError(action, error);
       populateDropdowns();
       renderContacts();
       return false;
@@ -2490,7 +2562,9 @@ const initializeApp = async () => {
 
   const saveContacts = async () => {
     try {
+      const nextSignatures = stampChangedContacts();
       await encryptStoredValue(database, "contacts", contacts, encryptionKey);
+      contactSignatures = nextSignatures;
     } catch (error) {
       showStorageError("save contacts", error);
       return false;
@@ -4060,8 +4134,13 @@ const initializeApp = async () => {
 
   window.deleteContact = async (id) => {
     if (confirm("Are you sure you want to delete this contact?")) {
+      const previousState = cloneLocationState();
       contacts = contacts.filter((c) => c.id != id);
-      await saveContacts();
+      settings.deletedContacts = [
+        ...(settings.deletedContacts || []).filter((entry) => entry.id != id),
+        { id, deletedAt: new Date().toISOString() },
+      ];
+      await persistLocationChanges(previousState, "delete the contact");
     }
   };
 
@@ -4362,7 +4441,11 @@ const initializeApp = async () => {
         }
         const updatedContacts = [
           ...contacts,
-          { ...importedContact, id: newId },
+          {
+            ...importedContact,
+            id: newId,
+            updatedAt: new Date().toISOString(),
+          },
         ];
         await writeStoredValues(database, [
           ["settings", await encryptValue(updatedSettings, encryptionKey)],
@@ -4370,6 +4453,7 @@ const initializeApp = async () => {
         ]);
         settings = updatedSettings;
         contacts = updatedContacts;
+        resetContactSignatures();
         populateDropdowns();
         renderContacts();
         contactFileInput.value = "";
@@ -4470,6 +4554,7 @@ const initializeApp = async () => {
         cryptoMetadata = restored.metadata;
         settings = restored.settings;
         contacts = restored.contacts;
+        resetContactSignatures();
         settings.state = normalizeUsState(settings.state);
         document.getElementById("setting-state").value = settings.state;
         document.getElementById("setting-default-city").value =
@@ -4482,7 +4567,9 @@ const initializeApp = async () => {
       } catch (error) {
         console.error("Unable to restore encrypted backup:", error);
         alert(
-          "Could not restore that backup. Check that the file is valid and the passphrase is correct. Your current data was not replaced.",
+          error instanceof NewerDataVersionError
+            ? `${error.message} Your current data was not replaced.`
+            : "Could not restore that backup. Check that the file is valid and the passphrase is correct. Your current data was not replaced.",
         );
       }
     });
@@ -4520,6 +4607,12 @@ document.addEventListener("DOMContentLoaded", () => {
     })
     .catch((error) => {
       console.error("Unable to start the app:", error);
+      if (error instanceof NewerDataVersionError) {
+        alert(error.message);
+        appReadyForUpdates = true;
+        if (appUpdateAvailable) appUpdatePromptHandler();
+        return;
+      }
       alert(
         "The app could not open its on-device database. Your existing browser data has not been deleted. Please reload and try again.",
       );
