@@ -2565,7 +2565,12 @@ const initializeApp = async () => {
   // Clear old result messages once a settings section is closed.
   document.querySelectorAll(".settings-section").forEach((section) => {
     section.addEventListener("toggle", () => {
-      if (section.open) return;
+      if (section.open) {
+        document.querySelectorAll(".settings-section[open]").forEach((other) => {
+          if (other !== section) other.open = false;
+        });
+        return;
+      }
       section.querySelectorAll('[role="status"]').forEach((el) => {
         if (el.id.endsWith("-status")) el.textContent = "";
       });
