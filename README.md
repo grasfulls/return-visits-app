@@ -33,12 +33,12 @@ when possible, since browser and Home Screen copies may keep separate data.
 Contacts and settings are stored on the current browser and device in IndexedDB
 and, when a passphrase is turned on, encrypted with AES-GCM. A passphrase is
 optional: by default the app opens without one and stores data unencrypted. To
-turn it on, use **Settings → Turn On Passphrase** and choose a passphrase of at
+turn it on, use **Settings → Passphrase → Turn On Passphrase** and choose a passphrase of at
 least 8 characters; it is then required whenever opening the app. There is no
 passphrase recovery; if it is forgotten, the encrypted data cannot be unlocked.
 Keep the passphrase safe and separate from any backup or contact file. Once on,
-use **Settings → Change Passphrase** and verify the current passphrase first. To stop requiring
-one, use **Settings → Turn Off Passphrase** (the current passphrase is needed
+use **Settings → Passphrase → Change Passphrase** and verify the current passphrase first. To stop requiring
+one, use **Settings → Passphrase → Turn Off Passphrase** (the current passphrase is needed
 once to decrypt the data); it can be turned on again later.
 The change does not affect other copies or previously exported backup files;
 those backups continue to require the passphrase they were created with.
@@ -76,7 +76,7 @@ reassign those contacts first. Deleting a City or Region with no assigned
 contacts also deletes its Regions and Areas, after confirmation. Contact cards show available
 phone and email details along with the address, location
 hierarchy, urgency, last visit date, and note count; they include actions to
-edit, delete, and navigate to a contact. Share, Export, and Print are at the
+edit, delete, and navigate to a contact. Share, Export, and Print are icons at the
 bottom of the Edit Contact screen and work on the saved contact (save any
 changes first). Notes themselves are viewed,
 added, edited, and deleted (including their date and time) in the contact
@@ -88,12 +88,16 @@ and a directions link. Visit notes are left out unless you choose to include
 the most recent note or all notes in the Share dialog. This message is not
 encrypted by the app; use the contact export action for app-to-app transfer.
 
-On the contacts page, **Print Visible Contacts** prints exactly the contacts
-shown by the current search and filters. It confirms the number first, groups
+Every print button is the printer icon in the bottom bar and prints what is on
+that page. On the contacts page it prints exactly the contacts
+shown by the current search and filters (the icon shows the count). It confirms first, groups
 each contact once under their most specific location (Area, then Region, then
-City, then unassigned), and includes only the latest visit note. In **Edit
-Contact**, **Print** offers **Most recent note only** (the default) or **All
-notes**. Save any pending contact edits before printing; the Print button is
+City, then unassigned), and includes only the latest visit note. On the **Map**
+page it asks for numbered pins only or pins with contact details; pin numbers
+match the printed list, and contacts without a pin are listed separately. On
+**Settings** it prints the defaults, passphrase on/off, and locations. In **Edit
+Contact**, the printer offers **Most recent note only** (the default) or **All
+notes**. Save any pending contact edits before printing; the printer is
 disabled while changes are unsaved. Print layouts omit app controls. Printing
 uses the browser/device print dialog, where you can choose a printer or save as
 PDF if that option is available.
@@ -149,7 +153,8 @@ Maps to open directions.
 
 ## Full backup and restore
 
-Choose **Settings → Export Data Backup** to download a JSON backup
+Use the export icon in the contacts page's bottom bar (with no filter active),
+or **Settings → Backup & Restore → Back up everything**, to download a JSON backup
 (encrypted when a passphrase is on) of all contacts and settings. The browser saves it to its usual download
 location—for example, **Files → Downloads** on iPhone or the browser’s
 **Downloads** location on other devices. The app cannot choose a save folder.
@@ -164,7 +169,7 @@ imported, with a warning.
 
 Full backups cannot be merged directly. To combine several browser or app
 copies, choose one as the base and import individual contacts from the other
-copies using **Settings → Share a Contact**. Check for missing or duplicate
+copies using the import icon on the contacts page. Check for missing or duplicate
 contacts, create a fresh backup of the combined destination, then clear unused
 source data. See the [User Guide](./help.html) for a step-by-step consolidation
 and data-removal checklist.
@@ -175,17 +180,27 @@ automatically.
 
 ## Share one contact
 
-Open a contact with the pencil button and choose **Export** at the bottom of the
-Edit Contact screen to export that contact, including
+Open a contact with the pencil button and choose the export icon at the bottom
+of the Edit Contact screen to export that contact, including
 its visit history, as a file. If the device has a passphrase, the file is
 encrypted: create a separate sharing passphrase of at least 8 characters and
 give it to the recipient through a different channel. With no passphrase, the
 file is plain and no passphrase is asked for.
 
-The recipient can use the regular website or install the PWA. In **Settings →
-Share a Contact**, select the file, enter its sharing passphrase if it is
-encrypted, and confirm the import. It adds a new contact without replacing
-existing contacts.
+The recipient can use the regular website or install the PWA. On the contacts
+page, choose the import icon next to the blue **+**, select one or several
+files, enter the sharing passphrase if a file is encrypted, and confirm the
+import. It adds new contacts without replacing existing contacts.
+
+## Export several contacts
+
+On the contacts page, the export icon in the bottom bar exports exactly what is
+shown. With no search or filter active it downloads a full backup. With a
+filter active it downloads a contacts file (`return-visits-contacts`, or
+`return-visits-encrypted-contacts` when encrypted, both version 1) holding only
+the shown contacts. With no passphrase it downloads immediately; with a
+passphrase, a tick box (on by default) chooses whether to encrypt, with a
+warning if unticked.
 
 ## Stop using the app and remove data
 
@@ -209,13 +224,12 @@ The app is published on GitHub Pages:
 The app checks for updates when it opens and shows any update prompt once it has
 finished opening (after unlocking, if a passphrase is on). If an update is ready, it prompts you to update now or later; an
 exclamation mark also appears by Settings. To check or refresh manually, open
-**Settings → Check for Updates & Refresh** while online. Save or finish any
+**Settings → App updates → Check for Updates & Refresh** while online. Save or finish any
 open contact or Settings edits before refreshing. The app reloads its code
 while keeping the contacts and settings stored in that app copy on the device.
 After the reload, unlock with the same passphrase if one is turned on.
 
-The plain-language user guide is available from **Settings → Read the
-plain-language User Guide** or directly at
+The plain-language user guide is available from **Settings → Help & Privacy** or directly at
 **https://grasfulls.github.io/return-visits-app/help.html**. It is an
 accessible, responsive HTML page that can be read in a standard web browser.
 PDF and Word copies are in the [docs/](./docs) folder and linked from the page.

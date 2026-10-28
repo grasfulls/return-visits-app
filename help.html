@@ -232,7 +232,7 @@
           and stores your contacts on this device without encryption.
         </li>
         <li>
-          To protect your data, open <strong>Settings → Turn On
+          To protect your data, open <strong>Settings → Passphrase → Turn On
           Passphrase</strong> and choose a passphrase with at least 8
           characters. Your saved data is then encrypted, and you will enter
           the passphrase each time you open the app on that device and browser.
@@ -253,7 +253,7 @@
       <h2>Change your passphrase</h2>
       <p>
         If a passphrase is on, after unlocking this copy of the app, open
-        <strong>Settings</strong>,
+        <strong>Settings → Passphrase</strong>,
         enter your current passphrase, then enter and confirm a new passphrase
         of at least 8 characters. The app re-encrypts this copy's saved
         contacts and settings with the new passphrase. This does not change
@@ -262,7 +262,7 @@
         backups; a new backup will use the new passphrase.
       </p>
       <p>
-        To stop using a passphrase, open <strong>Settings → Turn Off
+        To stop using a passphrase, open <strong>Settings → Passphrase → Turn Off
         Passphrase</strong> and enter your current passphrase once. Your data
         is then stored without encryption and the app opens without asking for
         a passphrase. You can turn it on again at any time.
@@ -271,7 +271,8 @@
       <h2>Add and organize contacts</h2>
       <ul>
         <li>
-          Choose <strong>Add Contact</strong>, enter a first name, and add any
+          Choose the blue <strong>+</strong> button at the top of the contact
+          list, enter a first name, and add any
           other details you have. A first name is required; other contact
           details can be completed later.
         </li>
@@ -428,10 +429,22 @@
       <h2>Print contacts</h2>
       <ul>
         <li>
-          On the contact list, choose <strong>Print Visible Contacts</strong> to
-          print the contacts currently shown. Search terms and filters determine
-          what is included. The app confirms the number of contacts before
-          printing.
+          Every print button is the printer icon in the bar at the bottom of
+          the screen, and it prints what is on that page. On the contact list
+          it prints the contacts currently shown; search terms and filters
+          determine what is included. The icon shows how many contacts will
+          print, and the app confirms before printing.
+        </li>
+        <li>
+          On the <strong>Map</strong> page, the printer icon asks whether to
+          print just the numbered pins and addresses, or the pins with contact
+          details. The numbers match the numbers on the map pins. Contacts
+          without a pin are listed separately at the end.
+        </li>
+        <li>
+          On the <strong>Settings</strong> page, the printer icon prints your
+          settings: default state and city, whether a passphrase is on (never
+          the passphrase itself), and your cities, regions, and areas.
         </li>
         <li>
           A list print includes each contact once, grouped under its most
@@ -441,12 +454,12 @@
           its available phone and email details and only its latest note.
         </li>
         <li>
-          To print one contact, open that saved contact and choose
-          <strong>Print</strong>. Choose the most recent note only (the default)
+          To print one contact, open that saved contact and choose the printer
+          icon at the bottom. Choose the most recent note only (the default)
           or all notes.
         </li>
         <li>
-          Save contact edits before printing. If the Print button is unavailable
+          Save contact edits before printing. If the printer icon is unavailable
           while editing, save your changes first. Printing opens your device or
           browser's print options; saving as a PDF may be available there.
         </li>
@@ -462,9 +475,18 @@
       </p>
       <ul>
         <li>
-          In <strong>Settings</strong>, choose <strong>Export Data Backup</strong>.
-          The backup includes all contacts and settings, is encrypted if a
-          passphrase is on, and is downloaded by your browser to its usual Downloads location.
+          On the contact list, choose the export icon (a tray with an arrow
+          pointing up) at the bottom. With no search or filter active, this
+          downloads a full backup of all contacts and settings. With a search
+          or filter active, it exports only the contacts shown, as a contacts
+          file. With no passphrase it downloads immediately. If a passphrase is
+          on, a box asks whether to encrypt the file; it is ticked by default,
+          and unticking it shows a warning that anyone with the file can read it.
+          Your browser saves it to its usual Downloads location.
+        </li>
+        <li>
+          You can also choose <strong>Settings → Backup &amp; Restore → Back up
+          everything</strong> to download a full backup at any time.
         </li>
         <li>
           To move your full collection to a new device, open the app there and
@@ -477,14 +499,19 @@
           on that device. Check the confirmation carefully before continuing.
         </li>
         <li>
-          To share one contact, open it with the pencil button and use
-          <strong>Export</strong> at the bottom of the Edit Contact screen.
+          To share one contact, open it with the pencil button and use the
+          export icon at the bottom of the Edit Contact screen.
           This creates a contact file. If your device has a passphrase, the
           file is encrypted and you give the recipient its separate sharing
           passphrase through a different channel; with no passphrase, the file
           is plain and needs none, so send it only to someone you trust.
-          Import it from Settings; it adds that contact without replacing the
-          recipient's other contacts.
+        </li>
+        <li>
+          To import one or more contacts, choose the import icon (a tray with
+          an arrow pointing down) next to the blue <strong>+</strong> at the top
+          of the contact list and select one or several contact files. You are
+          asked for a passphrase only if a file is encrypted. Importing adds the
+          contacts without replacing any existing ones.
         </li>
       </ul>
 
@@ -512,12 +539,11 @@
         <li>
           Use the full backup from your chosen base copy to populate the
           destination, if needed. From every other copy, export contacts one at
-          a time by opening each with the pencil button and choosing
-          <strong>Export</strong>, then import
-          each encrypted contact file into the destination from
-          <strong>Settings → Share a Contact</strong>. Individual contact
-          imports add records; they do not replace the collection. This can
-          take time if a source contains many contacts.
+          a time with the export icon in Edit Contact, or all at once by
+          exporting the contact list with the export icon at the bottom of the
+          contact list while a filter is active. Then import the files into
+          the destination with the import icon at the top of the contact list.
+          Imports add records; they do not replace the collection.
         </li>
         <li>
           Review the destination for missing or duplicate contacts and confirm
@@ -604,7 +630,7 @@
         Install app or Add to Home screen. The app checks for updates when it
         opens and prompts you once it has opened if an update is ready; an
         exclamation mark also appears by Settings. To check or refresh manually, open
-        <strong>Settings → Check for Updates &amp; Refresh</strong> while online.
+        <strong>Settings → App updates → Check for Updates &amp; Refresh</strong> while online.
         Save or finish any open contact or Settings edits first. The app reloads
         its code without removing the contacts and settings stored in that app
         copy. After it reloads, unlock using the same passphrase if you have turned one on.
@@ -616,7 +642,7 @@
         the data already saved in your browser; the two versions may keep
         separate local copies. To move your contacts, first confirm they are
         visible in the browser version, then choose
-        <strong>Settings → Export Data Backup</strong>. Open the Home Screen
+        <strong>Settings → Backup &amp; Restore → Back up everything</strong>. Open the Home Screen
         app and choose <strong>Choose Backup to Restore</strong> on its unlock
         screen, or use its restore option in Settings. Keep using the browser
         copy until you have confirmed the contacts are visible in the Home
