@@ -147,3 +147,9 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Word documents and temporary Word files (the PDFs are what is published)
+*.docx
+~$*
+# Developer note, not for the repo
+docs/Make PWA Icon.pdf
