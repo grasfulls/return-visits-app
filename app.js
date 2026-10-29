@@ -2594,8 +2594,13 @@ const initializeApp = async () => {
   document.querySelectorAll(".settings-section").forEach((section) => {
     section.addEventListener("toggle", () => {
       if (section.open) {
-        document.querySelectorAll(".settings-section[open]").forEach((other) => {
-          if (other !== section) other.open = false;
+        Array.from(section.parentElement.children).forEach((other) => {
+          if (
+            other !== section &&
+            other.matches(".settings-section[open]")
+          ) {
+            other.open = false;
+          }
         });
         return;
       }
