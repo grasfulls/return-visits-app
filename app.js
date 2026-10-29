@@ -3066,6 +3066,22 @@ const initializeApp = async () => {
     return [];
   };
 
+  const updateHeaderTitle = () => {
+    const names = {
+      "contacts-view": "Contacts",
+      "map-view": "Map",
+      "settings-view": "Settings",
+    };
+    const contactModal = document.getElementById("contact-modal");
+    const modalOpen =
+      contactModal && contactModal.style.display === "flex";
+    const name = modalOpen
+      ? document.getElementById("modal-title").textContent
+      : names[currentViewId] || "Contacts";
+    const h1 = document.getElementById("app-title");
+    if (h1) h1.textContent = `RVs - ${name}`;
+  };
+
   const renderBottomNav = () => {
     const pageNames = {
       "contacts-view": "Contacts",
@@ -3073,6 +3089,7 @@ const initializeApp = async () => {
       "settings-view": "Settings",
     };
     document.title = `Return Visits - ${pageNames[currentViewId] || "Contacts"}`;
+    updateHeaderTitle();
     document.body.classList.toggle(
       "settings-open",
       currentViewId === "settings-view",
@@ -3897,6 +3914,11 @@ const initializeApp = async () => {
       }
     });
 
+  new MutationObserver(updateHeaderTitle).observe(modal, {
+    attributes: true,
+    attributeFilter: ["style"],
+  });
+
   const attemptExit = () => {
     const currentState = captureFormState();
     if (currentState !== initialFormState) {
@@ -4391,7 +4413,7 @@ const initializeApp = async () => {
                 ${lastNoteHtml}
                 ${noteMatchHtml}
                 <div class="card-actions">
-                    <button class="btn-icon" onclick="addQuickVisit(${contact.id})" title="Add a visit" aria-label="Add a visit">➕</button>
+                    <button class="btn-icon" onclick="addQuickVisit(${contact.id})" title="Add a visit" aria-label="Add a visit"><span class="btn-add-visit">ADD<br>VISIT</span></button>
                     <button class="btn-icon" onclick="editContact(${contact.id})" title="Edit Details">✏️</button>
                     ${navigationUrl ? `<a class="btn-icon navigate-contact" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}" title="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2" fill="currentColor"/><path d="M6 16V9a4 4 0 0 1 4-4h8m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></a>` : ""}
                     <button class="btn-icon delete" onclick="deleteContact(${contact.id})" title="Delete Contact">🗑️</button>
@@ -4937,6 +4959,11 @@ const initializeApp = async () => {
         contact.notesHistory = contact.notesHistory.filter(
           (n) => n.id != logId,
         );
+        // Remembered so syncing another device does not bring the visit back.
+        contact.deletedNotes = [
+          ...(contact.deletedNotes || []).filter((entry) => entry.id != logId),
+          { id: logId, deletedAt: new Date().toISOString() },
+        ];
         if (!(await saveContacts())) return;
         editContact(contactId);
       }
@@ -5759,7 +5786,54 @@ const initializeApp = async () => {
     });
   };
 
+  // Small status icon in the header: synced, syncing, waiting or offline.
+  const getSyncSummary = () => {
+    const waiting = localStorage.getItem(CLOUD_DIRTY_KEY) === "1";
+    if (cloudPaused) {
+      return {
+        icon: "⚠️",
+        text: "Dropbox sync is paused. Open Settings → Cloud backup for details.",
+      };
+    }
+    if (!navigator.onLine) {
+      return {
+        icon: "📴",
+        text: waiting
+          ? "Offline. Your changes are saved on this device and will upload when the connection returns."
+          : "Offline. Changes will sync when the connection returns.",
+      };
+    }
+    if (cloudBusy) return { icon: "🔄", text: "Syncing with Dropbox…" };
+    if (waiting) {
+      return {
+        icon: "⏳",
+        text: "Changes saved on this device are waiting to upload to Dropbox.",
+      };
+    }
+    const last = Number(localStorage.getItem(CLOUD_LAST_KEY) || 0);
+    return {
+      icon: "☁️",
+      text: last
+        ? `Synced with Dropbox (${new Date(last).toLocaleString()}).`
+        : "Connected to Dropbox.",
+    };
+  };
+  const refreshSyncIcon = () => {
+    const button = document.getElementById("sync-status");
+    if (!button) return;
+    if (!dropbox.isConnected()) {
+      button.hidden = true;
+      return;
+    }
+    const summary = getSyncSummary();
+    button.hidden = false;
+    button.textContent = summary.icon;
+    button.title = summary.text;
+    button.setAttribute("aria-label", summary.text);
+  };
+
   const refreshCloudUi = async () => {
+    refreshSyncIcon();
     const connected = dropbox.isConnected();
     document.getElementById("cloud-off").hidden = connected;
     document.getElementById("cloud-on").hidden = !connected;
@@ -5792,8 +5866,88 @@ const initializeApp = async () => {
       (entry) => entry.name === "latest.json",
     );
     return file
-      ? { path: file.path_lower, modified: Date.parse(file.server_modified) }
+      ? {
+          path: file.path_lower,
+          modified: Date.parse(file.server_modified),
+          rev: file.rev,
+        }
       : null;
+  };
+
+  // Counts local saves so a merge can tell if the user edited while it ran.
+  let localChanges = 0;
+  let cloudBusy = false;
+  let cloudPaused = false;
+
+  // Reads the Dropbox copy for merging without asking for a passphrase.
+  // Returns null when that is not possible (a different passphrase, or this
+  // device has none), which sends the user through the restore prompts.
+  const readRemoteForMerge = async (remote) => {
+    const backup = JSON.parse(await dropbox.download(remote.path));
+    if (backup.format === "return-visits-backup") {
+      if (!backup.settings || !Array.isArray(backup.contacts)) return null;
+      return normalizeRegionData(backup.settings, backup.contacts);
+    }
+    if (
+      backup.format === "return-visits-encrypted-backup" &&
+      encryptionKey &&
+      cryptoMetadata?.salt &&
+      backup.encryption?.salt === cryptoMetadata.salt &&
+      backup.data
+    ) {
+      try {
+        const [remoteSettings, remoteContacts] = await Promise.all([
+          decryptValue(backup.data.settings, encryptionKey),
+          decryptValue(backup.data.contacts, encryptionKey),
+        ]);
+        if (!remoteSettings || !Array.isArray(remoteContacts)) return null;
+        return normalizeRegionData(remoteSettings, remoteContacts);
+      } catch (error) {
+        if (error instanceof NewerDataVersionError) throw error;
+        return null;
+      }
+    }
+    return null;
+  };
+
+  // Combines the Dropbox copy with this device's data. Returns null when it
+  // cannot be done silently, or { uploadNeeded } once this device is merged.
+  const mergeFromCloud = async (remote) => {
+    const incoming = await readRemoteForMerge(remote);
+    if (!incoming) return null;
+    const startedAt = localChanges;
+    const localDirty = localStorage.getItem(CLOUD_DIRTY_KEY) === "1";
+    const combined = window.RVMerge.mergeData(
+      { settings, contacts },
+      incoming,
+      { localDirty },
+    );
+    const merged = normalizeRegionData(combined.settings, combined.contacts);
+    const encryptedSettings = await encryptValue(merged.settings, encryptionKey);
+    const encryptedContacts = await encryptValue(merged.contacts, encryptionKey);
+    if (localChanges !== startedAt) {
+      throw new Error("Changes were made while syncing; trying again shortly.");
+    }
+    await writeStoredValues(database, [
+      ["settings", encryptedSettings],
+      ["contacts", encryptedContacts],
+    ]);
+    const uploadNeeded =
+      JSON.stringify(merged.contacts) !== JSON.stringify(incoming.contacts) ||
+      JSON.stringify(merged.settings) !== JSON.stringify(incoming.settings);
+    settings = merged.settings;
+    contacts = merged.contacts;
+    resetContactSignatures();
+    populateMeForm();
+    document.getElementById("setting-state").value = settings.state || "";
+    document.getElementById("setting-default-city").value =
+      settings.defaultCity || "";
+    populateDropdowns();
+    renderContacts();
+    localStorage.setItem(CLOUD_SEEN_KEY, String(remote.modified));
+    if (uploadNeeded) localStorage.setItem(CLOUD_DIRTY_KEY, "1");
+    else localStorage.removeItem(CLOUD_DIRTY_KEY);
+    return { uploadNeeded };
   };
 
   // A copy that this device has not uploaded or restored is "newer". A device
@@ -5813,9 +5967,10 @@ const initializeApp = async () => {
 
   let cloudBackupRunning = false;
   let cloudBackupQueued = false;
-  // Uploads the live copy, plus a dated copy at most once a day (or when
-  // forced). Throws on failure, or with code "cloud-newer" when Dropbox holds
-  // a newer copy from another device (unless overwrite is set).
+  // Combines with a newer Dropbox copy when possible, then uploads the live
+  // copy, plus a dated copy at most once a day (or when forced). Throws on
+  // failure, or with code "cloud-newer" when Dropbox holds a newer copy that
+  // cannot be combined automatically (unless overwrite is set).
   const runCloudBackup = async ({
     forceSnapshot = false,
     overwrite = false,
@@ -5825,24 +5980,43 @@ const initializeApp = async () => {
       return;
     }
     cloudBackupRunning = true;
+    cloudBusy = true;
+    refreshSyncIcon();
     try {
-      if (!overwrite) {
-        const remote = await getRemoteLatest();
-        if (remoteIsNewer(remote)) {
-          const newer = new Error("Dropbox has a newer backup.");
-          newer.code = "cloud-newer";
-          newer.remote = remote;
-          throw newer;
-        }
-      }
-      localStorage.removeItem(CLOUD_DIRTY_KEY);
-      const text = JSON.stringify(await buildBackup(), null, 2);
+      let rev;
       let uploaded;
-      try {
-        uploaded = await dropbox.upload("/latest.json", text);
-      } catch (error) {
-        localStorage.setItem(CLOUD_DIRTY_KEY, "1");
-        throw error;
+      let text;
+      for (let attempt = 0; ; attempt += 1) {
+        let remote = null;
+        if (!overwrite) {
+          remote = await getRemoteLatest();
+          if (remoteIsNewer(remote)) {
+            const result = await mergeFromCloud(remote);
+            if (!result) {
+              const newer = new Error("Dropbox has a newer backup.");
+              newer.code = "cloud-newer";
+              newer.remote = remote;
+              throw newer;
+            }
+            if (!result.uploadNeeded && !forceSnapshot) {
+              localStorage.setItem(CLOUD_LAST_KEY, String(Date.now()));
+              cloudPaused = false;
+              return;
+            }
+          }
+        }
+        rev = remote?.rev;
+        localStorage.removeItem(CLOUD_DIRTY_KEY);
+        text = JSON.stringify(await buildBackup(), null, 2);
+        try {
+          uploaded = await dropbox.upload("/latest.json", text, rev);
+          break;
+        } catch (error) {
+          localStorage.setItem(CLOUD_DIRTY_KEY, "1");
+          // Another device uploaded first: merge with it and try again.
+          if (error.conflict && attempt < 2) continue;
+          throw error;
+        }
       }
       if (uploaded && uploaded.server_modified) {
         localStorage.setItem(
@@ -5864,9 +6038,12 @@ const initializeApp = async () => {
         }
       }
       localStorage.setItem(CLOUD_LAST_KEY, String(Date.now()));
+      cloudPaused = false;
       markBackupDone();
     } finally {
       cloudBackupRunning = false;
+      cloudBusy = false;
+      refreshSyncIcon();
       if (cloudBackupQueued) {
         cloudBackupQueued = false;
         cloudBackupHook();
@@ -5878,29 +6055,42 @@ const initializeApp = async () => {
   // has not restored yet.
   const autoCloudBackup = async () => {
     if (!dropbox.isConnected() || !contacts.length) return false;
+    if (!navigator.onLine) {
+      refreshSyncIcon();
+      return false;
+    }
     try {
       await runCloudBackup();
       await refreshCloudUi();
       return true;
     } catch (error) {
       if (error.code === "cloud-newer") {
+        cloudPaused = true;
+        refreshSyncIcon();
         setCloudStatus(
-          "Automatic backup is paused because Dropbox has a newer backup from another device. Tap Check for a Newer Backup to restore it, or Back Up to Dropbox Now to replace it with this device's data.",
+          "Automatic backup is paused because Dropbox has a backup from another device that uses a different passphrase, so it cannot be combined automatically. Tap Check for a Newer Backup to restore it, or Back Up to Dropbox Now to replace it with this device's data.",
         );
         return false;
       }
       console.error("Automatic Dropbox backup failed:", error);
       setCloudStatus(
-        "The last automatic Dropbox backup did not finish. It will try again.",
+        "The last automatic Dropbox sync did not finish. Your changes are saved on this device and it will try again.",
       );
+      window.clearTimeout(cloudTimer);
+      cloudTimer = window.setTimeout(() => {
+        cloudTimer = null;
+        autoCloudBackup();
+      }, 60000);
       return false;
     }
   };
 
   let cloudTimer = null;
   cloudBackupHook = () => {
+    localChanges += 1;
     if (!dropbox.isConnected()) return;
     localStorage.setItem(CLOUD_DIRTY_KEY, "1");
+    refreshSyncIcon();
     window.clearTimeout(cloudTimer);
     cloudTimer = window.setTimeout(() => {
       cloudTimer = null;
@@ -5928,20 +6118,55 @@ const initializeApp = async () => {
   let cloudChecking = false;
   let cloudCheckedAt = 0;
   let cloudDeclinedFor = 0;
-  // Asks before restoring when Dropbox holds a newer copy from another
-  // device. Quiet unless there is something to report (or manual is set).
+  // Combines a newer Dropbox copy from another device into this one. Only
+  // asks the user when the copy cannot be combined automatically (a different
+  // passphrase). Quiet unless there is something to report (or manual is set).
   const checkCloudNewer = async ({ manual = false } = {}) => {
     if (!dropbox.isConnected() || cloudChecking || cloudBackupRunning) return;
+    if (!navigator.onLine) {
+      refreshSyncIcon();
+      if (manual) setCloudStatus("You are offline. Changes will sync when the connection returns.");
+      return;
+    }
     cloudChecking = true;
     cloudCheckedAt = Date.now();
-    if (manual) setCloudStatus("Checking Dropbox for a newer backup…");
+    cloudBusy = true;
+    refreshSyncIcon();
+    if (manual) setCloudStatus("Checking Dropbox for changes…");
     try {
       const remote = await getRemoteLatest();
       if (!remoteIsNewer(remote)) {
+        if (localStorage.getItem(CLOUD_DIRTY_KEY) === "1") {
+          cloudBusy = false;
+          await autoCloudBackup();
+        }
         if (manual) setCloudStatus("This device is up to date with Dropbox.");
         return;
       }
       if (!manual && cloudDeclinedFor === remote.modified) return;
+      let merged = null;
+      try {
+        merged = await mergeFromCloud(remote);
+      } catch (error) {
+        if (error instanceof NewerDataVersionError) {
+          setCloudStatus(
+            "The Dropbox copy was made by a newer version of the app. Update the app, then try again.",
+          );
+          return;
+        }
+        throw error;
+      }
+      if (merged) {
+        cloudPaused = false;
+        setCloudStatus(
+          "Combined this device with the latest changes from Dropbox.",
+        );
+        if (merged.uploadNeeded) {
+          cloudBusy = false;
+          await autoCloudBackup();
+        }
+        return;
+      }
       setCloudStatus("");
       const when = new Date(remote.modified).toLocaleString();
       const unsaved =
@@ -5950,16 +6175,18 @@ const initializeApp = async () => {
           : "";
       if (
         confirm(
-          `Dropbox has a newer backup from another device (${when}).${unsaved} Restore it onto this device now?`,
+          `Dropbox has a backup from another device (${when}) that uses a different passphrase, so it cannot be combined automatically.${unsaved} Restore it onto this device now?`,
         )
       ) {
         setCloudStatus("Downloading from Dropbox…");
         if (await restoreFromCloud(remote.path, remote.modified)) {
-          setCloudStatus("Restored the newer Dropbox backup.");
+          cloudPaused = false;
+          setCloudStatus("Restored the Dropbox backup.");
           return;
         }
       }
       cloudDeclinedFor = remote.modified;
+      cloudPaused = true;
       setCloudStatus(
         "Not restored. Automatic backup stays paused until you restore, or tap Back Up to Dropbox Now to replace the Dropbox copy with this device's data.",
       );
@@ -5970,8 +6197,31 @@ const initializeApp = async () => {
       }
     } finally {
       cloudChecking = false;
+      cloudBusy = false;
+      refreshSyncIcon();
     }
   };
+  const syncNow = () => {
+    if (localStorage.getItem(CLOUD_DIRTY_KEY) === "1" && contacts.length) {
+      window.clearTimeout(cloudTimer);
+      cloudTimer = null;
+      return autoCloudBackup();
+    }
+    return checkCloudNewer();
+  };
+  window.addEventListener("online", () => {
+    refreshSyncIcon();
+    syncNow();
+  });
+  window.addEventListener("offline", refreshSyncIcon);
+  // While the app is open, keep looking for changes from other devices.
+  window.setInterval(() => {
+    if (document.visibilityState === "visible") syncNow();
+  }, 120000);
+  document.getElementById("sync-status").addEventListener("click", async () => {
+    await syncNow();
+    alert(getSyncSummary().text);
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden" && cloudTimer) {
       window.clearTimeout(cloudTimer);
@@ -5981,7 +6231,7 @@ const initializeApp = async () => {
       document.visibilityState === "visible" &&
       Date.now() - cloudCheckedAt > 120000
     ) {
-      checkCloudNewer();
+      syncNow();
     }
   });
   document

@@ -1,4 +1,4 @@
-const CACHE_NAME = "return-visits-shell-v79";
+const CACHE_NAME = "return-visits-shell-v81";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -11,6 +11,7 @@ const APP_SHELL = [
   "./styles.css",
   "./app.js",
   "./dropbox.js",
+  "./merge.js",
   "./manifest.webmanifest",
   "./icons/icon-180.png",
   "./icons/icon-192.png",

@@ -164,7 +164,9 @@
     return response.json();
   };
 
-  const upload = async (path, text) => {
+  // With a rev, Dropbox only accepts the upload if the file is still that
+  // version; otherwise it fails with status 409 (error.conflict is set).
+  const upload = async (path, text, rev) => {
     const response = await fetch("https://content.dropboxapi.com/2/files/upload", {
       method: "POST",
       headers: {
@@ -172,13 +174,18 @@
         "Content-Type": "application/octet-stream",
         "Dropbox-API-Arg": JSON.stringify({
           path,
-          mode: "overwrite",
+          mode: rev ? { ".tag": "update", update: rev } : "overwrite",
+          autorename: false,
           mute: true,
         }),
       },
       body: new Blob([text], { type: "application/octet-stream" }),
     });
-    if (!response.ok) throw await apiError(response);
+    if (!response.ok) {
+      const error = await apiError(response);
+      error.conflict = response.status === 409 && /conflict/.test(error.message);
+      throw error;
+    }
     return response.json();
   };
 

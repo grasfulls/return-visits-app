@@ -61,7 +61,7 @@ an encrypted backup.
 
 ## Contacts and visit logs
 
-Tap the ➕ button on a contact card to add a visit without opening the full
+Tap the **ADD VISIT** button on a contact card to add a visit without opening the full
 contact: choose the date and time, add an optional note, and save. The card
 shows the newest visit and its note; earlier visits stay in the contact's visit
 log.
@@ -211,7 +211,8 @@ successful backup resets the count.
 
 **Settings → Cloud backup (optional)** can keep a copy of your contacts and
 settings in your own Dropbox. It is off unless you turn it on, and file backups
-keep working. You need a Dropbox account (the free Basic plan is enough); the app
+keep working. Dropbox is entirely optional: the app works fully without it, and all
+your data can stay only on this device. You need a Dropbox account (the free Basic plan is enough); the app
 can send you to dropbox.com/basic to sign up but cannot create the account. The
 setup asks whether you already have an account, shows the sign-up steps if not,
 then connects through Dropbox's own sign-in page. The app can only use its own
@@ -225,13 +226,17 @@ app asks you to confirm before connecting. It never backs up an empty device ove
 your Dropbox copy. Use **Restore from Dropbox** to restore the latest or a dated
 copy (it replaces this device's data), and **Disconnect Dropbox** to stop.
 
-With more than one device, each device checks Dropbox when the app opens (and when you
-return to it after a few minutes) and asks before restoring a newer backup from another
-device; **Check for a Newer Backup** does the same on demand. Wait about 15 seconds after
-changes (or close the app) so the backup finishes before opening the other device. If you
-decline, automatic backup stays paused until you restore or choose **Back Up to Dropbox
-Now** to replace the Dropbox copy. Changes made on two devices are not merged; you pick
-which copy to keep.
+With more than one device, each device combines its changes with Dropbox
+automatically: when the app opens, every couple of minutes while it is open, and as
+soon as the connection returns after being offline. Visits and contacts added on
+different devices are all kept; for the very same contact changed on two devices, the
+most recent change is used but visits from both are kept. With no signal, changes stay
+saved on the device and upload when Dropbox is reachable again. A cloud icon in the
+header shows synced, syncing, waiting, offline or paused; tap it to sync now (**Check
+for a Newer Backup** does the same). A Dropbox copy that uses a different passphrase
+cannot be combined automatically; the app asks whether to restore it and automatic
+backup stays paused until you do (**Back Up to Dropbox Now** replaces the Dropbox copy).
+A city, region or area deleted on one device can reappear from another.
 
 ## Share one contact
 
