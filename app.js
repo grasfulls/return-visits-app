@@ -49,6 +49,34 @@ let appUpdatePromptHandler = () => {
     }
   }, 750);
 };
+const APP_JUST_UPDATED_KEY = "return-visits-just-updated";
+const reloadAfterUpdate = () => {
+  try {
+    sessionStorage.setItem(APP_JUST_UPDATED_KEY, "1");
+  } catch (error) {
+    console.error("Unable to note the app update:", error);
+  }
+  window.location.reload();
+};
+const showJustUpdatedNotice = () => {
+  let pending = false;
+  try {
+    pending = sessionStorage.getItem(APP_JUST_UPDATED_KEY) === "1";
+    sessionStorage.removeItem(APP_JUST_UPDATED_KEY);
+  } catch (error) {
+    console.error("Unable to read the app update note:", error);
+  }
+  if (!pending) return;
+  const dialog = document.getElementById("app-updated-dialog");
+  window.setTimeout(() => {
+    if (!document.querySelector("dialog[open]")) dialog.showModal();
+  }, 750);
+};
+document
+  .getElementById("btn-ok-updated")
+  .addEventListener("click", () =>
+    document.getElementById("app-updated-dialog").close(),
+  );
 document
   .getElementById("btn-apply-app-update")
   .addEventListener("click", () => {
@@ -65,7 +93,7 @@ document
     } catch (error) {
       console.error("Unable to clear the pending app update status:", error);
     }
-    window.location.reload();
+    reloadAfterUpdate();
   });
 document
   .getElementById("btn-later-app-update")
@@ -3905,7 +3933,7 @@ const initializeApp = async () => {
         } catch (error) {
           console.error("Unable to clear the pending app update status:", error);
         }
-        window.location.reload();
+        reloadAfterUpdate();
       } catch (error) {
         console.error("Unable to check for app updates:", error);
         status.textContent =
@@ -6603,6 +6631,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(() => {
       updateStorageProtectionStatus();
       appReadyForUpdates = true;
+      showJustUpdatedNotice();
       if (appUpdateAvailable) appUpdatePromptHandler();
     })
     .catch((error) => {
