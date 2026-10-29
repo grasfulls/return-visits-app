@@ -3931,8 +3931,29 @@ const initializeApp = async () => {
     }
   };
 
-  const openModalWithCoords = (lat, lng) => {
+  const contactInfoSection = document.getElementById("contact-info-section");
+  const contactVisitsSection = document.getElementById(
+    "contact-visits-section",
+  );
+  contactInfoSection.addEventListener("toggle", () => {
+    if (contactInfoSection.open && pickerMap) {
+      setTimeout(() => pickerMap.invalidateSize(), 50);
+    }
+  });
+  // A required field inside a closed section cannot be focused, so open it.
+  contactForm.addEventListener(
+    "invalid",
+    () => {
+      contactInfoSection.open = true;
+    },
+    true,
+  );
+
+  const openModalWithCoords = (lat, lng, view = "info") => {
     contactModalBody.scrollTop = 0;
+    // The map is created while Contact Info is open so it gets its size.
+    contactInfoSection.open = true;
+    contactVisitsSection.open = false;
     modal.style.display = "flex";
     newCityContainer.style.display = "none";
     // The map must be visible while it is created or resized.
@@ -3979,6 +4000,8 @@ const initializeApp = async () => {
         // An existing pin starts collapsed; no pin keeps the tools open.
         pinPanelOpen = !(lat !== null && lng !== null);
         updatePinUi();
+        contactInfoSection.open = view !== "visits";
+        contactVisitsSection.open = view === "visits";
         resolve();
       }, 150);
     });
@@ -4264,7 +4287,7 @@ const initializeApp = async () => {
     delete document.getElementById("new-log-timestamp").dataset.touched;
     initialFormState = captureFormState();
 
-    editContact(targetId);
+    editContact(targetId, contactVisitsSection.open ? "visits" : "info");
     alert("Contact saved successfully!");
   });
 
@@ -4911,45 +4934,14 @@ const initializeApp = async () => {
   };
 
   // Global Action Handlers
-  const quickVisitDialog = document.getElementById("quick-visit-dialog");
-  let quickVisitContactId = null;
-  window.addQuickVisit = (contactId) => {
-    const contact = contacts.find((c) => c.id == contactId);
-    if (!contact) return;
-    quickVisitContactId = contact.id;
-    document.getElementById("quick-visit-title").textContent =
-      `Add a Visit: ${contact.firstName} ${contact.lastName}`.trim();
-    document.getElementById("quick-visit-date").value = toLocalDateTimeString(
-      new Date(),
-    );
-    document.getElementById("quick-visit-note").value = "";
-    quickVisitDialog.showModal();
+  window.addQuickVisit = async (contactId) => {
+    await editContact(contactId, "visits");
+    const noteBox = document.getElementById("contact-notes");
+    setTimeout(() => {
+      noteBox.scrollIntoView({ block: "center" });
+      noteBox.focus();
+    }, 150);
   };
-  document
-    .getElementById("cancel-quick-visit")
-    .addEventListener("click", () => quickVisitDialog.close());
-  document
-    .getElementById("quick-visit-form")
-    .addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const contact = contacts.find((c) => c.id == quickVisitContactId);
-      if (!contact) {
-        quickVisitDialog.close();
-        return;
-      }
-      const when = new Date(document.getElementById("quick-visit-date").value);
-      const logDate = Number.isNaN(when.getTime()) ? new Date() : when;
-      if (!contact.notesHistory) contact.notesHistory = [];
-      contact.notesHistory.push({
-        id: "log_" + Date.now(),
-        rawDate: logDate.toISOString(),
-        date: logDate.toLocaleString(),
-        text: document.getElementById("quick-visit-note").value.trim(),
-      });
-      if (!(await saveContacts())) return;
-      quickVisitDialog.close();
-      renderContacts();
-    });
 
   // Inline Visit Log Editor Functions
   window.deleteVisitLog = async (contactId, logId) => {
@@ -4965,12 +4957,12 @@ const initializeApp = async () => {
           { id: logId, deletedAt: new Date().toISOString() },
         ];
         if (!(await saveContacts())) return;
-        editContact(contactId);
+        editContact(contactId, "visits");
       }
     }
   };
 
-  window.editContact = async (id) => {
+  window.editContact = async (id, view = "info") => {
     const contact = contacts.find((c) => c.id == id);
     if (!contact) return;
     clearAddressMatches();
@@ -5126,7 +5118,7 @@ const initializeApp = async () => {
               note.rawDate = updatedDate.toISOString();
               note.date = updatedDate.toLocaleString();
             }
-            if (await saveContacts()) editContact(contact.id);
+            if (await saveContacts()) editContact(contact.id, "visits");
           });
 
           const cancelLogBtn = document.createElement("button");
@@ -5169,6 +5161,7 @@ const initializeApp = async () => {
     await openModalWithCoords(
       Number.isFinite(lat) && Number.isFinite(lng) ? lat : null,
       Number.isFinite(lat) && Number.isFinite(lng) ? lng : null,
+      view,
     );
   };
 

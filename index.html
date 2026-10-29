@@ -732,20 +732,6 @@
       </form>
     </dialog>
 
-    <dialog id="quick-visit-dialog">
-      <form id="quick-visit-form">
-        <h2 id="quick-visit-title">Add a Visit</h2>
-        <label for="quick-visit-date">Date and time</label>
-        <input type="datetime-local" id="quick-visit-date" required />
-        <label for="quick-visit-note">Note (optional)</label>
-        <textarea id="quick-visit-note" rows="3" placeholder="What happened on this visit?"></textarea>
-        <div class="restore-dialog-actions">
-          <button type="submit">Save Visit</button>
-          <button type="button" id="cancel-quick-visit">Cancel</button>
-        </div>
-      </form>
-    </dialog>
-
     <dialog id="cloud-restore-dialog">
       <form id="cloud-restore-form">
         <h2>Restore from Dropbox</h2>
@@ -843,6 +829,8 @@
           <input type="hidden" id="contact-id" />
 
           <div class="modal-body">
+            <details class="settings-section" id="contact-info-section" open>
+            <summary>Contact Info</summary>
             <label>First Name:</label>
             <input type="text" id="contact-firstname" required />
 
@@ -1045,7 +1033,10 @@
               ✓ Confirm pin is correct
             </button>
             </div>
+            </details>
 
+            <details class="settings-section" id="contact-visits-section">
+            <summary>Visits</summary>
             <label>Visit Logs (Click Edit to modify date/time/note):</label>
             <div
               id="modal-notes-history-container"
@@ -1073,6 +1064,7 @@
               rows="2"
               placeholder="Note text for new visit..."
             ></textarea>
+            </details>
 
           </div>
 

@@ -61,10 +61,11 @@ an encrypted backup.
 
 ## Contacts and visit logs
 
-Tap the **ADD VISIT** button on a contact card to add a visit without opening the full
-contact: choose the date and time, add an optional note, and save. The card
-shows the newest visit and its note; earlier visits stay in the contact's visit
-log.
+Tap the **ADD VISIT** button on a contact card. The contact opens on its **Visits**
+section with the cursor in the new-visit note box; the details are under **Contact Info**.
+If you leave without a note or date change, no visit is added. The pencil opens
+**Contact Info** instead, and the visit history stays hidden until you tap **Visits**.
+The card shows the newest visit and its note; earlier visits stay in the contact's visit log.
 
 Add contacts with a required first name and optional last name, address, city,
 region, area, map coordinates, email, and phone. Email and phone are optional;
