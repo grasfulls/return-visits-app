@@ -200,8 +200,187 @@
         <div id="settings-view" class="view">
           <div class="settings-container">
             <h2>Settings</h2>
-            <h3 class="settings-group-title">Keep your data safe</h3>
-            <p class="settings-group-note">Backups protect you from losing your contacts.</p>
+            <details class="settings-section" id="defaults-section">
+              <summary>Defaults</summary>
+              <p id="setup-done-notice" class="install-banner" role="status" hidden>
+                <strong>All set.</strong> You may now add contacts: tap
+                <button type="button" class="inline-icon-link" data-go="contacts-view" title="Go to Contacts" aria-label="Go to Contacts">👥</button>
+                in the footer to return to your contacts.
+              </p>
+              <form id="settings-form">
+                <label>Default State:</label>
+                <input type="text" id="setting-state" placeholder="CA or California" />
+
+                <label>Default City:</label>
+                <input type="text" id="setting-default-city" />
+                <small>
+                  When the Map has no visible contact pins, it centers near this
+                  city. Its name and state are looked up with OpenStreetMap
+                  Nominatim while the Map is open.
+                </small>
+
+                <button
+                  type="submit"
+                  style="
+                    background: #28a745;
+                    color: white;
+                    padding: 10px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                  "
+                >
+                  💾 Save Settings
+                </button>
+              </form>
+            </details>
+            <details class="settings-section">
+              <summary>Your Details</summary>
+              <form id="me-form">
+                <label for="me-name">Name:</label>
+                <input type="text" id="me-name" autocomplete="name" />
+                <label for="me-street">Street Address:</label>
+                <input type="text" id="me-street" autocomplete="street-address" />
+                <label for="me-city">City:</label>
+                <input type="text" id="me-city" />
+                <label for="me-state">State:</label>
+                <input type="text" id="me-state" placeholder="CA or California" />
+                <div class="coordinate-row">
+                  <label>Latitude:
+                    <input type="text" id="me-lat" inputmode="decimal" />
+                  </label>
+                  <label>Longitude:
+                    <input type="text" id="me-lng" inputmode="decimal" />
+                  </label>
+                </div>
+                <small>
+                  Your name is added to contacts you share. Your home appears on
+                  the Map as a house icon, and the Map opens fitted to include
+                  it. Looking up your address sends it to OpenStreetMap
+                  Nominatim only when you choose the lookup button. Your details
+                  stay on this device and are included in backups.
+                </small>
+                <div class="me-actions">
+                  <button type="button" id="btn-me-find" title="Find home pin from address" aria-label="Find home pin from address">📍 Find from address</button>
+                  <button type="button" id="btn-me-gps" title="Use device location" aria-label="Use device location">📍 Use device location</button>
+                </div>
+                <div class="me-actions">
+                  <button type="submit" id="btn-me-save" title="Save your details" aria-label="Save your details">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l4 4v14H5zM8 3v6h7V3M8 21v-7h8v7"/></svg>
+                  </button>
+                  <button type="button" id="btn-me-clear" title="Clear your details" aria-label="Clear your details">🗑️</button>
+                </div>
+                <p id="me-status" role="status"></p>
+              </form>
+            </details>
+            <details class="settings-section">
+              <summary>Cities, Regions &amp; Areas</summary>
+              <h3>Add New City to List</h3>
+              <p class="location-hint">
+                <strong>How locations work:</strong> A <strong>city</strong> is
+                divided into <strong>regions</strong>, which are large parts of
+                the city (such as North, South, East, and West). A region is
+                divided into <strong>areas</strong>, which are smaller
+                neighborhoods within that region. New cities are automatically
+                given the regions North, South, East, and West; you can add
+                more or delete any you don't need.
+              </p>
+              <div style="display: flex; gap: 8px">
+                <input
+                  type="text"
+                  id="setting-new-city"
+                  placeholder="New city name..."
+                />
+                <button
+                  type="button"
+                  id="btn-add-setting-city"
+                  style="
+                    background: #004080;
+                    color: white;
+                    border: none;
+                    padding: 8px 14px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                  "
+                >
+                  Add City
+                </button>
+              </div>
+
+              <h3 style="margin-top: 15px">Add New Region</h3>
+              <div style="display: flex; gap: 8px">
+                <select id="setting-region-city" aria-label="City for new region">
+                  <option value="">Choose city</option>
+                </select>
+                <input
+                  type="text"
+                  id="setting-new-region"
+                  placeholder="New region name..."
+                />
+                <button
+                  type="button"
+                  id="btn-add-setting-region"
+                  style="
+                    background: #004080;
+                    color: white;
+                    border: none;
+                    padding: 8px 14px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                  "
+                >
+                  Add Region
+                </button>
+              </div>
+              <p>
+                You can also add a region while adding a contact. Choose
+                <strong>+ Add New Region...</strong> in that contact's Region
+                list to add one under the selected City.
+              </p>
+              <h3 style="margin-top: 15px">Add New Area</h3>
+              <div style="display: flex; gap: 8px">
+                <select id="setting-area-city" aria-label="City for new area">
+                  <option value="">Choose city</option>
+                </select>
+                <select id="setting-area-region" aria-label="Region for new area" disabled>
+                  <option value="">Choose region</option>
+                </select>
+                <input
+                  type="text"
+                  id="setting-new-area"
+                  placeholder="New area name..."
+                />
+                <button
+                  type="button"
+                  id="btn-add-setting-area"
+                  style="
+                    background: #004080;
+                    color: white;
+                    border: none;
+                    padding: 8px 14px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                  "
+                >
+                  Add Area
+                </button>
+              </div>
+              <h3 style="margin-top: 20px">Manage Cities, Regions, and Areas</h3>
+              <div id="region-area-list"></div>
+              <small>
+                Edit renames a location and updates its existing references.
+                Delete is blocked while any contact is assigned to it or to a
+                location beneath it. Deleting a city or region with no assigned
+                contacts also deletes the regions and areas under it, after you
+                confirm. Locations follow City → Region → Area; each level is optional
+                on a contact.
+              </small>
+            </details>
+            <details class="settings-section">
+              <summary>Keep Your Data Safe</summary>
+              <p class="settings-group-note">
+                Backups protect you from losing your contacts.
+              </p>
             <details class="settings-section">
               <summary>Backup &amp; Restore</summary>
               <p id="storage-protection-status" role="status"></p>
@@ -223,7 +402,7 @@
               </button>
             </details>
             <details class="settings-section" id="cloud-section">
-              <summary>Cloud backup (optional)</summary>
+              <summary>Cloud Backup (optional)</summary>
               <div id="cloud-off">
                 <p>
                   Cloud backup keeps a copy of your contacts outside this
@@ -334,6 +513,7 @@
                 </p>
               </div>
               <p id="cloud-status" role="status" aria-live="polite"></p>
+            </details>
             </details>
             <h3 class="settings-group-title">Privacy</h3>
             <p class="settings-group-note">Optional. This is about who can open the app, not about backups.</p>
@@ -463,188 +643,11 @@
               </form>
             </div>
             </details>
-            <h3 class="settings-group-title">Your information</h3>
-            <p class="settings-group-note">Your details, territory definitions and defaults.</p>
             <details class="settings-section">
-              <summary>Your Details</summary>
-              <form id="me-form">
-                <label for="me-name">Name:</label>
-                <input type="text" id="me-name" autocomplete="name" />
-                <label for="me-street">Street Address:</label>
-                <input type="text" id="me-street" autocomplete="street-address" />
-                <label for="me-city">City:</label>
-                <input type="text" id="me-city" />
-                <label for="me-state">State:</label>
-                <input type="text" id="me-state" placeholder="CA or California" />
-                <div class="coordinate-row">
-                  <label>Latitude:
-                    <input type="text" id="me-lat" inputmode="decimal" />
-                  </label>
-                  <label>Longitude:
-                    <input type="text" id="me-lng" inputmode="decimal" />
-                  </label>
-                </div>
-                <small>
-                  Your name is added to contacts you share. Your home appears on
-                  the Map as a house icon, and the Map opens fitted to include
-                  it. Looking up your address sends it to OpenStreetMap
-                  Nominatim only when you choose the lookup button. Your details
-                  stay on this device and are included in backups.
-                </small>
-                <div class="me-actions">
-                  <button type="button" id="btn-me-find" title="Find home pin from address" aria-label="Find home pin from address">📍 Find from address</button>
-                  <button type="button" id="btn-me-gps" title="Use device location" aria-label="Use device location">📍 Use device location</button>
-                </div>
-                <div class="me-actions">
-                  <button type="submit" id="btn-me-save" title="Save your details" aria-label="Save your details">
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l4 4v14H5zM8 3v6h7V3M8 21v-7h8v7"/></svg>
-                  </button>
-                  <button type="button" id="btn-me-clear" title="Clear your details" aria-label="Clear your details">🗑️</button>
-                </div>
-                <p id="me-status" role="status"></p>
-              </form>
-            </details>
-            <details class="settings-section" id="defaults-section">
-              <summary>Defaults</summary>
-              <p id="setup-done-notice" class="install-banner" role="status" hidden>
-                <strong>All set.</strong> You may now add contacts: tap
-                <button type="button" class="inline-icon-link" data-go="contacts-view" title="Go to Contacts" aria-label="Go to Contacts">👥</button>
-                in the footer to return to your contacts.
-              </p>
-            <form id="settings-form">
-              <label>Default State:</label>
-              <input type="text" id="setting-state" placeholder="CA or California" />
-
-              <label>Default City:</label>
-              <input type="text" id="setting-default-city" />
-              <small>
-                When the Map has no visible contact pins, it centers near this
-                city. Its name and state are looked up with OpenStreetMap
-                Nominatim while the Map is open.
-              </small>
-
-              <button
-                type="submit"
-                style="
-                  background: #28a745;
-                  color: white;
-                  padding: 10px;
-                  border: none;
-                  border-radius: 4px;
-                  cursor: pointer;
-                "
-              >
-                💾 Save Settings
-              </button>
-            </form>
-            </details>
-            <details class="settings-section">
-              <summary>Cities, Regions &amp; Areas</summary>
-            <h3>Add New City to List</h3>
-            <p class="location-hint">
-              <strong>How locations work:</strong> A <strong>city</strong> is
-              divided into <strong>regions</strong>, which are large parts of
-              the city (such as North, South, East, and West). A region is
-              divided into <strong>areas</strong>, which are smaller
-              neighborhoods within that region. New cities are automatically
-              given the regions North, South, East, and West; you can add
-              more or delete any you don't need.
-            </p>
-            <div style="display: flex; gap: 8px">
-              <input
-                type="text"
-                id="setting-new-city"
-                placeholder="New city name..."
-              />
-              <button
-                type="button"
-                id="btn-add-setting-city"
-                style="
-                  background: #004080;
-                  color: white;
-                  border: none;
-                  padding: 8px 14px;
-                  border-radius: 4px;
-                  cursor: pointer;
-                "
-              >
-                Add City
-              </button>
-            </div>
-
-            <h3 style="margin-top: 15px">Add New Region</h3>
-            <div style="display: flex; gap: 8px">
-              <select id="setting-region-city" aria-label="City for new region">
-                <option value="">Choose city</option>
-              </select>
-              <input
-                type="text"
-                id="setting-new-region"
-                placeholder="New region name..."
-              />
-              <button
-                type="button"
-                id="btn-add-setting-region"
-                style="
-                  background: #004080;
-                  color: white;
-                  border: none;
-                  padding: 8px 14px;
-                  border-radius: 4px;
-                  cursor: pointer;
-                "
-              >
-                Add Region
-              </button>
-            </div>
-            <p>
-              You can also add a region while adding a contact. Choose
-              <strong>+ Add New Region...</strong> in that contact's Region
-              list to add one under the selected City.
-            </p>
-            <h3 style="margin-top: 15px">Add New Area</h3>
-            <div style="display: flex; gap: 8px">
-              <select id="setting-area-city" aria-label="City for new area">
-                <option value="">Choose city</option>
-              </select>
-              <select id="setting-area-region" aria-label="Region for new area" disabled>
-                <option value="">Choose region</option>
-              </select>
-              <input
-                type="text"
-                id="setting-new-area"
-                placeholder="New area name..."
-              />
-              <button
-                type="button"
-                id="btn-add-setting-area"
-                style="
-                  background: #004080;
-                  color: white;
-                  border: none;
-                  padding: 8px 14px;
-                  border-radius: 4px;
-                  cursor: pointer;
-                "
-              >
-                Add Area
-              </button>
-            </div>
-            <h3 style="margin-top: 20px">Manage Cities, Regions, and Areas</h3>
-            <div id="region-area-list"></div>
-            <small>
-              Edit renames a location and updates its existing references.
-              Delete is blocked while any contact is assigned to it or to a
-              location beneath it. Deleting a city or region with no assigned
-              contacts also deletes the regions and areas under it, after you
-              confirm. Locations follow City → Region → Area; each level is optional
-              on a contact.
-            </small>
-            </details>
-            <h3 class="settings-group-title">Help</h3>
-            <p class="settings-group-note">Guides and app updates.</p>
-            <details class="settings-section">
-              <summary>Help &amp; Privacy</summary>
+              <summary>Help</summary>
+              <p class="settings-group-note">Guides and app updates.</p>
+              <details class="settings-section">
+                <summary>User Guide &amp; Privacy Notice</summary>
               <p>
                 <a class="user-guide-link" href="./help.html">User Guide</a>
               </p>
@@ -653,9 +656,9 @@
                   Privacy &amp; Data Notice
                 </a>
               </p>
-            </details>
-            <details class="settings-section">
-              <summary>App updates</summary>
+              </details>
+              <details class="settings-section">
+                <summary>App Updates</summary>
               <p>
                 The app checks for updates when it opens. Finish any open
                 edits before refreshing.
@@ -667,6 +670,7 @@
                 Check for Updates &amp; Refresh
               </button>
               <p id="app-update-status" role="status" aria-live="polite"></p>
+              </details>
             </details>
           </div>
         </div>
