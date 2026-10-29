@@ -12,7 +12,7 @@ browser or installed as a Progressive Web App (PWA).
 
 ## Before you start
 
-For regular phone use, we recommend adding the app to your Home Screen; it opens
+For regular use, we recommend adding the app to your Home Screen; it opens
 like an app while keeping contacts locally on that device. The browser and Home
 Screen versions may store separate data and do not sync with each other. Adding
 the app icon does not transfer contacts already stored in the browser. If you
