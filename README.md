@@ -61,6 +61,11 @@ an encrypted backup.
 
 ## Contacts and visit logs
 
+Tap the ➕ button on a contact card to add a visit without opening the full
+contact: choose the date and time, add an optional note, and save. The card
+shows the newest visit and its note; earlier visits stay in the contact's visit
+log.
+
 Add contacts with a required first name and optional last name, address, city,
 region, area, map coordinates, email, and phone. Email and phone are optional;
 email accepts addresses such as `name@someemail`, and U.S. phone numbers are
@@ -138,7 +143,10 @@ contacts saved before this formatting was added (for example, Avenue as Av,
 Road as Rd, Court as Ct, and Lane as Ln). If the full address is not found,
 the app also searches by the street name without the leading house number. A
 city-only lookup places an approximate pin near the city. Typing or saving
-address details does not automatically create a pin.
+address details does not automatically create a pin. Once a pin is set,
+choose **Confirm pin is correct** to hide the lookup buttons, coordinates, and
+map; they return with **Adjust pin** or when the address, city, or state
+changes.
 Device location requires browser permission and
 its accuracy can vary. Refine a pin in the contact form by tapping the map,
 dragging the pin, or editing the coordinates. Pins can also be dragged in Map

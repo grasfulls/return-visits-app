@@ -723,6 +723,20 @@
       </form>
     </dialog>
 
+    <dialog id="quick-visit-dialog">
+      <form id="quick-visit-form">
+        <h2 id="quick-visit-title">Add a Visit</h2>
+        <label for="quick-visit-date">Date and time</label>
+        <input type="datetime-local" id="quick-visit-date" required />
+        <label for="quick-visit-note">Note (optional)</label>
+        <textarea id="quick-visit-note" rows="3" placeholder="What happened on this visit?"></textarea>
+        <div class="restore-dialog-actions">
+          <button type="submit">Save Visit</button>
+          <button type="button" id="cancel-quick-visit">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="cloud-restore-dialog">
       <form id="cloud-restore-form">
         <h2>Restore from Dropbox</h2>
@@ -848,7 +862,7 @@
 
             <label for="contact-address">Street Address:</label>
             <input type="text" id="contact-address" />
-            <small>
+            <small id="pin-address-hint">
               Entering or saving an address does not create a map pin by itself.
               Choose the lookup button below; partial street names can return
               several matches, and a city-only lookup places an approximate pin.
@@ -952,6 +966,12 @@
               </div>
             </div>
 
+            <div id="pin-summary" hidden>
+              <span>📍 Map pin set</span>
+              <button type="button" id="btn-adjust-pin">Adjust pin</button>
+            </div>
+
+            <div id="pin-tools">
             <div class="gps-row">
               <label>Latitude: <input type="text" id="contact-lat" /></label>
               <label>Longitude: <input type="text" id="contact-lng" /></label>
@@ -1012,6 +1032,10 @@
                 margin-bottom: 10px;
               "
             ></div>
+            <button type="button" id="btn-confirm-pin" hidden>
+              ✓ Confirm pin is correct
+            </button>
+            </div>
 
             <label>Visit Logs (Click Edit to modify date/time/note):</label>
             <div

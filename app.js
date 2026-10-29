@@ -3341,6 +3341,31 @@ const initializeApp = async () => {
     }
     pickerMap.setView(location, zoom);
     updatePrintContactAvailability();
+    updatePinUi();
+  };
+
+  // Pin tools collapse once the pin is confirmed; they reopen on "Adjust pin"
+  // or when the address changes.
+  let pinPanelOpen = true;
+  const updatePinUi = () => {
+    const hasPin =
+      Boolean(document.getElementById("contact-lat").value.trim()) &&
+      Boolean(document.getElementById("contact-lng").value.trim());
+    const open = pinPanelOpen || !hasPin;
+    document.getElementById("pin-tools").hidden = !open;
+    document.getElementById("pin-address-hint").hidden = !open;
+    document.getElementById("pin-summary").hidden = open;
+    document.getElementById("btn-confirm-pin").hidden = !hasPin;
+  };
+  const setPinPanel = (open) => {
+    pinPanelOpen = open;
+    updatePinUi();
+    if (open && pickerMap) {
+      setTimeout(() => {
+        pickerMap.invalidateSize();
+        if (pickerMarker) pickerMap.setView(pickerMarker.getLatLng(), 16);
+      }, 50);
+    }
   };
 
   const locationStatus = document.getElementById("location-status");
@@ -3417,6 +3442,7 @@ const initializeApp = async () => {
         pickerMarker = null;
       }
       setLocationStatus("Pin cleared. Choose a location or place it on the map.");
+      updatePinUi();
       return;
     }
     if (!latitude || !longitude) {
@@ -3887,6 +3913,9 @@ const initializeApp = async () => {
     contactModalBody.scrollTop = 0;
     modal.style.display = "flex";
     newCityContainer.style.display = "none";
+    // The map must be visible while it is created or resized.
+    pinPanelOpen = true;
+    updatePinUi();
 
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -3925,6 +3954,9 @@ const initializeApp = async () => {
         contactModalBody.scrollTop = 0;
         initialFormState = captureFormState();
         updatePrintContactAvailability();
+        // An existing pin starts collapsed; no pin keeps the tools open.
+        pinPanelOpen = !(lat !== null && lng !== null);
+        updatePinUi();
         resolve();
       }, 150);
     });
@@ -3960,6 +3992,29 @@ const initializeApp = async () => {
   });
 
   btnFindAddress.addEventListener("click", findAddressOnMap);
+
+  document.getElementById("btn-confirm-pin").addEventListener("click", () => {
+    clearAddressMatches();
+    crossStreetSearch.hidden = true;
+    setLocationStatus("");
+    setPinPanel(false);
+  });
+  document
+    .getElementById("btn-adjust-pin")
+    .addEventListener("click", () => setPinPanel(true));
+  const reopenPinForAddressChange = () => {
+    if (pinPanelOpen || !document.getElementById("contact-lat").value.trim())
+      return;
+    setPinPanel(true);
+    setLocationStatus(
+      "The address changed. Look up the pin again, or confirm the current pin.",
+    );
+  };
+  ["contact-address", "contact-city-select", "contact-state"].forEach((id) =>
+    document
+      .getElementById(id)
+      .addEventListener("change", reopenPinForAddressChange),
+  );
   btnFindCrossStreet.addEventListener("click", findCrossStreetOnMap);
 
   document
@@ -4307,6 +4362,10 @@ const initializeApp = async () => {
         lastVisitDate && !Number.isNaN(lastVisitDate.getTime())
           ? `<br><small>Last visit: ${escapeHtml(lastVisitDate.toLocaleDateString())} • ${sortedNotes.length} visit note${sortedNotes.length === 1 ? "" : "s"}</small>`
           : '<br><small style="color: #888;">No visit notes yet</small>';
+      const lastNoteText = lastNote && (lastNote.text || "").trim();
+      const lastNoteHtml = lastNoteText
+        ? `<br><small class="card-last-note">${escapeHtml(lastNoteText.length > 140 ? lastNoteText.slice(0, 140) + "…" : lastNoteText)}</small>`
+        : "";
       const contactFullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
       const matchedOnlyInNotes =
         searchTerm &&
@@ -4329,8 +4388,10 @@ const initializeApp = async () => {
                 ${contact.email ? `<small>Email: ${escapeHtml(contact.email)}</small><br>` : ""}
                 <span>Days Since Last Contact: <strong>${status.days} days</strong> (${status.label})</span>
                 ${lastVisitHtml}
+                ${lastNoteHtml}
                 ${noteMatchHtml}
                 <div class="card-actions">
+                    <button class="btn-icon" onclick="addQuickVisit(${contact.id})" title="Add a visit" aria-label="Add a visit">➕</button>
                     <button class="btn-icon" onclick="editContact(${contact.id})" title="Edit Details">✏️</button>
                     ${navigationUrl ? `<a class="btn-icon navigate-contact" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}" title="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2" fill="currentColor"/><path d="M6 16V9a4 4 0 0 1 4-4h8m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></a>` : ""}
                     <button class="btn-icon delete" onclick="deleteContact(${contact.id})" title="Delete Contact">🗑️</button>
@@ -4828,6 +4889,46 @@ const initializeApp = async () => {
   };
 
   // Global Action Handlers
+  const quickVisitDialog = document.getElementById("quick-visit-dialog");
+  let quickVisitContactId = null;
+  window.addQuickVisit = (contactId) => {
+    const contact = contacts.find((c) => c.id == contactId);
+    if (!contact) return;
+    quickVisitContactId = contact.id;
+    document.getElementById("quick-visit-title").textContent =
+      `Add a Visit: ${contact.firstName} ${contact.lastName}`.trim();
+    document.getElementById("quick-visit-date").value = toLocalDateTimeString(
+      new Date(),
+    );
+    document.getElementById("quick-visit-note").value = "";
+    quickVisitDialog.showModal();
+  };
+  document
+    .getElementById("cancel-quick-visit")
+    .addEventListener("click", () => quickVisitDialog.close());
+  document
+    .getElementById("quick-visit-form")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const contact = contacts.find((c) => c.id == quickVisitContactId);
+      if (!contact) {
+        quickVisitDialog.close();
+        return;
+      }
+      const when = new Date(document.getElementById("quick-visit-date").value);
+      const logDate = Number.isNaN(when.getTime()) ? new Date() : when;
+      if (!contact.notesHistory) contact.notesHistory = [];
+      contact.notesHistory.push({
+        id: "log_" + Date.now(),
+        rawDate: logDate.toISOString(),
+        date: logDate.toLocaleString(),
+        text: document.getElementById("quick-visit-note").value.trim(),
+      });
+      if (!(await saveContacts())) return;
+      quickVisitDialog.close();
+      renderContacts();
+    });
+
   // Inline Visit Log Editor Functions
   window.deleteVisitLog = async (contactId, logId) => {
     if (confirm("Are you sure you want to delete this visit log?")) {
@@ -4848,11 +4949,7 @@ const initializeApp = async () => {
     clearAddressMatches();
     crossStreetSearch.hidden = true;
     document.getElementById("contact-cross-street").value = "";
-    setLocationStatus(
-      contact.lat && contact.lng
-        ? "Saved map pin loaded. Check its position and adjust it if needed."
-        : "",
-    );
+    setLocationStatus("");
     document.getElementById("contact-id").value = contact.id;
     contactSecondaryActions.hidden = false;
     [printContactButton, shareContactButton, exportContactButton].forEach(
