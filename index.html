@@ -63,19 +63,17 @@
         <form id="unlock-form">
           <label for="encryption-passphrase">Passphrase</label>
           <input
-            type="password"
+            type="text" data-secret
             id="encryption-passphrase"
-            autocomplete="current-password"
             minlength="8"
-            required
+            required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
           />
           <div id="confirm-passphrase-container">
             <label for="confirm-encryption-passphrase">Confirm passphrase</label>
             <input
-              type="password"
+              type="text" data-secret
               id="confirm-encryption-passphrase"
-              autocomplete="new-password"
-              minlength="12"
+              minlength="12" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
             />
           </div>
           <p id="unlock-error" role="alert"></p>
@@ -350,27 +348,24 @@
               <div id="current-passphrase-fields">
                 <label for="current-passphrase">Current passphrase</label>
                 <input
-                  type="password"
+                  type="text" data-secret
                   id="current-passphrase"
-                  autocomplete="current-password"
-                  required
+                  required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
                 />
               </div>
               <label for="new-passphrase">New passphrase</label>
               <input
-                type="password"
+                type="text" data-secret
                 id="new-passphrase"
-                autocomplete="new-password"
                 minlength="12"
-                required
+                required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
               />
               <label for="confirm-new-passphrase">Confirm new passphrase</label>
               <input
-                type="password"
+                type="text" data-secret
                 id="confirm-new-passphrase"
-                autocomplete="new-password"
                 minlength="12"
-                required
+                required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
               />
               <div class="restore-dialog-actions">
                 <button type="submit" id="btn-change-passphrase">
@@ -419,10 +414,9 @@
                   Enter your current passphrase (or recovery code) to confirm
                 </label>
                 <input
-                  type="password"
+                  type="text" data-secret
                   id="turn-off-current-passphrase"
-                  autocomplete="current-password"
-                  required
+                  required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
                 />
                 <div class="restore-dialog-actions">
                   <button type="submit" id="btn-turn-off-passphrase">
@@ -450,10 +444,9 @@
               <form id="recovery-code-form">
                 <label for="recovery-current-passphrase">Current passphrase</label>
                 <input
-                  type="password"
+                  type="text" data-secret
                   id="recovery-current-passphrase"
-                  autocomplete="current-password"
-                  required
+                  required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
                 />
                 <button type="submit" id="btn-make-recovery-code">
                   Make a New Recovery Code
@@ -719,10 +712,9 @@
         <p>Enter the passphrase used when this backup was created.</p>
         <label for="restore-passphrase">Backup passphrase</label>
         <input
-          type="password"
+          type="text" data-secret
           id="restore-passphrase"
-          autocomplete="current-password"
-          required
+          required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
         />
         <div class="restore-dialog-actions">
           <button type="submit">Decrypt Backup</button>
@@ -753,17 +745,17 @@
         <p id="contact-transfer-description"></p>
         <label for="contact-transfer-passphrase">Passphrase</label>
         <input
-          type="password"
+          type="text" data-secret
           id="contact-transfer-passphrase"
           minlength="8"
-          required
+          required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
         />
         <div id="contact-transfer-confirm-container">
           <label for="contact-transfer-confirm">Confirm passphrase</label>
           <input
-            type="password"
+            type="text" data-secret
             id="contact-transfer-confirm"
-            minlength="8"
+            minlength="8" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
           />
         </div>
         <div class="restore-dialog-actions">

@@ -1376,6 +1376,12 @@ textarea {
     padding-bottom: 12px;
 }
 
+/* Shown as dots, but not a password field, so the phone does not offer to
+   save the passphrase with a user name. */
+input[data-secret] {
+    -webkit-text-security: disc;
+}
+
 .settings-group-title {
     margin: 20px 0 2px;
     font-size: 1.15rem;
