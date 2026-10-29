@@ -620,14 +620,16 @@
         </li>
       </ul>
 
-      <h2 id="cloud-backup">Cloud backup (optional)</h2>
+      <h2 id="cloud-backup">Cloud backup and sync (optional)</h2>
       <p>
         Cloud backup keeps a copy of your contacts and settings in your own
         Dropbox account, outside your phone. If your phone is lost, broken or
         replaced, you can restore from Dropbox instead of needing a file you
-        saved earlier. It is off unless you turn it on. Dropbox is entirely
-        optional: the app works fully without it, and all your data can stay
-        only on this device. The file backups
+        saved earlier. If you connect more than one device to the same Dropbox, it
+        also keeps them in step (see <a href="#sync">Syncing between
+        devices</a>). It is off unless you turn it on. Dropbox is entirely
+        optional: the app works fully without it, nothing is sent anywhere,
+        and all your data can stay only on this device. The file backups
         described above keep working either way.
       </p>
       <p class="notice">
@@ -664,10 +666,10 @@
       <h3>How it works</h3>
       <ul>
         <li>
-          When you open the app and your last Dropbox backup is more than a day
-          old, it backs up. It also backs up about 15 seconds after you make
-          changes, or as you leave the app. A web app cannot back up while it
-          is closed, so the backup happens when you use it.
+          The app checks Dropbox when you open it, and backs up about 15 seconds
+          after you make changes or as you leave the app. While it is open it
+          also checks every couple of minutes. A web app cannot back up while
+          it is closed, so this happens when you use it.
         </li>
         <li>
           Dropbox keeps a <strong>latest copy</strong> plus up to 10 dated
@@ -701,25 +703,96 @@
           not back up automatically when this device has no contacts.
         </li>
         <li>
-          <strong>Using more than one device:</strong> each device combines its
-          changes with Dropbox automatically: when you open the app, every
-          couple of minutes while it is open, and as soon as the connection
-          returns after being offline. Visits and contacts added on different
-          devices are all kept. If you have no signal, your changes stay saved
-          on the device and upload as soon as it can reach Dropbox. The cloud
-          icon at the top of the app shows the state (synced, syncing, waiting
-          to upload, offline or paused); tap it to sync now. You can also tap
-          <strong>Check for a Newer Backup</strong>. If two devices change the
-          very same contact at the same time, the most recent change to that
-          contact is used, but visits from both devices are kept. If a Dropbox
-          copy uses a different passphrase it cannot be combined
-          automatically; the app asks whether to restore it, and automatic
-          backup stays paused until you do (use
-          <strong>Back Up to Dropbox Now</strong> to replace the Dropbox copy on
-          purpose; older dated copies stay). A city, region or area you delete
-          on one device can reappear from another.
+          Using more than one device is covered next, under
+          <a href="#sync">Syncing between devices</a>.
         </li>
       </ul>
+      <h3 id="sync">Syncing between devices</h3>
+      <p>
+        Syncing is part of Dropbox backup. <strong>If you do not connect
+        Dropbox, nothing syncs</strong>: your contacts stay only on that device,
+        and each device is separate. If you connect every device to the same
+        Dropbox, they combine their changes automatically.
+      </p>
+      <p class="notice">
+        <strong>All devices that sync together must use the same passphrase and
+        the same recovery code.</strong> Dropbox and your device sign-in are the
+        only protection the app requires. A passphrase is only needed if you want
+        your Dropbox copies encrypted; turn it on once, on your main device.
+      </p>
+      <h4>Setting up a second device (for example an iPad)</h4>
+      <ol>
+        <li>
+          On your main device (the one that has your contacts), make a file
+          backup first. If you want encrypted Dropbox copies, turn on the
+          passphrase now under <strong>Settings → Passphrase</strong> and save
+          the recovery code. Then connect Dropbox as described above and wait for
+          the cloud icon to show it is synced.
+        </li>
+        <li>
+          On the second device, install or update the app, open
+          <strong>Settings → Cloud backup (optional)</strong> and connect to the
+          <strong>same Dropbox account</strong>. Do not turn on a passphrase
+          there first.
+        </li>
+        <li>
+          When the app says Dropbox already has a backup, choose
+          <strong>Restore</strong>, not Replace. Pick the latest copy. If it is
+          encrypted, enter the passphrase or recovery code from your main
+          device; the second device then uses that same passphrase and recovery
+          code.
+        </li>
+        <li>
+          Your contacts appear and the cloud icon shows it is synced. After this
+          the two devices stay in step by themselves.
+        </li>
+      </ol>
+      <h4>Day to day</h4>
+      <ul>
+        <li>
+          Each device combines with Dropbox when you open the app, about every
+          couple of minutes while it is open, and as soon as a lost connection
+          returns. After you make a change, wait about 15 seconds before
+          switching to the other device.
+        </li>
+        <li>
+          Contacts and visits added on different devices are all kept. Deleting a
+          contact or a visit on one device removes it on the others.
+        </li>
+        <li>
+          If two devices change the very same contact at nearly the same time,
+          the most recent change to that contact's details is used, but visits
+          from both devices are kept.
+        </li>
+        <li>
+          With no signal, your changes stay saved on the device and upload
+          automatically when it can reach Dropbox again.
+        </li>
+        <li>
+          The cloud icon at the top right shows the state: ☁️ up to date, 🔄
+          syncing, ⏳ changes waiting to upload, 📴 no connection (your changes
+          are kept), ⚠️ paused and needs attention. Tap it to sync now and read
+          the message. <strong>Check for a Newer Backup</strong> does the same
+          from Settings.
+        </li>
+        <li>
+          If a device uses a different passphrase than the Dropbox copy, the app
+          cannot combine them. It asks whether to restore the Dropbox copy and
+          keeps automatic backup paused until you decide. Use
+          <strong>Back Up to Dropbox Now</strong> only if you want this device's
+          data to replace the Dropbox copy; older dated copies stay.
+        </li>
+        <li>
+          Connecting a device that already has contacts to a Dropbox that
+          already has a backup asks whether to restore (replace this device) or
+          replace the Dropbox copy. Choose carefully.
+        </li>
+        <li>
+          Limits: a city, region or area you delete on one device can come back
+          from another, and renaming one can leave the old name behind. Settings
+          other than those lists come from the device that changed them last.
+        </li>
+      </ul>
       <h3>Backup reminder</h3>
       <p>
         If 10 days or more pass without a successful backup (file or Dropbox),
@@ -732,7 +805,8 @@
       <h2 id="consolidate">Consolidate copies and remove unused data</h2>
       <p>
         If Safari, Chrome, and a Home Screen app each have contacts, they are
-        separate local copies and do not sync. For regular phone use, choose
+        separate local copies and do not sync, even if you use Dropbox on one of
+        them. For regular phone use, choose
         the Home Screen app as the one copy to keep. A full backup restore
         replaces all contacts and settings in the destination; it does not
         merge two full backups.

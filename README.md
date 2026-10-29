@@ -239,6 +239,12 @@ cannot be combined automatically; the app asks whether to restore it and automat
 backup stays paused until you do (**Back Up to Dropbox Now** replaces the Dropbox copy).
 A city, region or area deleted on one device can reappear from another.
 
+To sync devices: turn on a passphrase first only if you want encrypted copies, connect the
+main device, then connect each other device to the same Dropbox and choose **Restore**
+(not Replace), entering the main device's passphrase or recovery code. All devices that
+sync together must use the same passphrase and recovery code. Without Dropbox, nothing
+syncs and each device keeps its own data.
+
 ## Share one contact
 
 Open a contact with the pencil button and choose the export icon at the bottom
@@ -314,7 +320,7 @@ contacts. Installing the app does not transfer data already stored in the
 browser. To move contacts, export an encrypted backup in the source version and
 restore it in the destination version. Keep the source copy until the restored
 contacts are confirmed; later changes do not sync between the copies.
-The app is free to use and has no online sync service. For simpler day-to-day
+The app is free to use and has no sync service of its own; optional Dropbox sync is described under Cloud backup. For simpler day-to-day
 use, choose one browser or Home Screen app on one device as your regular copy;
 maintaining multiple copies requires manual backup/restore, and restoring a
 full backup replaces the destination copy's contacts and settings.
