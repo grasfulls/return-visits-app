@@ -17,8 +17,8 @@ like an app while keeping contacts locally on that device. The browser and Home
 Screen versions may store separate data and do not sync with each other. Adding
 the app icon does not transfer contacts already stored in the browser. If you
 have already entered contacts in a browser, either keep using that browser or
-export an encrypted backup and restore it in the Home Screen app before
-switching. The app has no sync service of its own; syncing between devices happens
+export a backup (encrypted or unencrypted, your choice) and restore it in the
+Home Screen app before switching. The app has no sync service of its own; syncing between devices happens
 only if you connect your own Dropbox on each device (see Cloud backup below).
 Without Dropbox, keeping multiple copies current requires manual backup/restore.
 
@@ -177,7 +177,10 @@ Maps to open directions.
 
 Use the export icon in the contacts page's bottom bar (with no filter active),
 or **Settings → Backup & Restore → Back up everything**, to download a JSON backup
-(encrypted when a passphrase is on) of all contacts and settings. The browser saves it to its usual download
+of all contacts and settings. Encryption is your choice: with a passphrase on, a
+tick box (on by default) lets you encrypt the file or export it unencrypted; with
+no passphrase the file is unencrypted. Anyone who obtains an unencrypted file can
+read it, so store and send it only where you trust the recipient. The browser saves it to its usual download
 location—for example, **Files → Downloads** on iPhone or the browser’s
 **Downloads** location on other devices. The app cannot choose a save folder.
 At app start it asks the browser to protect its storage from automatic clearing
@@ -318,7 +321,7 @@ app** or **Add to Home screen**.
 
 The browser version and Home Screen app do not automatically sync local
 contacts. Installing the app does not transfer data already stored in the
-browser. To move contacts, export an encrypted backup in the source version and
+browser. To move contacts, export a backup (encrypted or not, as you prefer) in the source version and
 restore it in the destination version. Keep the source copy until the restored
 contacts are confirmed; later changes do not sync between the copies.
 The app is free to use and has no sync service of its own; optional Dropbox sync is described under Cloud backup. For simpler day-to-day
