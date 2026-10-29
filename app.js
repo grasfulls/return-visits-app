@@ -3952,6 +3952,7 @@ const initializeApp = async () => {
     document.getElementById("new-log-timestamp").value = toLocalDateTimeString(
       new Date(),
     );
+    delete document.getElementById("new-log-timestamp").dataset.touched;
     document.getElementById("modal-notes-history-container").innerHTML =
       '<span style="color: #888;">No visit logs yet.</span>';
     document.getElementById("modal-title").textContent = "Add Contact";
@@ -4097,6 +4098,10 @@ const initializeApp = async () => {
     const newNoteText = document.getElementById("contact-notes").value.trim();
     const newNoteTimestampVal =
       document.getElementById("new-log-timestamp").value;
+    // A changed visit date is kept even when no note text was typed.
+    const logVisit =
+      Boolean(newNoteText) ||
+      document.getElementById("new-log-timestamp").dataset.touched === "1";
 
     const fullAddress = [street, city, state].filter(Boolean).join(", ");
 
@@ -4118,7 +4123,7 @@ const initializeApp = async () => {
         contact.lat = lat;
         contact.lng = lng;
 
-        if (newNoteText) {
+        if (logVisit) {
           if (!contact.notesHistory) contact.notesHistory = [];
           const logDate = newNoteTimestampVal
             ? new Date(newNoteTimestampVal)
@@ -4135,7 +4140,7 @@ const initializeApp = async () => {
       const logDate = newNoteTimestampVal
         ? new Date(newNoteTimestampVal)
         : new Date();
-      const notesHistory = newNoteText
+      const notesHistory = logVisit
         ? [
             {
               id: "log_" + Date.now(),
@@ -4179,11 +4184,18 @@ const initializeApp = async () => {
     document.getElementById("new-log-timestamp").value = toLocalDateTimeString(
       new Date(),
     );
+    delete document.getElementById("new-log-timestamp").dataset.touched;
     initialFormState = captureFormState();
 
     editContact(targetId);
     alert("Contact saved successfully!");
   });
+
+  document
+    .getElementById("new-log-timestamp")
+    .addEventListener("change", (event) => {
+      event.target.dataset.touched = "1";
+    });
 
   // Render Contacts List
   const renderContacts = () => {
@@ -4872,6 +4884,7 @@ const initializeApp = async () => {
     document.getElementById("new-log-timestamp").value = toLocalDateTimeString(
       new Date(),
     );
+    delete document.getElementById("new-log-timestamp").dataset.touched;
 
     const historyContainer = document.getElementById(
       "modal-notes-history-container",
