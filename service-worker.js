@@ -1,11 +1,11 @@
-const CACHE_NAME = "return-visits-shell-v86";
+const CACHE_NAME = "return-visits-shell-v87";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./help.html",
   "./privacy.html",
   "./docs/Return-Visits-Privacy-Notice.pdf",
-  "./docs/Return-Visits-User-Guide.pdf",
+  "./docs/RV_Setup_User_Guide.pdf",
   "./styles.css",
   "./app.js",
   "./dropbox.js",
