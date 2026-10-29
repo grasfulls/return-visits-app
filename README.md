@@ -14,12 +14,13 @@ browser or installed as a Progressive Web App (PWA).
 
 For regular phone use, we recommend adding the app to your Home Screen; it opens
 like an app while keeping contacts locally on that device. The browser and Home
-Screen versions may store separate data and do not automatically sync. Adding
+Screen versions may store separate data and do not sync with each other. Adding
 the app icon does not transfer contacts already stored in the browser. If you
 have already entered contacts in a browser, either keep using that browser or
 export an encrypted backup and restore it in the Home Screen app before
-switching. The app is free and has no online sync service, so keeping multiple
-copies current requires manual backup/restore.
+switching. The app has no sync service of its own; syncing between devices happens
+only if you connect your own Dropbox on each device (see Cloud backup below).
+Without Dropbox, keeping multiple copies current requires manual backup/restore.
 
 On iPhone, open the site in Safari, tap **Share → Add to Home Screen**, then
 launch the Home Screen copy. If a link opens inside another app, use that app's
@@ -55,7 +56,7 @@ Developers can require a passphrase on first use by setting
 Existing legacy browser data is migrated without a passphrase, or encrypted and
 verified during migration if a passphrase is required, before plaintext copies
 are removed. Data is not synchronized between browsers or
-devices, and the app has no user account or server-side contact database.
+devices unless you opt in to Dropbox sync, and the app has no user account or server-side contact database.
 Clearing browser data or losing a device can remove its local records, so keep
 an encrypted backup.
 
@@ -322,7 +323,7 @@ restore it in the destination version. Keep the source copy until the restored
 contacts are confirmed; later changes do not sync between the copies.
 The app is free to use and has no sync service of its own; optional Dropbox sync is described under Cloud backup. For simpler day-to-day
 use, choose one browser or Home Screen app on one device as your regular copy;
-maintaining multiple copies requires manual backup/restore, and restoring a
+without Dropbox, maintaining multiple copies requires manual backup/restore, and restoring a
 full backup replaces the destination copy's contacts and settings.
 
 The service worker caches the same-origin app shell and updates cached files

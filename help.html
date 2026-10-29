@@ -211,9 +211,11 @@
       <h2>Important: your information stays on this device</h2>
       <p>
         Contacts and settings are stored in the browser on the device where you
-        use the app. They do not automatically sync to your other devices or
-        browsers. You can optionally turn on a backup to your own Dropbox; see
-        <a href="#cloud-backup">Cloud backup (optional)</a>.
+        use the app. They do not sync to your other devices unless you choose to:
+        you can optionally connect your own Dropbox, which backs up your
+        contacts and keeps your devices in step. See
+        <a href="#cloud-backup">Cloud backup and sync (optional)</a> and
+        <a href="#sync">Syncing between devices</a>.
       </p>
       <p class="notice">
         Before changing devices or browsers, clearing browser data, or removing
@@ -255,7 +257,7 @@
         <li>
           A passphrase does not sync or restore contacts by itself. To recover
           your contacts after reinstalling the app or to move them to another
-          device, you need a backup. See
+          device, you need a backup (a file, or Dropbox). See
           <a href="#backup">Protect your information and make a backup</a>.
         </li>
       </ul>
@@ -911,8 +913,12 @@
         <a href="https://grasfulls.github.io/return-visits-app/">
           Return Visits app
         </a>
-        in a web browser. Your contacts will not appear automatically; restore
-        an encrypted backup using the instructions above. For regular use on a
+        in a web browser. Your contacts will not appear automatically. There are
+        two ways to bring them over: if you use Dropbox, connect the same
+        Dropbox account on the new device and restore from it, after which the
+        devices stay in step (see <a href="#sync">Syncing between
+        devices</a>); otherwise restore a backup file using the instructions
+        above. For regular use on a
         phone, we recommend adding the app to your Home Screen: in Safari on
         iPhone, use Share then Add to Home Screen; in Chrome on Android, choose
         Install app or Add to Home screen. The app checks for updates when it
@@ -930,8 +936,9 @@
       </p>
       <h2>Already using the app in your phone's browser?</h2>
       <p>
-        The browser version and the Home Screen app do not automatically sync
-        their contacts. Adding the app to your Home Screen does not transfer
+        The browser version and the Home Screen app are separate copies and do
+        not sync with each other, even if you use Dropbox in one of them.
+        Adding the app to your Home Screen does not transfer
         the data already saved in your browser; the two versions may keep
         separate local copies. To move your contacts, first confirm they are
         visible in the browser version, then choose
@@ -940,15 +947,15 @@
         screen, or use its restore option in Settings. Keep using the browser
         copy until you have confirmed the contacts are visible in the Home
         Screen app. After the transfer, changes made in one copy will not
-        appear in the other; export and restore a fresh backup when you want to
-        move newer changes.
+        appear in the other, so use only one of them from then on.
       </p>
       <p class="notice">
-        The app is free to use, but it does not include an online sync service.
-        If you use more than one copy, keep track of which one has your latest
-        changes. You must manually export and restore encrypted backups to
-        transfer changes; restoring a full backup replaces the destination
-        copy's contacts and settings.
+        The app is free to use and has no sync service of its own. Syncing happens
+        only if you choose to connect your own Dropbox on each device (see
+        <a href="#sync">Syncing between devices</a>). Without Dropbox, each
+        copy is separate: keep track of which one has your latest changes, and
+        move changes by exporting and restoring a backup file. Restoring a full
+        backup replaces the destination copy's contacts and settings.
       </p>
     </main>
 
