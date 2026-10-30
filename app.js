@@ -1143,8 +1143,72 @@ const encryptStoredValue = async (database, storageKey, value, encryptionKey) =>
     await encryptValue(value, encryptionKey),
   );
 
+const dismissUnlockScreen = (screen) => {
+  screen.remove();
+  document.getElementById("app-container").removeAttribute("inert");
+};
+
+// Update this version when the Terms of Use or Privacy & Data Notice changes.
+const USER_AGREEMENT_VERSION = "2026-10-30";
+const requireUserAgreement = () => {
+  const screen = document.getElementById("unlock-screen");
+  const agreementPanel = document.getElementById("agreement-panel");
+  const unlockContent = document.getElementById("unlock-content");
+  const checkbox = document.getElementById("user-agreement-checkbox");
+  const acceptButton = document.getElementById("btn-accept-agreement");
+  const errorMessage = document.getElementById("agreement-error");
+  let acceptedVersion = null;
+  try {
+    acceptedVersion = localStorage.getItem("return_visits_agreement_version");
+  } catch (error) {
+    console.error("Unable to check the user agreement status:", error);
+    errorMessage.textContent =
+      "We could not check this device's agreement status. You may review and accept the notices again to continue.";
+    errorMessage.hidden = false;
+  }
+
+  if (acceptedVersion === USER_AGREEMENT_VERSION) {
+    agreementPanel.hidden = true;
+    unlockContent.hidden = false;
+    return Promise.resolve();
+  }
+
+  screen.hidden = false;
+  acceptButton.disabled = !checkbox.checked;
+  checkbox.addEventListener("change", () => {
+    acceptButton.disabled = !checkbox.checked;
+  });
+
+  return new Promise((resolve) => {
+    acceptButton.addEventListener("click", () => {
+      if (!checkbox.checked) return;
+      acceptButton.disabled = true;
+      errorMessage.hidden = true;
+      try {
+        localStorage.setItem(
+          "return_visits_agreement_version",
+          USER_AGREEMENT_VERSION,
+        );
+      } catch (error) {
+        console.error("Unable to save the user agreement status:", error);
+        errorMessage.textContent =
+          "We could not save your agreement on this device. Check your browser storage settings and try again.";
+        errorMessage.hidden = false;
+        acceptButton.disabled = false;
+        return;
+      }
+      agreementPanel.hidden = true;
+      unlockContent.hidden = false;
+      resolve();
+    });
+  });
+};
+
 const createUnlockPrompt = (hasEncryption) => {
   const screen = document.getElementById("unlock-screen");
+  document.getElementById("unlock-title").textContent = hasEncryption
+    ? "Unlock Return Visits"
+    : "First-time use";
   const description = document.getElementById("unlock-description");
   document.getElementById("first-use-notice").hidden = hasEncryption;
   const confirmContainer = document.getElementById(
@@ -1187,7 +1251,7 @@ const initializeAppData = async () => {
     ]);
     localStorage.removeItem("return_visits_settings");
     localStorage.removeItem("return_visits_contacts");
-    document.getElementById("unlock-screen").remove();
+    dismissUnlockScreen(document.getElementById("unlock-screen"));
     return { database, settings, contacts, encryptionKey: null, metadata: null };
   }
   const prompt = createUnlockPrompt(Boolean(existingMetadata));
@@ -1246,7 +1310,7 @@ const initializeAppData = async () => {
         localStorage.removeItem("return_visits_settings");
         localStorage.removeItem("return_visits_contacts");
         localStorage.setItem("return_visits_last_backup_reminder", Date.now());
-        prompt.screen.remove();
+        dismissUnlockScreen(prompt.screen);
         resolve({
           database,
           settings: restored.settings,
@@ -1394,7 +1458,7 @@ const initializeAppData = async () => {
             localStorage.removeItem("return_visits_contacts");
           }
 
-          prompt.screen.remove();
+          dismissUnlockScreen(prompt.screen);
           if (newRecoveryCode) await showRecoveryCodeDialog(newRecoveryCode);
           if (usedRecoveryCode) {
             alert(
@@ -1441,6 +1505,7 @@ const markBackupDone = () => {
 let cloudBackupHook = () => {};
 
 const initializeApp = async () => {
+  await requireUserAgreement();
   if (window.RVDropbox) await window.RVDropbox.ready;
   const {
     database,
@@ -2073,8 +2138,7 @@ const initializeApp = async () => {
         settings.defaultCity;
       alert("Master settings saved successfully!");
       if (localStorage.getItem("return_visits_setup_pending") === "true") {
-        localStorage.removeItem("return_visits_setup_pending");
-        document.getElementById("setup-done-notice").hidden = false;
+        document.getElementById("setup-next-steps-notice").hidden = false;
       }
     });
 
@@ -6495,7 +6559,7 @@ const initializeApp = async () => {
   if (contacts.length > 0) {
     // Existing users don't need the first-run setup banner.
     try {
-      localStorage.setItem("return_visits_install_banner_dismissed", "true");
+      localStorage.setItem("return_visits_onboarding_v2_dismissed", "true");
     } catch (error) {
       console.error("Unable to save the install tip status:", error);
     }
@@ -6564,15 +6628,21 @@ const initializeApp = async () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   const installBanner = document.getElementById("install-banner");
-  const installBannerKey = "return_visits_install_banner_dismissed";
+  const installBannerKey = "return_visits_onboarding_v2_dismissed";
   const setupPendingKey = "return_visits_setup_pending";
   let dismissed = false;
+  let setupPending = false;
   try {
     dismissed = localStorage.getItem(installBannerKey) === "true";
+    setupPending = localStorage.getItem(setupPendingKey) === "true";
   } catch (error) {
     console.error("Unable to read the install tip status:", error);
   }
   installBanner.hidden = dismissed;
+  document.getElementById("setup-next-steps-notice").hidden = !setupPending;
+  if (setupPending) {
+    document.getElementById("defaults-section").open = true;
+  }
 
   const goToView = (viewId) => {
     const navButton = Array.from(
@@ -6595,18 +6665,36 @@ document.addEventListener("DOMContentLoaded", () => {
     defaults.open = true;
     defaults.scrollIntoView({ block: "start" });
   };
+  const openSettingsSection = (sectionId) => {
+    goToView("settings-view");
+    const section = document.getElementById(sectionId);
+    section.open = true;
+    section.scrollIntoView({ block: "start" });
+  };
+  const finishSetup = () => {
+    try {
+      localStorage.removeItem(setupPendingKey);
+      localStorage.setItem(installBannerKey, "true");
+    } catch (error) {
+      console.error("Unable to save the setup status:", error);
+    }
+    document.getElementById("setup-next-steps-notice").hidden = true;
+    goToView("contacts-view");
+  };
   document
     .getElementById("btn-dismiss-install-banner")
     .addEventListener("click", startSetup);
   document
-    .querySelector('#install-banner [data-go="settings-view"]')
-    .addEventListener("click", startSetup);
+    .getElementById("btn-setup-your-details")
+    .addEventListener("click", () =>
+      openSettingsSection("your-details-section"),
+    );
   document
-    .querySelector('#setup-done-notice [data-go="contacts-view"]')
-    .addEventListener("click", () => {
-      document.getElementById("setup-done-notice").hidden = true;
-      goToView("contacts-view");
-    });
+    .getElementById("btn-setup-locations")
+    .addEventListener("click", () => openSettingsSection("locations-section"));
+  document
+    .getElementById("btn-setup-finish")
+    .addEventListener("click", finishSetup);
 });
 
 const updateStorageProtectionStatus = async () => {

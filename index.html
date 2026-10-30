@@ -20,85 +20,130 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <section id="unlock-screen" aria-labelledby="unlock-title">
+    <section
+      id="unlock-screen"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Return Visits access"
+    >
       <div class="unlock-card">
-        <h1 id="unlock-title">Unlock Return Visits</h1>
-        <p id="unlock-description"></p>
-        <aside id="first-use-notice" class="first-use-notice">
-          <strong>About this app</strong>
+        <section id="agreement-panel" aria-labelledby="agreement-title">
+          <h1 id="agreement-title">Before you use Return Visits</h1>
           <p>
-            Return Visits is free to use, with no app fees or subscription. It
-            is intentionally a simple tool for maintaining contact details and
-            tracking return visits—not a full-featured contact-management app.
-            It may have fewer features or be less reliable than paid products.
-            The app is provided as-is.
+            Please read and agree to both notices before using the app on this
+            browser or installed-app copy.
           </p>
-          <small>
-            Your internet or mobile provider may charge for data. Third-party
-            services have their own terms.
-          </small>
-        </aside>
-        <details class="install-guidance">
-          <summary>
-            Setup: iPhone—Safari → Add to Home Screen; Android—Chrome →
-            Install
-          </summary>
+          <aside class="first-use-notice">
+            <strong>Where your information goes</strong>
+            <p>
+              Contacts are saved in this browser or installed-app copy.
+              Dropbox stores a copy only if you choose to connect it. Some
+              map and address-search features send the search information to
+              outside providers. Sharing or exporting a contact sends a copy
+              wherever you choose.
+            </p>
+            <small>
+              Agreeing to these notices does not connect Dropbox or send a
+              contact or address search.
+            </small>
+          </aside>
           <p>
-            <strong>iPhone:</strong> For the best Home Screen app experience,
-            open this page in Safari. If it opened inside another app, use that
-            app's menu to choose <strong>Open in Safari</strong>. In Safari,
-            tap <strong>Share → Add to Home Screen</strong>.
+            <a href="./terms.html" target="_blank" rel="noopener">
+              Read the Terms of Use
+            </a>
           </p>
           <p>
-            <strong>Android:</strong> Open this page in Chrome, then choose
-            <strong>Install app</strong> or <strong>Add to Home screen</strong>
-            from the browser menu.
+            <a href="./privacy.html" target="_blank" rel="noopener">
+              Read the Privacy &amp; Data Notice
+            </a>
           </p>
-          <small>
-            Your browser and Home Screen copies may store separate contacts.
-            Set up your preferred copy before entering data, or back up before
-            switching. <a href="./help.html#phone-setup">Setup details</a>
-          </small>
-        </details>
-        <form id="unlock-form">
-          <label for="encryption-passphrase">Passphrase</label>
-          <input
-            type="text" data-secret
-            id="encryption-passphrase"
-            minlength="8"
-            required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-          />
-          <div id="confirm-passphrase-container">
-            <label for="confirm-encryption-passphrase">Confirm passphrase</label>
+          <label class="agreement-checkbox" for="user-agreement-checkbox">
+            <input type="checkbox" id="user-agreement-checkbox" />
+            <span>
+              I have read and agree to the Terms of Use and Privacy &amp; Data
+              Notice.
+            </span>
+          </label>
+          <p id="agreement-error" role="alert" hidden></p>
+          <button type="button" id="btn-accept-agreement" disabled>
+            Agree and continue
+          </button>
+        </section>
+        <div id="unlock-content" hidden>
+          <h1 id="unlock-title">Unlock Return Visits</h1>
+          <p id="unlock-description"></p>
+          <aside id="first-use-notice" class="first-use-notice">
+            <strong>First-time use</strong>
+            <p>
+              Before adding return visits to this device, set up the app icon,
+              fill in Defaults and Your Details, and add any Cities, Regions,
+              and Areas you need. You can add locations later, too.
+            </p>
+            <small>
+              Return Visits is free to use, with no app fees or subscription.
+              Your internet or mobile provider may charge for data.
+            </small>
+          </aside>
+          <details class="install-guidance">
+            <summary>Help me add an app icon</summary>
+            <p>
+              <strong>iPhone:</strong> For the best Home Screen app experience,
+              open this page in Safari. If it opened inside another app, use that
+              app's menu to choose <strong>Open in Safari</strong>. In Safari,
+              tap <strong>Share → Add to Home Screen</strong>.
+            </p>
+            <p>
+              <strong>Android:</strong> Open this page in Chrome, then choose
+              <strong>Install app</strong> or
+              <strong>Add to Home screen</strong> from the browser menu.
+            </p>
+            <small>
+              Your browser and Home Screen copies may store separate contacts.
+              Set up your preferred copy before entering data, or back up before
+              switching.
+              <a href="./help.html#install-guide">See illustrated instructions</a>
+            </small>
+          </details>
+          <form id="unlock-form">
+            <label for="encryption-passphrase">Passphrase</label>
             <input
               type="text" data-secret
-              id="confirm-encryption-passphrase"
-              minlength="12" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+              id="encryption-passphrase"
+              minlength="8"
+              required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
             />
+            <div id="confirm-passphrase-container">
+              <label for="confirm-encryption-passphrase">Confirm passphrase</label>
+              <input
+                type="text" data-secret
+                id="confirm-encryption-passphrase"
+                minlength="12" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+              />
+            </div>
+            <p id="unlock-error" role="alert"></p>
+            <button type="submit" id="unlock-submit">Unlock</button>
+          </form>
+          <div class="unlock-restore">
+            <p>Moving to a new device? Restore an encrypted backup instead.</p>
+            <input
+              type="file"
+              id="initial-backup-file-input"
+              accept="application/json,.json"
+              hidden
+            />
+            <button type="button" id="btn-initial-restore">
+              Choose Backup to Restore
+            </button>
           </div>
-          <p id="unlock-error" role="alert"></p>
-          <button type="submit" id="unlock-submit">Unlock</button>
-        </form>
-        <div class="unlock-restore">
-          <p>Moving to a new device? Restore an encrypted backup instead.</p>
-          <input
-            type="file"
-            id="initial-backup-file-input"
-            accept="application/json,.json"
-            hidden
-          />
-          <button type="button" id="btn-initial-restore">
-            Choose Backup to Restore
-          </button>
+          <small>
+            Your data is encrypted with this passphrase. If you forget it,
+            there is no recovery option.
+          </small>
         </div>
-        <small>
-          Your data is encrypted with this passphrase. If you forget it,
-          there is no recovery option.
-        </small>
       </div>
     </section>
 
-    <div id="app-container">
+    <div id="app-container" inert aria-hidden="true">
       <header>
         <h1 id="app-title">RVs - Contacts</h1>
         <button type="button" id="sync-status" hidden aria-label="Dropbox sync status"></button>
@@ -135,28 +180,33 @@
         <!-- Contacts View -->
         <div id="contacts-view" class="view active">
           <aside id="install-banner" class="install-banner" hidden>
-            <div id="install-tips">
-              <strong>Add Return Visits to your Home Screen</strong>
-              <p>
-                <strong>iPhone:</strong> open this page in Safari, tap
-                <strong>Share → Add to Home Screen</strong>.<br />
-                <strong>Android:</strong> in Chrome, choose
-                <strong>Install app</strong> or
-                <strong>Add to Home screen</strong>.<br />
-                <strong>Computer:</strong> in Chrome or Edge, use the install
-                icon in the address bar.
-              </p>
-              <small>
-                Free, with no account. Contacts are first saved on this device. If you turn on Dropbox sync or send backup files, copies also exist in your Dropbox or wherever the file is sent or stored. <a href="./help.html#phone-setup">Setup details</a>
-              </small>
-            </div>
+            <h2>First-time use: before adding any Return Visits to this device</h2>
+            <ol>
+              <li>
+                <strong>Add an app icon.</strong> On a phone or tablet, add
+                Return Visits to your Home Screen. On a computer, install it
+                from your browser. If you already opened it from an icon, go
+                to the next step. You can also keep using it in your browser.
+                <a href="./help.html#install-guide">Show me how, with pictures</a>
+              </li>
+              <li>
+                <strong>Fill in Defaults and Your Details.</strong> Set your
+                usual city and state, then add the personal details you want
+                to share or use for your home map pin.
+              </li>
+              <li>
+                <strong>Set up Cities, Regions, and Areas.</strong> Add the
+                places you need now, or add them later as you go.
+              </li>
+            </ol>
             <p>
-              <strong>First, set up your defaults.</strong> Please go to
-              Settings
-              <button type="button" class="inline-icon-link" data-go="settings-view" title="Open Settings" aria-label="Open Settings">⚙️</button>
-              and set your default information before adding any contacts.
+              Your information is saved on this device. If you choose Dropbox
+              sync, a copy is also saved in your Dropbox. Using the browser
+              and app icon separately may create separate copies.
             </p>
-            <button type="button" id="btn-dismiss-install-banner">Got it</button>
+            <button type="button" id="btn-dismiss-install-banner">
+              Start with Defaults
+            </button>
           </aside>
           <div class="contact-list-actions">
             <button
@@ -202,10 +252,14 @@
             <h2>Settings</h2>
             <details class="settings-section" id="defaults-section">
               <summary>Defaults</summary>
-              <p id="setup-done-notice" class="install-banner" role="status" hidden>
-                <strong>All set.</strong> You may now add contacts: tap
-                <button type="button" class="inline-icon-link" data-go="contacts-view" title="Go to Contacts" aria-label="Go to Contacts">👥</button>
-                in the footer to return to your contacts.
+              <p id="setup-next-steps-notice" class="install-banner" role="status" hidden>
+                <strong>Defaults saved.</strong> Next, fill in
+                <button type="button" class="inline-icon-link" id="btn-setup-your-details">Your Details</button>.
+                You can set up
+                <button type="button" class="inline-icon-link" id="btn-setup-locations">Cities, Regions, and Areas</button>
+                now or add them as needed. When you're ready, you can start
+                adding contacts.
+                <button type="button" id="btn-setup-finish">I'm ready — go to Contacts</button>
               </p>
               <form id="settings-form">
                 <label>Default State:</label>
@@ -234,7 +288,7 @@
                 </button>
               </form>
             </details>
-            <details class="settings-section">
+            <details class="settings-section" id="your-details-section">
               <summary>Your Details</summary>
               <form id="me-form">
                 <label for="me-name">Name:</label>
@@ -273,7 +327,7 @@
                 <p id="me-status" role="status"></p>
               </form>
             </details>
-            <details class="settings-section">
+            <details class="settings-section" id="locations-section">
               <summary>Cities, Regions &amp; Areas</summary>
               <h3>Add New City to List</h3>
               <p class="location-hint">
@@ -654,6 +708,11 @@
               <p>
                 <a class="user-guide-link" href="./privacy.html">
                   Privacy &amp; Data Notice
+                </a>
+              </p>
+              <p>
+                <a class="user-guide-link" href="./terms.html">
+                  Terms of Use
                 </a>
               </p>
               </details>

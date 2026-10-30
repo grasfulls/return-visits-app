@@ -57,6 +57,51 @@ body {
     color: #004080;
 }
 
+.unlock-card > p {
+    line-height: 1.45;
+}
+
+.agreement-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 18px 0;
+    line-height: 1.45;
+    cursor: pointer;
+}
+
+.unlock-card .agreement-checkbox input {
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    min-height: 24px;
+    margin: 0;
+    accent-color: #004080;
+}
+
+#agreement-error {
+    color: #9b1c1c;
+    font-weight: bold;
+}
+
+#btn-accept-agreement {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 8px;
+    border: 0;
+    border-radius: 4px;
+    background: #004080;
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#btn-accept-agreement:disabled {
+    background: #657789;
+    cursor: not-allowed;
+}
+
 .first-use-notice {
     margin: 16px 0;
     padding: 12px;
@@ -116,6 +161,22 @@ body {
     margin: 8px 0;
 }
 
+.install-banner h2 {
+    margin: 0 0 10px;
+    color: #004080;
+    font-size: 1.15rem;
+    line-height: 1.35;
+}
+
+.install-banner ol {
+    margin: 10px 0;
+    padding-left: 1.5rem;
+}
+
+.install-banner li + li {
+    margin-top: 10px;
+}
+
 .install-banner small {
     display: block;
     margin-bottom: 10px;
@@ -132,8 +193,8 @@ body {
 }
 
 @media (display-mode: standalone) {
-    #install-tips {
-        display: none !important;
+    .install-guidance {
+        display: none;
     }
 }
 
@@ -143,15 +204,12 @@ body {
     border: none;
     background: none !important;
     color: inherit !important;
-    font-size: 1.2em;
+    font-size: 1em;
+    font-weight: bold;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
     cursor: pointer;
-    vertical-align: middle;
-}
-
-@media (display-mode: standalone) {
-    .install-guidance {
-        display: none;
-    }
+    vertical-align: baseline;
 }
 
 .unlock-card form,

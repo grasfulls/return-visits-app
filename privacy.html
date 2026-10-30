@@ -80,6 +80,20 @@
         outline-offset: 3px;
       }
 
+      .return-to-app {
+        display: block;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        padding: 0.45rem 0.7rem;
+        border-radius: 4px;
+        background: white;
+        box-shadow: 0 2px 6px rgb(20 45 70 / 12%);
+        font-weight: bold;
+      }
+
       li + li {
         margin-top: 0.45rem;
       }
@@ -121,6 +135,7 @@
         }
 
         .document-link,
+        .return-to-app,
         footer {
           display: none;
         }
@@ -141,6 +156,7 @@
     </header>
 
     <main>
+      <a class="return-to-app" href="./">← Return to where you asked for help</a>
       <p class="document-link">
         Download this notice as a
         <a href="./docs/Return-Visits-Privacy-Notice.pdf" download>PDF</a>.
@@ -402,7 +418,29 @@
     </main>
 
     <footer>
-      <a href="./">Return to the Return Visits app</a>
+      <a class="return-to-app" href="./">Return to the Return Visits app</a>
     </footer>
+    <script>
+      const privacyReturnLinks = document.querySelectorAll(".return-to-app");
+      const privacyReferrer = document.referrer
+        ? new URL(document.referrer)
+        : null;
+      privacyReturnLinks.forEach((link) => {
+        if (
+          privacyReferrer &&
+          privacyReferrer.origin === window.location.origin
+        ) {
+          link.href = privacyReferrer.href;
+          link.addEventListener("click", (event) => {
+            if (window.history.length > 1) {
+              event.preventDefault();
+              window.history.back();
+            }
+          });
+        } else {
+          link.textContent = "Return to the Return Visits app";
+        }
+      });
+    </script>
   </body>
 </html>
