@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Return Visits",
-  "short_name": "Return Visits",
+  "name": "Nice Return Visits",
+  "short_name": "Nice Return Visits",
   "description": "A private, on-device return visit contact tracker.",
   "start_url": "./",
   "scope": "./",

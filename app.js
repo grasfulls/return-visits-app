@@ -1207,7 +1207,7 @@ const requireUserAgreement = () => {
 const createUnlockPrompt = (hasEncryption) => {
   const screen = document.getElementById("unlock-screen");
   document.getElementById("unlock-title").textContent = hasEncryption
-    ? "Unlock Return Visits"
+    ? "Unlock Nice Return Visits"
     : "First-time use";
   const description = document.getElementById("unlock-description");
   document.getElementById("first-use-notice").hidden = hasEncryption;
@@ -3185,7 +3185,7 @@ const initializeApp = async () => {
       "map-view": "Map",
       "settings-view": "Settings",
     };
-    document.title = `Return Visits - ${pageNames[currentViewId] || "Contacts"}`;
+    document.title = `Nice Return Visits - ${pageNames[currentViewId] || "Contacts"}`;
     updateHeaderTitle();
     document.body.classList.toggle(
       "settings-open",
@@ -6349,7 +6349,7 @@ const initializeApp = async () => {
         : "No app passphrase is on, so backups in Dropbox will not be encrypted. Anyone who can access those Dropbox files may be able to read them. Turning on a passphrase first (Settings → Passphrase) is optional and will encrypt new backups; existing unencrypted Dropbox copies remain readable until you delete them.";
       if (
         !confirm(
-          `Dropbox is optional. Connecting sends this app's backups to the Return Visits folder in your Dropbox. ${encryptionWarning} You can also protect your Dropbox account with a strong password and two-step verification. Dropbox account or device security can still be compromised. Continue to Dropbox sign-in?`,
+          `Dropbox is optional. Connecting sends Nice Return Visits backups to the Dropbox folder named Return Visits in your account. ${encryptionWarning} You can also protect your Dropbox account with a strong password and two-step verification. Dropbox account or device security can still be compromised. Continue to Dropbox sign-in?`,
         )
       ) {
         return;

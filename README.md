@@ -1,6 +1,6 @@
-# Return Visits App
+# Nice Return Visits
 
-Return Visits is free to use, with no app fees or subscription. It is
+Nice Return Visits is free to use, with no app fees or subscription. It is
 intentionally a simple tool for maintaining contact details and tracking
 return visits—not a full-featured contact-management app. It may have fewer
 features or be less reliable than paid products. The app is provided as-is.
@@ -223,7 +223,7 @@ your data can stay only on this device. You need a Dropbox account (the free Bas
 can send you to dropbox.com/basic to sign up but cannot create the account. The
 setup asks whether you already have an account, shows the sign-up steps if not,
 then connects through Dropbox's own sign-in page. The app can only use its own
-**Return Visits** folder in your Dropbox.
+Dropbox folder named **Return Visits**.
 
 The app backs up on open when the last Dropbox backup is more than a day old, and
 about 15 seconds after changes (or when you leave the app); a web app cannot back
