@@ -148,8 +148,10 @@ vite.config.ts.timestamp-*
 # Turbo Repo
 .turbo
 
-# Word documents and temporary Word files (the PDFs are what is published)
+# Word documents and temporary Word files; keep the two published source docs
 *.docx
+!docs/Nice-Return-Visits-User-Guide.docx
+!docs/Nice-Return-Visits-Privacy-Notice.docx
 ~$*
 # Developer note, not for the repo
 docs/Make PWA Icon.pdf
