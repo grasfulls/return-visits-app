@@ -3176,7 +3176,7 @@ const initializeApp = async () => {
       ? document.getElementById("modal-title").textContent
       : names[currentViewId] || "Contacts";
     const h1 = document.getElementById("app-title");
-    if (h1) h1.textContent = `RVs - ${name}`;
+    if (h1) h1.textContent = `Nice Return Visits - ${name}`;
   };
 
   const renderBottomNav = () => {
