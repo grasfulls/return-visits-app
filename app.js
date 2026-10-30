@@ -6344,10 +6344,12 @@ const initializeApp = async () => {
   document
     .getElementById("btn-cloud-connect")
     .addEventListener("click", async () => {
+      const encryptionWarning = encryptionKey
+        ? "Your Dropbox backups will be encrypted with this app's passphrase before they are uploaded. Keep that passphrase and your recovery code safe; anyone who obtains an unencrypted export or a copy made before encryption may still read it."
+        : "No app passphrase is on, so backups in Dropbox will not be encrypted. Anyone who can access those Dropbox files may be able to read them. Turning on a passphrase first (Settings → Passphrase) is optional and will encrypt new backups; existing unencrypted Dropbox copies remain readable until you delete them.";
       if (
-        !encryptionKey &&
         !confirm(
-          "No passphrase is turned on, so your backups in Dropbox will not be encrypted. They stay in your own Dropbox, but for extra protection you can turn on a passphrase first (Settings → Passphrase). Connect without encryption?",
+          `Dropbox is optional. Connecting sends this app's backups to the Return Visits folder in your Dropbox. ${encryptionWarning} You can also protect your Dropbox account with a strong password and two-step verification. Dropbox account or device security can still be compromised. Continue to Dropbox sign-in?`,
         )
       ) {
         return;

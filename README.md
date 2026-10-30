@@ -225,11 +225,14 @@ then connects through Dropbox's own sign-in page. The app can only use its own
 
 The app backs up on open when the last Dropbox backup is more than a day old, and
 about 15 seconds after changes (or when you leave the app); a web app cannot back
-up while closed. Dropbox keeps a latest copy plus up to 10 dated copies. Backups
-are encrypted when a passphrase is on; with no passphrase they are not, and the
-app asks you to confirm before connecting. It never backs up an empty device over
-your Dropbox copy. Use **Restore from Dropbox** to restore the latest or a dated
-copy (it replaces this device's data), and **Disconnect Dropbox** to stop.
+up while closed. Dropbox keeps a latest copy plus up to 10 dated copies. Before
+connecting, the app explains whether backups will be encrypted and lets you
+continue or cancel. A passphrase is optional: backups made without one are not
+encrypted, while backups made with one are encrypted before upload. Existing
+Dropbox copies made without a passphrase remain unencrypted until you delete
+them. It never backs up an empty device over your Dropbox copy. Use
+**Restore from Dropbox** to restore the latest or a dated copy (it replaces
+this device's data), and **Disconnect Dropbox** to stop.
 
 With more than one device, each device combines its changes with Dropbox
 automatically: when the app opens, every couple of minutes while it is open, and as
