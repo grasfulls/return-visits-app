@@ -191,14 +191,18 @@
         choose Find Address or City Pin, the address text you entered is sent
         to OpenStreetMap Nominatim for a location search. If the full
         street-address search has no match, the app may also search the street
-        name without its leading house number and/or the selected city and
-        state. A city-only lookup searches the selected city and state. If you
+        name without its leading house number and/or the selected city, state
+        or province, and country. A city-only lookup searches the selected city,
+        state or province, and country. If you
         choose Search Near Cross-Street, that cross-street or intersection text
         is also sent to Nominatim.
-        Whenever the Map is open and no visible contacts have coordinates, the
-        default city and state in Settings are sent to Nominatim to center the
-        map approximately. Entering or saving contact details does not run the
-        contact-address search. If you use the address lookup in Settings →
+        When the Map is open, each distinct city, state or province, and
+        country for visible contacts without saved coordinates is sent to Nominatim to place an
+        approximate city pin. If no contact, home, or live-location pin is
+        available, the default city, state, and country may also be sent to
+        Nominatim to center the map approximately. Entering or saving contact details does
+        not run city lookups; they occur when you open the Map. If you use the
+        address lookup in Settings →
         Your Details, that address text is also sent to Nominatim. Your Details
         (name, address, home coordinates) stay on this device and are included
         in full backups. If you choose Share on a contact, your name is added
@@ -247,15 +251,17 @@
         <li>
           <strong>Address search:</strong> If you choose
           Find Address or City Pin, the app sends the address search text
-          (street address, city, and state) to OpenStreetMap Nominatim to look
+          (street address, city, state or province, and country) to
+          OpenStreetMap Nominatim to look
           up coordinates. If no full-address match is found, it may also search
           the street name without its leading house number and the selected city
-          and state. A city-only lookup searches the selected city and state.
-          If you choose Search Near Cross-Street, the cross-street or
-          intersection text and selected city and state are also sent to
-          Nominatim. Whenever the Map is open and no visible contacts have
-          coordinates, the default city and state in Settings are also sent to
-          Nominatim to center the map approximately. Entering or saving contact
+          and state or province and country. A city-only lookup searches the
+          selected city, state or province, and country. If you choose Search
+          Near Cross-Street, the cross-street or intersection text and selected
+          city, state or province, and country are also sent to
+          Nominatim. If no contact, home, or live-location pin is available,
+          the default city, state, and country are also sent to Nominatim to
+          center the map approximately. Entering or saving contact
           details does not run the contact-address search. Do not use
           these lookup features or the Map without contact pins if you do not
           want this location information sent to Nominatim.
@@ -299,11 +305,11 @@
           Consult the provider's current privacy information for details.
         </li>
         <li>
-          <strong>Device location:</strong> If you choose Use Device Location
-          and grant permission, the browser asks the device for its current
-          location. The app uses the returned coordinates to position the
-          contact's pin. This uses your device's current location, not the
-          contact address typed into the form. Location accuracy can vary.
+          <strong>Device location:</strong> When you open the Map, the app
+          asks the browser for permission to show your current location as a
+          blue dot. If allowed, the dot and its accuracy area update while the
+          Map is open. These coordinates are not saved to your contacts or
+          backups. Location accuracy can vary.
         </li>
         <li>
           <strong>Dropbox (optional):</strong> Only if you connect Dropbox in

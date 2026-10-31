@@ -451,6 +451,10 @@ main {
     min-height: 44px;
 }
 
+#btn-import-contact {
+    margin-left: auto;
+}
+
 #btn-print-visible:disabled,
 #btn-print-contact:disabled {
     cursor: not-allowed;
@@ -466,6 +470,19 @@ main {
 #map {
     height: 100%;
     width: 100%;
+}
+
+#me-state:disabled,
+#me-city:disabled,
+#me-region:disabled,
+#me-area:disabled,
+#contact-state:disabled,
+#contact-city-select:disabled,
+#contact-region-select:disabled,
+#contact-area-select:disabled {
+    background-color: #e6e8eb;
+    color: #707780;
+    cursor: not-allowed;
 }
 
 #map-location-status {
@@ -484,6 +501,55 @@ main {
     text-align: center;
     box-shadow: 0 1px 5px rgb(0 0 0 / 25%);
     pointer-events: none;
+}
+
+#map-user-location-status {
+    position: absolute;
+    z-index: 1000;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgb(255 255 255 / 92%);
+    color: #333;
+    font-size: 0.9rem;
+    text-align: center;
+    box-shadow: 0 1px 5px rgb(0 0 0 / 25%);
+    pointer-events: none;
+}
+
+.map-popup-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    min-width: 230px;
+}
+
+.map-popup-actions button,
+.map-popup-directions {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 4px;
+    background: #004080;
+    color: #fff;
+    font: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.map-popup-directions {
+    background: #e2e8f0;
+    color: #004080;
 }
 
 #btn-open-modal,
@@ -869,6 +935,10 @@ textarea {
 .custom-home-pin .icon {
     width: 20px;
     height: 20px;
+}
+
+.user-location-dot {
+    filter: drop-shadow(0 1px 3px rgb(0 0 0 / 55%));
 }
 
 .coordinate-row {

@@ -60,7 +60,7 @@
   };
 
   // settings: scalar values come from this device when it has unsent changes,
-  // otherwise from Dropbox. City, region and area lists are combined.
+  // otherwise from Dropbox. Location lists are combined.
   const mergeData = (local, remote, { localDirty = false } = {}) => {
     const localSettings = local.settings || {};
     const remoteSettings = remote.settings || {};
@@ -102,6 +102,10 @@
     settings.cities = unionBy(
       [localSettings.cities, remoteSettings.cities],
       (city) => String(city),
+    );
+    settings.countries = unionBy(
+      [localSettings.countries, remoteSettings.countries],
+      (country) => String(country).toLowerCase(),
     );
     settings.regions = unionBy(
       [localSettings.regions, remoteSettings.regions],

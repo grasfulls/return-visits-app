@@ -194,8 +194,8 @@
               </li>
               <li>
                 <strong>Fill in Defaults and Your Details.</strong> Set your
-                usual city and state, then add the personal details you want
-                to share or use for your home map pin.
+                country, state or province, and city, then add the personal
+                details you want to share or use for your home map pin.
               </li>
               <li>
                 <strong>Set up Cities, Regions, and Areas.</strong> Add the
@@ -247,6 +247,7 @@
           <p id="map-location-status" role="status" aria-live="polite">
             Drag a pin to move it; changes save automatically.
           </p>
+          <p id="map-user-location-status" role="status" aria-live="polite"></p>
         </div>
 
         <!-- Settings View -->
@@ -265,8 +266,8 @@
                 <button type="button" id="btn-setup-finish">I'm ready — go to Contacts</button>
               </p>
               <form id="settings-form">
-                <label>Default State:</label>
-                <input type="text" id="setting-state" placeholder="CA or California" />
+                <label>Default State / Province:</label>
+                <input type="text" id="setting-state" placeholder="State or province" />
 
                 <label>Default City:</label>
                 <input type="text" id="setting-default-city" />
@@ -296,12 +297,47 @@
               <form id="me-form">
                 <label for="me-name">Name:</label>
                 <input type="text" id="me-name" autocomplete="name" />
+                <label for="me-country">Country:</label>
+                <select id="me-country"></select>
+                <div id="new-me-country-container" hidden>
+                  <label for="input-new-me-country">New country name:</label>
+                  <input type="text" id="input-new-me-country" placeholder="Enter country name..." />
+                  <div class="new-contact-area-actions">
+                    <button type="button" id="btn-save-new-me-country">Add Country</button>
+                    <button type="button" id="btn-cancel-new-me-country">Cancel</button>
+                  </div>
+                </div>
+                <label for="me-state">State / Province:</label>
+                <input type="text" id="me-state" placeholder="State or province" disabled />
+                <label for="me-city">City:</label>
+                <input type="text" id="me-city" list="me-city-options" placeholder="Choose or enter a city" autocomplete="off" disabled />
+                <datalist id="me-city-options"></datalist>
+                <label for="me-region">Region:</label>
+                <select id="me-region" disabled>
+                  <option value="">Choose a region (optional)</option>
+                </select>
+                <div id="new-me-region-container" hidden>
+                  <label for="input-new-me-region">New region name:</label>
+                  <input type="text" id="input-new-me-region" placeholder="Enter new region name..." />
+                  <div class="new-contact-area-actions">
+                    <button type="button" id="btn-save-new-me-region">Add Region</button>
+                    <button type="button" id="btn-cancel-new-me-region">Cancel</button>
+                  </div>
+                </div>
+                <label for="me-area">Area:</label>
+                <select id="me-area" disabled>
+                  <option value="">Choose an area (optional)</option>
+                </select>
+                <div id="new-me-area-container" hidden>
+                  <label for="input-new-me-area">New area name:</label>
+                  <input type="text" id="input-new-me-area" placeholder="Enter new area name..." />
+                  <div class="new-contact-area-actions">
+                    <button type="button" id="btn-save-new-me-area">Add Area</button>
+                    <button type="button" id="btn-cancel-new-me-area">Cancel</button>
+                  </div>
+                </div>
                 <label for="me-street">Street Address:</label>
                 <input type="text" id="me-street" autocomplete="street-address" />
-                <label for="me-city">City:</label>
-                <input type="text" id="me-city" />
-                <label for="me-state">State:</label>
-                <input type="text" id="me-state" placeholder="CA or California" />
                 <div class="coordinate-row">
                   <label>Latitude:
                     <input type="text" id="me-lat" inputmode="decimal" />
@@ -342,9 +378,9 @@
                 divided into <strong>regions</strong>, which are large parts of
                 the city (such as North, South, East, and West). A region is
                 divided into <strong>areas</strong>, which are smaller
-                neighborhoods within that region. New cities are automatically
-                given the regions North, South, East, and West; you can add
-                more or delete any you don't need.
+                neighborhoods within that region. Cities, regions, and areas
+                are added as you enter them for yourself or a contact; use
+                each field's <strong>+ Add New</strong> choice to add one.
               </p>
               <div style="display: flex; gap: 8px">
                 <input
@@ -926,61 +962,34 @@
               placeholder="(555) 123-4567"
             />
 
-            <label for="contact-address">Street Address:</label>
-            <input type="text" id="contact-address" />
-            <small id="pin-address-hint">
-              Entering or saving an address does not create a map pin by itself.
-              Choose the lookup button below; partial street names can return
-              several matches, and a city-only lookup places an approximate pin.
-            </small>
-
-            <label>City (optional):</label>
-            <select id="contact-city-select"></select>
-            <div id="new-city-container" style="display: none; margin-top: 6px">
-              <small class="location-hint">
-                Adding a city also adds the regions North, South, East, and
-                West. A region is a large part of the city; an area is a
-                neighborhood within a region.
-              </small>
-              <div style="display: flex; gap: 6px">
-                <input
-                  type="text"
-                  id="input-new-city"
-                  placeholder="Enter new city name..."
-                />
-                <button
-                  type="button"
-                  id="btn-save-new-city"
-                  style="
-                    background: #28a745;
-                    color: white;
-                    border: none;
-                    padding: 6px 12px;
-                    border-radius: 4px;
-                    cursor: pointer;
-                  "
-                >
-                  Add
-                </button>
-                <button
-                  type="button"
-                  id="btn-cancel-new-city"
-                  style="
-                    background: #6c757d;
-                    color: white;
-                    border: none;
-                    padding: 6px 12px;
-                    border-radius: 4px;
-                    cursor: pointer;
-                  "
-                >
-                  Cancel
-                </button>
+            <label for="contact-country">Country:</label>
+            <select id="contact-country"></select>
+            <div id="new-contact-country-container" hidden>
+              <label for="input-new-contact-country">New country name:</label>
+              <input type="text" id="input-new-contact-country" placeholder="Enter country name..." />
+              <div class="new-contact-area-actions">
+                <button type="button" id="btn-save-new-contact-country">Add Country</button>
+                <button type="button" id="btn-cancel-new-contact-country">Cancel</button>
               </div>
             </div>
 
-            <label>State:</label>
-            <input type="text" id="contact-state" placeholder="CA or California" />
+            <label for="contact-state">State / Province:</label>
+            <input type="text" id="contact-state" placeholder="State or province" disabled />
+
+            <label for="contact-city-select">City (optional):</label>
+            <input
+              type="text"
+              id="contact-city-select"
+              list="contact-city-options"
+              placeholder="Choose or enter a city"
+              autocomplete="off"
+              disabled
+            />
+            <datalist id="contact-city-options"></datalist>
+            <small>
+              Select a saved city, choose + Add New City..., or type a new
+              city. New city names are saved as filter choices.
+            </small>
 
             <label>Region (optional):</label>
             <select id="contact-region-select" disabled>
@@ -1032,6 +1041,14 @@
               </div>
             </div>
 
+            <label for="contact-address">Street Address:</label>
+            <input type="text" id="contact-address" />
+            <small id="pin-address-hint">
+              Entering or saving an address does not create a map pin by itself.
+              Choose the lookup button below; partial street names can return
+              several matches, and a city-only lookup places an approximate pin.
+            </small>
+
             <div id="pin-summary" hidden>
               <span>📍 Map pin set</span>
               <button type="button" id="btn-adjust-pin">Adjust pin</button>
@@ -1058,11 +1075,12 @@
             </div>
             <small>
               Address and cross-street lookups send the entered location text
-              to OpenStreetMap Nominatim only when you choose a lookup button.
-              While the Map is open without contact pins, its default city and
-              state are also sent to Nominatim to center the map.
-              Device location uses this device's location and may be
-              approximate. You can always adjust the pin.
+              to OpenStreetMap Nominatim when you choose a lookup button. When
+              the Map is open, it looks up the City, State / Province, and
+              Country of contacts
+              without saved coordinates to show approximate city pins. Device
+              location is requested when the Map opens and may be approximate.
+              You can always adjust a contact's saved pin.
             </small>
             <div
               id="address-match-results"

@@ -462,17 +462,16 @@
           include a leading 1 for a U.S. country code.
         </li>
         <li>
-          A contact can have one City, one Region within that City, and one Area
-          within that Region. Region becomes available after choosing a City;
-          Area becomes available after choosing a Region. These location details
-          are optional. The Area list includes <strong>+ Add New Area...</strong>
-          even when other areas are available, so you can create an area for
-          the selected City and Region without leaving the contact form. The
-          Region list likewise includes <strong>+ Add New Region...</strong>
-          for the selected City. A Region is a large part of a city, and an
-          Area is a neighborhood within a Region. Every new City is
-          automatically given the Regions North, South, East, and West, which
-          you can rename or delete in Settings.
+          Choose Country first, then enter State / Province to enable City.
+          Region becomes available after choosing a City, and Area after
+          choosing a Region. These location details are optional. New contacts
+          default to the country saved in Your Details, but you can choose a
+          different country for each contact. The Country list includes Canada,
+          Mexico, United States, saved custom countries, and <strong>+ Country</strong>
+          to add another. Cities are saved as you enter them. The Region and
+          Area lists each include a <strong>+ Add New...</strong> choice so you
+          can add those locations without leaving the form. A Region is a large
+          part of a city, and an Area is a neighborhood within a Region.
         </li>
         <li>
           In <strong>Settings</strong>, use Edit beside a City, Region, or Area
@@ -502,15 +501,19 @@
           Use the round blue <strong>Map</strong> pin in the bottom navigation to view
           contacts that match the current search and filters and have map
           coordinates. Changing the search or filters also updates the map.
-          Contacts without coordinates do not have a pin on the map. If no
-          visible contacts have coordinates, the map centers approximately on
-          the Default City and State saved in Settings. While the Map is open
-          without pins, that city and state are sent to OpenStreetMap Nominatim
-          for the lookup.
+          Contacts with saved coordinates show their pins. For contacts
+          without coordinates but with a City, the map looks up that City and
+          State and Country and shows an approximate city pin. Tapping a pin opens contact
+          details with Edit Contact and Get Directions buttons. When you open
+          the Map, the browser asks for location permission and, if allowed,
+          shows your live position as a blue dot while the Map is open. If
+          there are no contact, home, or live-location pins, the map also
+          centers approximately on the Default City, State, and Country saved in Settings.
         </li>
         <li>
-          In Settings, <strong>Your Details</strong> stores your name, address
-          and home pin. Your home shows on the Map as a purple house icon (drag
+          In Settings, <strong>Your Details</strong> stores your name, country,
+          location, address, and home pin. The country saved there is the
+          default for new contacts. Your home shows on the Map as a purple house icon (drag
           it to adjust), the Map opens fitted to include it, and your name is
           added as “Shared by [your name]” to the message when you choose Share
           on a contact. The app prepares the message; you decide whether and
@@ -666,7 +669,7 @@
         </li>
         <li>
           On the <strong>Settings</strong> page, the printer icon prints your
-          settings: default state and city, whether a passphrase is on (never
+          settings: default country, state or province, and city, whether a passphrase is on (never
           the passphrase itself), and your cities, regions, and areas.
         </li>
         <li>
@@ -700,7 +703,7 @@
       <p>
         <strong>A full backup is complete.</strong> It contains all of the
         information the app stores: your contacts and visit notes, your
-        Defaults (state and city), Your Details (name, address and home pin),
+        Defaults (state and city), Your Details (name, country, address and home pin),
         and your Cities, Regions and Areas. Restoring it brings all of these
         back. Only an export of selected contacts (made while a search or
         filter is active) is limited to those contacts.
@@ -759,10 +762,10 @@
         </li>
         <li>
           To import one or more contacts, choose the import icon (a tray with
-          an arrow pointing down) next to the blue <strong>+</strong> at the top
-          of the contact list and select one or several contact files. You are
-          asked for a passphrase only if a file is encrypted. Importing adds the
-          contacts without replacing any existing ones.
+          an arrow pointing down) at the far right of the top of the contact
+          list and select one or several contact files. You are asked for a
+          passphrase only if a file is encrypted. Importing adds the contacts
+          without replacing any existing ones.
         </li>
       </ul>
 

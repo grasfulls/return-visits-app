@@ -1,8 +1,10 @@
 const DEFAULT_SETTINGS = {
-  state: "CA",
-  defaultCity: "Newcastle",
-  cities: ["Newcastle", "Rocklin", "Roseville", "Auburn"],
-  regions: ["North", "South", "East", "West"],
+  country: "United States",
+  countries: ["Canada", "Mexico", "United States"],
+  state: "",
+  defaultCity: "",
+  cities: [],
+  regions: [],
   areas: [],
 };
 const ENCRYPTION_ITERATIONS = 310000;
@@ -13,8 +15,8 @@ const REQUIRE_PASSPHRASE_ON_FIRST_USE = false;
 const MIN_PASSPHRASE_LENGTH = 12;
 
 // Bump on any change to the stored data shape, and add a migration in
-// normalizeRegionData. Version 2 added contact updatedAt and deletedContacts.
-const SCHEMA_VERSION = 2;
+// normalizeRegionData. Version 3 added country to settings and contacts.
+const SCHEMA_VERSION = 3;
 const EPOCH_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 
 class NewerDataVersionError extends Error {
@@ -200,6 +202,27 @@ const normalizeUsState = (value) => {
   if (/^[a-z]{2}$/i.test(normalized)) return normalized.toUpperCase();
   return toTitleCase(state);
 };
+const normalizeCountry = (value) => {
+  const country = String(value ?? "").trim().replace(/\s+/g, " ");
+  const normalized = country.toLowerCase();
+  if (["ca", "can", "canada"].includes(normalized)) return "Canada";
+  if (["mx", "mex", "mexico", "méxico"].includes(normalized)) return "Mexico";
+  if (
+    ["us", "usa", "u.s.", "u.s.a.", "united states", "united states of america"].includes(
+      normalized,
+    )
+  ) {
+    return "United States";
+  }
+  return toTitleCase(country);
+};
+const normalizeLocationState = (country, value) =>
+  normalizeCountry(country) === "United States"
+    ? normalizeUsState(value)
+    : /^[a-z]{2}$/i.test(String(value ?? "").trim())
+      ? String(value).trim().toUpperCase()
+      : toTitleCase(String(value ?? "").trim().replace(/\s+/g, " "));
+const DEFAULT_COUNTRIES = ["Canada", "Mexico", "United States"];
 
 const STREET_SUFFIX_ABBREVIATIONS = {
   alley: "Aly",
@@ -381,6 +404,12 @@ const getStreetAddress = (contact) => {
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean);
+  if (
+    contact.country &&
+    parts[parts.length - 1]?.toLowerCase() === contact.country.toLowerCase()
+  ) {
+    parts.pop();
+  }
   if (contact.state && parts[parts.length - 1] === contact.state) parts.pop();
   if (contact.city && parts[parts.length - 1] === contact.city) parts.pop();
   return parts.join(", ");
@@ -390,10 +419,28 @@ const getFormattedContactAddress = (contact) =>
   [
     normalizeStreetName(getStreetAddress(contact)),
     contact.city,
-    normalizeUsState(contact.state),
+    normalizeLocationState(contact.country, contact.state),
+    contact.country,
   ]
     .filter(Boolean)
     .join(", ");
+
+const hasContactCoordinates = (contact) => {
+  const latitude = Number(contact.lat);
+  const longitude = Number(contact.lng);
+  return (
+    contact.lat !== undefined &&
+    contact.lat !== null &&
+    String(contact.lat).trim() !== "" &&
+    contact.lng !== undefined &&
+    contact.lng !== null &&
+    String(contact.lng).trim() !== "" &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    Math.abs(latitude) <= 90 &&
+    Math.abs(longitude) <= 180
+  );
+};
 
 const getNavigationUrl = (contact) => {
   const latitude = Number(contact.lat);
@@ -797,7 +844,7 @@ const normalizeTransferredContact = (contact) => {
             typeof area.region === "string" &&
             (area.city === undefined || typeof area.city === "string"),
         ))) ||
-    ["city", "region", "area", "state", "streetAddress"].some(
+    ["country", "city", "region", "area", "state", "streetAddress"].some(
       (field) =>
         contact[field] !== undefined && typeof contact[field] !== "string",
     ) ||
@@ -877,6 +924,18 @@ const normalizeRegionData = (settings, contacts) => {
     throw new NewerDataVersionError();
   }
   const normalizedSettings = { ...settings };
+  const defaultCountry = normalizeCountry(
+    settings.me?.country || settings.country || DEFAULT_SETTINGS.country,
+  );
+  const countries = [
+    ...new Set([
+      ...DEFAULT_COUNTRIES,
+      ...(Array.isArray(settings.countries) ? settings.countries : [])
+        .filter((country) => typeof country === "string" && country.trim())
+        .map(normalizeCountry),
+      defaultCountry,
+    ]),
+  ];
   const cities = Array.isArray(settings.cities)
     ? [...new Set(settings.cities.filter((city) => typeof city === "string"))]
     : [...DEFAULT_SETTINGS.cities];
@@ -915,6 +974,13 @@ const normalizeRegionData = (settings, contacts) => {
       areaDefinitions.push({ name, region, city });
     }
   };
+  if (typeof settings.me?.city === "string" && settings.me.city) {
+    if (!cities.includes(settings.me.city)) cities.push(settings.me.city);
+    if (settings.me.region) addRegion(settings.me.region, settings.me.city);
+    if (settings.me.area && settings.me.region) {
+      addArea(settings.me.area, settings.me.region, settings.me.city);
+    }
+  }
 
   if (
     originalRegions.every(
@@ -997,6 +1063,7 @@ const normalizeRegionData = (settings, contacts) => {
     delete rest.areaAssignments;
     return {
       ...rest,
+      country: normalizeCountry(contact.country || defaultCountry),
       city,
       region,
       area: areaDefinition && areaDefinition.region === region ? areaName : "",
@@ -1006,6 +1073,18 @@ const normalizeRegionData = (settings, contacts) => {
   });
 
   normalizedSettings.schemaVersion = SCHEMA_VERSION;
+  normalizedSettings.country = defaultCountry;
+  normalizedSettings.countries = countries;
+  if (normalizedSettings.me) {
+    normalizedSettings.me = {
+      ...normalizedSettings.me,
+      country: normalizeCountry(normalizedSettings.me.country || defaultCountry),
+      state: normalizeLocationState(
+        normalizedSettings.me.country || defaultCountry,
+        normalizedSettings.me.state,
+      ),
+    };
+  }
   normalizedSettings.deletedContacts = Array.isArray(settings.deletedContacts)
     ? settings.deletedContacts.filter(
         (entry) => entry && entry.id !== undefined && entry.deletedAt,
@@ -1520,7 +1599,8 @@ const initializeApp = async () => {
 
   // Settings State & Lists
   let settings = savedSettings;
-  settings.state = normalizeUsState(settings.state);
+  settings.country = normalizeCountry(settings.country);
+  settings.state = normalizeLocationState(settings.country, settings.state);
   const saveSettings = () =>
     encryptStoredValue(database, "settings", settings, encryptionKey).then(
       (result) => {
@@ -1532,11 +1612,40 @@ const initializeApp = async () => {
   // Populate Settings View Form
   document.getElementById("setting-state").value = settings.state;
   document.getElementById("setting-default-city").value =
-    toTitleCase(settings.defaultCity || "Newcastle");
+    toTitleCase(settings.defaultCity || "");
 
   // Populate All Dropdowns (Filters & Modal Selects)
   let selectedContactArea = "";
   let selectedContactRegion = "";
+  const countrySelects = [
+    document.getElementById("me-country"),
+    document.getElementById("contact-country"),
+  ];
+  const populateCountryOptions = () => {
+    countrySelects.forEach((select) => {
+      const currentCountry = select.value || settings.country;
+      select.innerHTML = "";
+      [...DEFAULT_COUNTRIES, ...settings.countries.filter(
+        (country) => !DEFAULT_COUNTRIES.includes(country),
+      )].forEach((country) => {
+        const option = document.createElement("option");
+        option.value = country;
+        option.textContent = country;
+        select.appendChild(option);
+      });
+      const addCountryOption = document.createElement("option");
+      addCountryOption.value = "__ADD_COUNTRY__";
+      addCountryOption.textContent = "+ Country";
+      select.appendChild(addCountryOption);
+      select.value = Array.from(select.options).some(
+        (option) => option.value === currentCountry,
+      )
+        ? currentCountry
+        : settings.country;
+      select.dataset.selectedCountry = select.value;
+    });
+  };
+  populateCountryOptions();
   const compareNames = (a, b) =>
     a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
   const sortLocations = () => {
@@ -1551,18 +1660,8 @@ const initializeApp = async () => {
         compareNames(a.name, b.name),
     );
   };
-  const DEFAULT_REGION_NAMES = ["North", "South", "East", "West"];
-  const addCityWithDefaultRegions = (cityName) => {
+  const addCity = (cityName) => {
     settings.cities.push(cityName);
-    DEFAULT_REGION_NAMES.forEach((name) => {
-      if (
-        !settings.regions.some(
-          (region) => region.city === cityName && region.name === name,
-        )
-      ) {
-        settings.regions.push({ name, city: cityName });
-      }
-    });
   };
   const rollbackNewCity = (cityName) => {
     settings.cities = settings.cities.filter((city) => city !== cityName);
@@ -1573,27 +1672,31 @@ const initializeApp = async () => {
   const populateDropdowns = () => {
     sortLocations();
     const citySelect = document.getElementById("contact-city-select");
+    const cityOptions = document.getElementById("contact-city-options");
+    const meCityInput = document.getElementById("me-city");
     const currentCityVal = citySelect.value;
-    citySelect.innerHTML = "";
-    const emptyCityOption = document.createElement("option");
-    emptyCityOption.value = "";
-    emptyCityOption.textContent = "Choose a city (optional)";
-    citySelect.appendChild(emptyCityOption);
+    cityOptions.innerHTML = "";
+    const addCityOpt = document.createElement("option");
+    addCityOpt.value = "+ Add New City...";
+    cityOptions.appendChild(addCityOpt);
     settings.cities.forEach((city) => {
       const opt = document.createElement("option");
       opt.value = city;
-      opt.textContent = city;
-      citySelect.appendChild(opt);
+      cityOptions.appendChild(opt);
     });
-    const addCityOpt = document.createElement("option");
-    addCityOpt.value = "__ADD_NEW__";
-    addCityOpt.textContent = "+ Add New City...";
-    citySelect.appendChild(addCityOpt);
-    if (settings.cities.includes(currentCityVal)) {
-      citySelect.value = currentCityVal;
-    } else {
-      citySelect.value = "";
-    }
+    citySelect.value = currentCityVal;
+    const meCityOptions = document.getElementById("me-city-options");
+    const currentMeCity = meCityInput.value;
+    meCityOptions.innerHTML = "";
+    const addMeCityOption = document.createElement("option");
+    addMeCityOption.value = "+ Add New City...";
+    meCityOptions.appendChild(addMeCityOption);
+    settings.cities.forEach((city) => {
+      const option = document.createElement("option");
+      option.value = city;
+      meCityOptions.appendChild(option);
+    });
+    meCityInput.value = currentMeCity;
 
     const filterCity = document.getElementById("filter-city");
     const currentCityFilter = filterCity.value;
@@ -1608,6 +1711,48 @@ const initializeApp = async () => {
 
     const contactRegion = document.getElementById("contact-region-select");
     const contactArea = document.getElementById("contact-area-select");
+    const meRegion = document.getElementById("me-region");
+    const meArea = document.getElementById("me-area");
+    const populateMeRegionArea = (selectedRegion = "", selectedArea = "") => {
+      const city = meCityInput.value.trim();
+      meRegion.innerHTML = '<option value="">Choose a region (optional)</option>';
+      settings.regions
+        .filter((region) => region.city === city)
+        .forEach((region) => {
+          const option = document.createElement("option");
+          option.value = region.name;
+          option.textContent = region.name;
+          meRegion.appendChild(option);
+        });
+      const addRegion = document.createElement("option");
+      addRegion.value = "__ADD_NEW__";
+      addRegion.textContent = "+ Add New Region...";
+      meRegion.appendChild(addRegion);
+      meRegion.disabled =
+        !document.getElementById("me-country").value ||
+        !document.getElementById("me-state").value.trim() ||
+        !city ||
+        !settings.cities.includes(city);
+      meRegion.value = selectedRegion;
+
+      meArea.innerHTML = '<option value="">Choose an area (optional)</option>';
+      settings.areas
+        .filter(
+          (area) => area.city === city && area.region === meRegion.value,
+        )
+        .forEach((area) => {
+          const option = document.createElement("option");
+          option.value = area.name;
+          option.textContent = area.name;
+          meArea.appendChild(option);
+        });
+      const addArea = document.createElement("option");
+      addArea.value = "__ADD_NEW__";
+      addArea.textContent = "+ Add New Area...";
+      meArea.appendChild(addArea);
+      meArea.disabled = meRegion.disabled || !meRegion.value;
+      meArea.value = selectedArea;
+    };
     const populateContactRegionArea = (
       selectedRegion = "",
       selectedArea = "",
@@ -1627,7 +1772,11 @@ const initializeApp = async () => {
       addRegionOption.value = "__ADD_NEW__";
       addRegionOption.textContent = "+ Add New Region...";
       contactRegion.appendChild(addRegionOption);
-      contactRegion.disabled = !city;
+      contactRegion.disabled =
+        !document.getElementById("contact-country").value ||
+        !document.getElementById("contact-state").value.trim() ||
+        !city ||
+        !settings.cities.includes(city);
       contactRegion.value = selectedRegion;
 
       contactArea.innerHTML =
@@ -1646,12 +1795,13 @@ const initializeApp = async () => {
       addAreaOption.value = "__ADD_NEW__";
       addAreaOption.textContent = "+ Add New Area...";
       contactArea.appendChild(addAreaOption);
-      contactArea.disabled = !city || !contactRegion.value;
+      contactArea.disabled = contactRegion.disabled || !contactRegion.value;
       contactArea.value = selectedArea;
       selectedContactArea = contactArea.value;
       selectedContactRegion = contactRegion.value;
     };
     populateContactRegionArea(contactRegion.value, contactArea.value);
+    populateMeRegionArea(meRegion.value, meArea.value);
 
     const filterRegion = document.getElementById("filter-region");
     const currentRegionFilter = filterRegion.value;
@@ -1806,21 +1956,208 @@ const initializeApp = async () => {
         "Add a city, then add regions and areas beneath it.";
     }
 
-    return { populateContactRegionArea, populateSettingRegionOptions };
+    return {
+      populateContactRegionArea,
+      populateMeRegionArea,
+      populateSettingRegionOptions,
+    };
   };
   const dropdownHelpers = populateDropdowns();
   const citySelect = document.getElementById("contact-city-select");
   const contactRegionSelect = document.getElementById("contact-region-select");
   const contactAreaSelect = document.getElementById("contact-area-select");
+  const contactCountrySelect = document.getElementById("contact-country");
+  const meCountrySelect = document.getElementById("me-country");
+  const updateContactLocationFields = () => {
+    const hasCountry = Boolean(contactCountrySelect.value);
+    const hasState = Boolean(document.getElementById("contact-state").value.trim());
+    document.getElementById("contact-state").disabled = !hasCountry;
+    citySelect.disabled = !hasCountry || !hasState;
+    dropdownHelpers.populateContactRegionArea(
+      contactRegionSelect.value,
+      contactAreaSelect.value,
+    );
+  };
+  const updateMeLocationFields = () => {
+    const hasCountry = Boolean(meCountrySelect.value);
+    const hasState = Boolean(document.getElementById("me-state").value.trim());
+    document.getElementById("me-state").disabled = !hasCountry;
+    document.getElementById("me-city").disabled = !hasCountry || !hasState;
+    dropdownHelpers.populateMeRegionArea(
+      document.getElementById("me-region").value,
+      document.getElementById("me-area").value,
+    );
+  };
+  const resetDependentLocationFields = (select) => {
+    if (select === contactCountrySelect) {
+      document.getElementById("contact-state").value = "";
+      citySelect.value = "";
+      document.getElementById("new-contact-region-container").hidden = true;
+      document.getElementById("new-contact-area-container").hidden = true;
+      updateContactLocationFields();
+    } else {
+      document.getElementById("me-state").value = "";
+      document.getElementById("me-city").value = "";
+      document.getElementById("me-region").value = "";
+      document.getElementById("me-area").value = "";
+      document.getElementById("new-me-region-container").hidden = true;
+      document.getElementById("new-me-area-container").hidden = true;
+      updateMeLocationFields();
+    }
+  };
+  const getCountryAddFields = (select) =>
+    select === contactCountrySelect
+      ? {
+          container: document.getElementById("new-contact-country-container"),
+          input: document.getElementById("input-new-contact-country"),
+        }
+      : {
+          container: document.getElementById("new-me-country-container"),
+          input: document.getElementById("input-new-me-country"),
+        };
+  const handleCountryChange = (select) => {
+    const previousCountry = select.dataset.selectedCountry || settings.country;
+    const country = select.value;
+    if (country === "__ADD_COUNTRY__") {
+      select.value = previousCountry;
+      const { container, input } = getCountryAddFields(select);
+      container.hidden = false;
+      input.value = "";
+      input.focus();
+      return;
+    }
+    const { container, input } = getCountryAddFields(select);
+    container.hidden = true;
+    input.value = "";
+    select.dataset.selectedCountry = country;
+    if (country !== previousCountry) resetDependentLocationFields(select);
+  };
+  const saveNewCountry = async (select) => {
+    const { container, input } = getCountryAddFields(select);
+    const enteredCountry = normalizeCountry(input.value);
+    if (!enteredCountry) {
+      alert("Enter a country name.");
+      input.focus();
+      return;
+    }
+    const country =
+      settings.countries.find(
+        (existing) => existing.toLowerCase() === enteredCountry.toLowerCase(),
+      ) || enteredCountry;
+    const isNew = !settings.countries.includes(country);
+    if (isNew) settings.countries.push(country);
+    try {
+      if (isNew) await saveSettings();
+    } catch (error) {
+      settings.countries = settings.countries.filter(
+        (existing) => existing !== country,
+      );
+      showStorageError("save country", error);
+      return;
+    }
+    const previousCountry = select.dataset.selectedCountry || settings.country;
+    populateCountryOptions();
+    select.value = country;
+    select.dataset.selectedCountry = country;
+    container.hidden = true;
+    input.value = "";
+    if (country !== previousCountry) resetDependentLocationFields(select);
+  };
+  countrySelects.forEach((select) =>
+    select.addEventListener("change", () => handleCountryChange(select)),
+  );
+  document
+    .getElementById("btn-save-new-contact-country")
+    .addEventListener("click", () => saveNewCountry(contactCountrySelect));
+  document
+    .getElementById("btn-save-new-me-country")
+    .addEventListener("click", () => saveNewCountry(meCountrySelect));
+  [
+    ["contact-country", contactCountrySelect],
+    ["me-country", meCountrySelect],
+  ].forEach(([prefix, select]) => {
+    document
+      .getElementById(`btn-cancel-new-${prefix}`)
+      .addEventListener("click", () => {
+        const { container, input } = getCountryAddFields(select);
+        container.hidden = true;
+        input.value = "";
+      });
+  });
+  document.getElementById("contact-state").addEventListener("input", () => {
+    updateContactLocationFields();
+  });
+  document.getElementById("contact-state").addEventListener("change", () => {
+    citySelect.value = "";
+    dropdownHelpers.populateContactRegionArea("", "");
+  });
+  document.getElementById("me-state").addEventListener("input", () => {
+    updateMeLocationFields();
+  });
+  document.getElementById("me-state").addEventListener("change", () => {
+    document.getElementById("me-city").value = "";
+    document.getElementById("me-region").value = "";
+    document.getElementById("me-area").value = "";
+    dropdownHelpers.populateMeRegionArea("", "");
+  });
+  citySelect.addEventListener("input", () => {
+    dropdownHelpers.populateContactRegionArea("", "");
+  });
+  document.getElementById("me-city").addEventListener("input", () => {
+    dropdownHelpers.populateMeRegionArea("", "");
+  });
+  let pendingContactCitySave = Promise.resolve(true);
+  let lastCommittedContactCity = "";
   const newContactRegionContainer = document.getElementById(
     "new-contact-region-container",
   );
+  const commitContactCity = async () => {
+    const enteredCity = toTitleCase(citySelect.value.trim());
+    if (!enteredCity || enteredCity === "+ Add New City...") {
+      citySelect.value = "";
+      lastCommittedContactCity = "";
+      dropdownHelpers.populateContactRegionArea("", "");
+      return true;
+    }
+
+    const existingCity = settings.cities.find(
+      (city) => city.toLowerCase() === enteredCity.toLowerCase(),
+    );
+    if (existingCity) {
+      citySelect.value = existingCity;
+      if (existingCity !== lastCommittedContactCity) {
+        dropdownHelpers.populateContactRegionArea("", "");
+      }
+      lastCommittedContactCity = existingCity;
+      return true;
+    }
+
+    addCity(enteredCity);
+    try {
+      await saveSettings();
+    } catch (error) {
+      rollbackNewCity(enteredCity);
+      citySelect.value = lastCommittedContactCity;
+      dropdownHelpers.populateContactRegionArea("", "");
+      showStorageError("save city", error);
+      return false;
+    }
+    populateDropdowns();
+    citySelect.value = enteredCity;
+    lastCommittedContactCity = enteredCity;
+    dropdownHelpers.populateContactRegionArea("", "");
+    return true;
+  };
   citySelect.addEventListener("change", () => {
     newContactRegionContainer.hidden = true;
     document.getElementById("new-contact-area-container").hidden = true;
-    if (citySelect.value !== "__ADD_NEW__") {
+    if (citySelect.value.trim() === "+ Add New City...") {
+      citySelect.value = "";
       dropdownHelpers.populateContactRegionArea("", "");
+      citySelect.focus();
+      return;
     }
+    pendingContactCitySave = commitContactCity();
   });
   contactRegionSelect.addEventListener("change", () => {
     document.getElementById("new-contact-area-container").hidden = true;
@@ -1862,7 +2199,7 @@ const initializeApp = async () => {
       input.focus();
       return;
     }
-    if (!city || city === "__ADD_NEW__") {
+    if (!city || city === "+ Add New City...") {
       alert("Choose a city before adding a region.");
       return;
     }
@@ -1956,61 +2293,10 @@ const initializeApp = async () => {
     .addEventListener("change", () =>
       dropdownHelpers.populateSettingRegionOptions(),
     );
-  // Inline "Add New City" Handlers
-  // Inline "Add New City" Handlers
-  const newCityContainer = document.getElementById("new-city-container");
-  const inputNewCity = document.getElementById("input-new-city");
-  inputNewCity.addEventListener("blur", () => {
-    inputNewCity.value = toTitleCase(inputNewCity.value);
-  });
   document
     .getElementById("setting-new-city")
     .addEventListener("blur", (event) => {
       event.currentTarget.value = toTitleCase(event.currentTarget.value);
-    });
-
-  citySelect.addEventListener("change", (e) => {
-    if (e.target.value === "__ADD_NEW__") {
-      newCityContainer.style.display = "block";
-      inputNewCity.value = "";
-      inputNewCity.focus();
-    } else {
-      newCityContainer.style.display = "none";
-    }
-  });
-
-  document
-    .getElementById("btn-save-new-city")
-    .addEventListener("click", async () => {
-      const val = toTitleCase(inputNewCity.value);
-      if (val) {
-        const existingCity = settings.cities.find(
-          (city) => city.toLowerCase() === val.toLowerCase(),
-        );
-        if (!existingCity) {
-          addCityWithDefaultRegions(val);
-          try {
-            await saveSettings();
-          } catch (error) {
-            rollbackNewCity(val);
-            showStorageError("save settings", error);
-            return;
-          }
-        }
-        populateDropdowns();
-        citySelect.value = existingCity || val;
-        dropdownHelpers.populateContactRegionArea("", "");
-        newCityContainer.style.display = "none";
-        inputNewCity.value = "";
-      }
-    });
-
-  document
-    .getElementById("btn-cancel-new-city")
-    .addEventListener("click", () => {
-      newCityContainer.style.display = "none";
-      citySelect.value = settings.defaultCity || settings.cities[0];
-      dropdownHelpers.populateContactRegionArea("", "");
     });
 
   // Settings View Buttons
@@ -2023,7 +2309,7 @@ const initializeApp = async () => {
         (city) => city.toLowerCase() === val.toLowerCase(),
       );
       if (val && !existingCity) {
-        addCityWithDefaultRegions(val);
+        addCity(val);
         input.value = "";
         try {
           await saveSettings();
@@ -2033,9 +2319,7 @@ const initializeApp = async () => {
           return;
         }
         populateDropdowns();
-        alert(
-          `City "${val}" added with the regions North, South, East, and West.`,
-        );
+        alert(`City "${val}" added.`);
       } else if (val) {
         alert("That city already exists.");
       }
@@ -2114,7 +2398,10 @@ const initializeApp = async () => {
     .getElementById("settings-form")
     .addEventListener("submit", async (e) => {
       e.preventDefault();
-      settings.state = normalizeUsState(settingStateInput.value);
+      settings.state = normalizeLocationState(
+        settings.country,
+        settingStateInput.value,
+      );
       settingStateInput.value = settings.state;
       settings.defaultCity = toTitleCase(settingDefaultCityInput.value);
       settingDefaultCityInput.value = settings.defaultCity;
@@ -2125,7 +2412,7 @@ const initializeApp = async () => {
       if (existingCity) {
         settings.defaultCity = existingCity;
       } else if (settings.defaultCity) {
-        addCityWithDefaultRegions(settings.defaultCity);
+        addCity(settings.defaultCity);
       }
       try {
         await saveSettings();
@@ -2144,25 +2431,39 @@ const initializeApp = async () => {
 
   const meFields = {
     name: document.getElementById("me-name"),
-    street: document.getElementById("me-street"),
-    city: document.getElementById("me-city"),
+    country: document.getElementById("me-country"),
     state: document.getElementById("me-state"),
+    city: document.getElementById("me-city"),
+    region: document.getElementById("me-region"),
+    area: document.getElementById("me-area"),
+    street: document.getElementById("me-street"),
     lat: document.getElementById("me-lat"),
     lng: document.getElementById("me-lng"),
   };
   const meStatus = document.getElementById("me-status");
+  let lastCommittedMeCity = "";
   const populateMeForm = () => {
     const me = settings.me || {};
     Object.entries(meFields).forEach(([key, input]) => {
+      if (key === "region" || key === "area") return;
       input.value = me[key] || "";
     });
+    meFields.country.value = me.country || settings.country;
+    meCountrySelect.dataset.selectedCountry = meFields.country.value;
+    populateDropdowns();
+    meFields.region.value = me.region || "";
+    populateDropdowns();
+    meFields.area.value = me.area || "";
+    updateMeLocationFields();
+    lastCommittedMeCity = meFields.city.value;
   };
   const readMeForm = () => {
     const me = {};
     Object.entries(meFields).forEach(([key, input]) => {
       me[key] = input.value.trim();
     });
-    me.state = me.state ? normalizeUsState(me.state) : "";
+    me.country = normalizeCountry(me.country);
+    me.state = normalizeLocationState(me.country, me.state);
     me.street = me.street ? normalizeStreetName(me.street) : "";
     me.city = me.city ? toTitleCase(me.city) : "";
     return me;
@@ -2170,9 +2471,166 @@ const initializeApp = async () => {
   populateMeForm();
   meFields.state.addEventListener("blur", () => {
     if (meFields.state.value) {
-      meFields.state.value = normalizeUsState(meFields.state.value);
+      meFields.state.value = normalizeLocationState(
+        meFields.country.value,
+        meFields.state.value,
+      );
     }
   });
+  const commitMeCity = async () => {
+    const enteredCity = toTitleCase(meFields.city.value.trim());
+    if (!enteredCity || enteredCity === "+ Add New City...") {
+      meFields.city.value = "";
+      lastCommittedMeCity = "";
+      populateDropdowns();
+      return true;
+    }
+    const existingCity = settings.cities.find(
+      (city) => city.toLowerCase() === enteredCity.toLowerCase(),
+    );
+    if (existingCity) {
+      meFields.city.value = existingCity;
+      if (existingCity !== lastCommittedMeCity) {
+        meFields.region.value = "";
+        meFields.area.value = "";
+      }
+      lastCommittedMeCity = existingCity;
+      populateDropdowns();
+      return true;
+    }
+    meFields.region.value = "";
+    meFields.area.value = "";
+    addCityWithDefaultRegions(enteredCity);
+    try {
+      await saveSettings();
+    } catch (error) {
+      rollbackNewCity(enteredCity);
+      meFields.city.value = lastCommittedMeCity;
+      showStorageError("save city", error);
+      return false;
+    }
+    populateDropdowns();
+    meFields.city.value = enteredCity;
+    lastCommittedMeCity = enteredCity;
+    return true;
+  };
+  meFields.city.addEventListener("change", () => {
+    if (meFields.city.value.trim() === "+ Add New City...") {
+      meFields.city.value = "";
+      meFields.city.focus();
+      return;
+    }
+    commitMeCity();
+  });
+  meFields.region.addEventListener("change", () => {
+    if (meFields.region.value === "__ADD_NEW__") {
+      meFields.region.value = "";
+      document.getElementById("new-me-region-container").hidden = false;
+      document.getElementById("input-new-me-region").focus();
+    } else {
+      meFields.area.value = "";
+      dropdownHelpers.populateMeRegionArea(meFields.region.value, "");
+    }
+  });
+  meFields.area.addEventListener("change", () => {
+    if (meFields.area.value === "__ADD_NEW__") {
+      meFields.area.value = "";
+      document.getElementById("new-me-area-container").hidden = false;
+      document.getElementById("input-new-me-area").focus();
+    }
+  });
+  document
+    .getElementById("btn-save-new-me-region")
+    .addEventListener("click", async () => {
+      const input = document.getElementById("input-new-me-region");
+      const name = toTitleCase(input.value);
+      const city = meFields.city.value.trim();
+      if (!name || !city) {
+        alert("Enter a region name after choosing a city.");
+        input.focus();
+        return;
+      }
+      const existing = settings.regions.find(
+        (region) =>
+          region.city === city &&
+          region.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (existing) {
+        populateDropdowns();
+        meFields.region.value = existing.name;
+        document.getElementById("new-me-region-container").hidden = true;
+        alert("That region already exists in this city.");
+        return;
+      }
+      const region = { name, city };
+      settings.regions.push(region);
+      try {
+        await saveSettings();
+      } catch (error) {
+        settings.regions.pop();
+        showStorageError("save region", error);
+        return;
+      }
+      populateDropdowns();
+      meFields.region.value = name;
+      dropdownHelpers.populateMeRegionArea(name, "");
+      document.getElementById("new-me-region-container").hidden = true;
+      input.value = "";
+    });
+  document
+    .getElementById("btn-cancel-new-me-region")
+    .addEventListener("click", () => {
+      document.getElementById("new-me-region-container").hidden = true;
+      document.getElementById("input-new-me-region").value = "";
+      populateDropdowns();
+    });
+  document
+    .getElementById("btn-save-new-me-area")
+    .addEventListener("click", async () => {
+      const input = document.getElementById("input-new-me-area");
+      const name = toTitleCase(input.value);
+      const city = meFields.city.value.trim();
+      const region = meFields.region.value;
+      if (!name || !city || !region) {
+        alert("Enter an area name after choosing a city and region.");
+        input.focus();
+        return;
+      }
+      const existing = settings.areas.find(
+        (area) =>
+          area.city === city &&
+          area.region === region &&
+          area.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (existing) {
+        populateDropdowns();
+        meFields.area.value = existing.name;
+        document.getElementById("new-me-area-container").hidden = true;
+        alert("That area already exists in this region and city.");
+        return;
+      }
+      const area = { name, region, city };
+      settings.areas.push(area);
+      try {
+        await saveSettings();
+      } catch (error) {
+        settings.areas.pop();
+        showStorageError("save area", error);
+        return;
+      }
+      populateDropdowns();
+      meFields.region.value = region;
+      meFields.area.value = name;
+      document.getElementById("new-me-area-container").hidden = true;
+      input.value = "";
+    });
+  document
+    .getElementById("btn-cancel-new-me-area")
+    .addEventListener("click", () => {
+      document.getElementById("new-me-area-container").hidden = true;
+      document.getElementById("input-new-me-area").value = "";
+      populateDropdowns();
+    });
 
   document.getElementById("btn-me-find").addEventListener("click", async () => {
     const me = readMeForm();
@@ -2186,7 +2644,12 @@ const initializeApp = async () => {
     try {
       const url = new URL("https://nominatim.openstreetmap.org/search");
       url.search = new URLSearchParams({
-        q: [me.street, me.city, me.state || settings.state, "USA"]
+        q: [
+          me.street,
+          me.city,
+          me.state || settings.state,
+          me.country || settings.country,
+        ]
           .filter(Boolean)
           .join(", "),
         format: "jsonv2",
@@ -2240,7 +2703,25 @@ const initializeApp = async () => {
 
   document.getElementById("me-form").addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!(await commitMeCity())) return;
     const me = readMeForm();
+    if (
+      !me.country ||
+      (me.region &&
+        !settings.regions.some(
+          (region) => region.city === me.city && region.name === me.region,
+        )) ||
+      (me.area &&
+        !settings.areas.some(
+          (area) =>
+            area.city === me.city &&
+            area.region === me.region &&
+            area.name === me.area,
+        ))
+    ) {
+      meStatus.textContent = "Choose a valid country, city, region, and area.";
+      return;
+    }
     const lat = parseFloat(me.lat);
     const lng = parseFloat(me.lng);
     if (
@@ -2252,14 +2733,26 @@ const initializeApp = async () => {
       return;
     }
     const previousMe = settings.me;
+    const previousDefaults = {
+      country: settings.country,
+      state: settings.state,
+      defaultCity: settings.defaultCity,
+    };
     settings.me = me;
+    settings.country = me.country;
+    settings.state = me.state;
+    settings.defaultCity = me.city;
     try {
       await saveSettings();
     } catch (error) {
       settings.me = previousMe;
+      Object.assign(settings, previousDefaults);
       showStorageError("save your details", error);
       return;
     }
+    document.getElementById("setting-state").value = settings.state;
+    document.getElementById("setting-default-city").value =
+      settings.defaultCity;
     populateMeForm();
     if (map) renderMapMarkers();
     meStatus.textContent = "Your details were saved.";
@@ -2433,7 +2926,14 @@ const initializeApp = async () => {
           ...contact,
           city: name,
           streetAddress,
-          address: [streetAddress, name, contact.state].filter(Boolean).join(", "),
+          address: [
+            streetAddress,
+            name,
+            contact.state,
+            contact.country,
+          ]
+            .filter(Boolean)
+            .join(", "),
         };
       });
 
@@ -3011,21 +3511,108 @@ const initializeApp = async () => {
   let map = null;
   let mapMarkers = [];
   let homeMarker = null;
+  let userLocationMarker = null;
+  let userLocationAccuracy = null;
+  let userLocationWatchId = null;
+  let mapContactPoints = [];
+  let cityPinRenderGeneration = 0;
+  let lastCityPinLookupAt = 0;
+  const cityPinCoordinates = new Map();
+  const pendingCityPinLookups = new Map();
   const getHomePoint = () => {
     const lat = parseFloat(settings.me?.lat);
     const lng = parseFloat(settings.me?.lng);
     return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
   };
+  const fitMapToContactPoints = () => {
+    if (!map || !map.getContainer().offsetWidth) return;
+    const points = [...mapContactPoints];
+    const home = getHomePoint();
+    if (home) points.push(home);
+    if (userLocationMarker) {
+      const location = userLocationMarker.getLatLng();
+      points.push([location.lat, location.lng]);
+    }
+    if (points.length === 1) {
+      map.setView(points[0], 16);
+    } else if (points.length > 1) {
+      map.fitBounds(L.latLngBounds(points), {
+        padding: [50, 50],
+        animate: false,
+      });
+    }
+  };
   let lastDefaultCityCenterQuery = null;
   const defaultCityCoordinates = new Map();
   const pendingDefaultCityLookups = new Map();
+  const getCityPinQuery = (contact) =>
+    [
+      contact.city.trim(),
+      normalizeLocationState(
+        contact.country || settings.country,
+        contact.state || settings.state,
+      ),
+      contact.country || settings.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
   const getDefaultCityQuery = () =>
-    [settings.defaultCity.trim(), settings.state.trim(), "USA"]
+    [
+      settings.defaultCity.trim(),
+      settings.state.trim(),
+      settings.country || DEFAULT_SETTINGS.country,
+    ]
       .filter(Boolean)
       .join(", ");
 
+  const lookupCityPinCoordinates = async (query) => {
+    if (cityPinCoordinates.has(query)) {
+      return cityPinCoordinates.get(query);
+    }
+    let lookup = pendingCityPinLookups.get(query);
+    if (!lookup) {
+      lookup = (async () => {
+        const delay = 1100 - (Date.now() - lastCityPinLookupAt);
+        if (delay > 0) {
+          await new Promise((resolve) => window.setTimeout(resolve, delay));
+        }
+        lastCityPinLookupAt = Date.now();
+        const url = new URL("https://nominatim.openstreetmap.org/search");
+        url.search = new URLSearchParams({
+          q: query,
+          format: "jsonv2",
+          limit: "1",
+        }).toString();
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`City lookup failed with status ${response.status}.`);
+        }
+        const results = await response.json();
+        const latitude = Number(results[0]?.lat);
+        const longitude = Number(results[0]?.lon);
+        const location =
+          Number.isFinite(latitude) &&
+          Number.isFinite(longitude) &&
+          latitude >= -90 &&
+          latitude <= 90 &&
+          longitude >= -180 &&
+          longitude <= 180
+            ? [latitude, longitude]
+            : null;
+        cityPinCoordinates.set(query, location);
+        return location;
+      })();
+      pendingCityPinLookups.set(query, lookup);
+    }
+    try {
+      return await lookup;
+    } finally {
+      pendingCityPinLookups.delete(query);
+    }
+  };
+
   const centerMapOnDefaultCity = async () => {
-    if (!map || mapMarkers.length > 0) return;
+    if (!map || mapMarkers.length > 0 || userLocationMarker) return;
     const city = settings.defaultCity.trim();
     const state = settings.state.trim();
     if (!city) return;
@@ -3078,7 +3665,12 @@ const initializeApp = async () => {
         pendingDefaultCityLookups.set(query, lookup);
       }
       const location = await lookup;
-      if (mapMarkers.length > 0 || query !== getDefaultCityQuery()) return;
+      if (
+        mapMarkers.length > 0 ||
+        userLocationMarker ||
+        query !== getDefaultCityQuery()
+      )
+        return;
       if (!location) {
         status.textContent = `Couldn't locate ${city}${state ? `, ${state}` : ""}. Choose Find Address or City Pin on a contact to locate an address.`;
         return;
@@ -3088,7 +3680,12 @@ const initializeApp = async () => {
       lastDefaultCityCenterQuery = query;
       status.textContent = `No contact pins to show. The map is centered near ${city}${state ? `, ${state}` : ""}.`;
     } catch (error) {
-      if (mapMarkers.length > 0 || query !== getDefaultCityQuery()) return;
+      if (
+        mapMarkers.length > 0 ||
+        userLocationMarker ||
+        query !== getDefaultCityQuery()
+      )
+        return;
       console.error("Unable to locate the default city on the map:", error);
       status.textContent = `Couldn't locate ${city}${state ? `, ${state}` : ""}. Check your connection or use Find Address or City Pin on a contact.`;
     } finally {
@@ -3102,6 +3699,8 @@ const initializeApp = async () => {
       [39.8283, -98.5795],
       4,
     );
+    map.createPane("userLocationPane");
+    map.getPane("userLocationPane").style.zIndex = "650";
     window.mapInstance = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -3113,6 +3712,95 @@ const initializeApp = async () => {
       map.invalidateSize();
       renderMapMarkers();
     }, 50);
+  };
+
+  const stopMapLocationWatch = () => {
+    cityPinRenderGeneration += 1;
+    if (userLocationWatchId !== null) {
+      navigator.geolocation.clearWatch(userLocationWatchId);
+      userLocationWatchId = null;
+    }
+    if (userLocationMarker) {
+      map.removeLayer(userLocationMarker);
+      userLocationMarker = null;
+    }
+    if (userLocationAccuracy) {
+      map.removeLayer(userLocationAccuracy);
+      userLocationAccuracy = null;
+    }
+    document.getElementById("map-user-location-status").textContent = "";
+  };
+
+  const startMapLocationWatch = () => {
+    const status = document.getElementById("map-user-location-status");
+    if (!navigator.geolocation) {
+      status.textContent = "This browser does not support device location.";
+      return;
+    }
+    if (userLocationWatchId !== null) return;
+    status.textContent = "Requesting device location for the blue dot...";
+    userLocationWatchId = navigator.geolocation.watchPosition(
+      (position) => {
+        if (currentViewId !== "map-view" || !map) return;
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        if (
+          !Number.isFinite(latitude) ||
+          !Number.isFinite(longitude) ||
+          Math.abs(latitude) > 90 ||
+          Math.abs(longitude) > 180
+        ) {
+          status.textContent = "The device returned an invalid location.";
+          return;
+        }
+        const firstFix = !userLocationMarker;
+        const location = [latitude, longitude];
+        const reportedAccuracy = Number(position.coords.accuracy);
+        const accuracyRadius = Number.isFinite(reportedAccuracy)
+          ? Math.max(0, reportedAccuracy)
+          : 0;
+        if (!userLocationMarker) {
+          userLocationAccuracy = L.circle(location, {
+            pane: "userLocationPane",
+            radius: accuracyRadius,
+            color: "#1683ff",
+            weight: 1,
+            fillColor: "#1683ff",
+            fillOpacity: 0.12,
+            interactive: false,
+          }).addTo(map);
+          userLocationMarker = L.circleMarker(location, {
+            pane: "userLocationPane",
+            radius: 8,
+            color: "#ffffff",
+            weight: 3,
+            fillColor: "#1683ff",
+            fillOpacity: 1,
+            className: "user-location-dot",
+            interactive: false,
+          }).addTo(map);
+        } else {
+          userLocationMarker.setLatLng(location);
+          userLocationAccuracy.setLatLng(location);
+          userLocationAccuracy.setRadius(accuracyRadius);
+        }
+        if (firstFix) fitMapToContactPoints();
+        status.textContent = "Your live location is shown by the blue dot.";
+      },
+      (error) => {
+        if (currentViewId !== "map-view") return;
+        console.error("Unable to get the live map location:", error);
+        status.textContent =
+          error.code === error.PERMISSION_DENIED
+            ? "Location permission was denied. Allow location access to show your blue dot."
+            : "Could not get your location. Check location services and try again.";
+        if (error.code === error.PERMISSION_DENIED) {
+          navigator.geolocation.clearWatch(userLocationWatchId);
+          userLocationWatchId = null;
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 },
+    );
   };
 
   // Navigation & Dynamic Footer
@@ -3235,6 +3923,7 @@ const initializeApp = async () => {
           if (currentViewId === "settings-view" && !confirmLeaveSettings()) {
             return;
           }
+          if (currentViewId === "map-view") stopMapLocationWatch();
           currentViewId = btnConfig.id;
           document
             .querySelectorAll(".view")
@@ -3258,6 +3947,7 @@ const initializeApp = async () => {
                 renderMapMarkers();
               }, 50);
             }
+            startMapLocationWatch();
           }
         });
         navContainer.appendChild(btn);
@@ -3303,10 +3993,16 @@ const initializeApp = async () => {
     streetAddressInput.value = normalizeStreetName(streetAddressInput.value);
   });
   contactStateInput.addEventListener("blur", () => {
-    contactStateInput.value = normalizeUsState(contactStateInput.value);
+    contactStateInput.value = normalizeLocationState(
+      contactCountrySelect.value,
+      contactStateInput.value,
+    );
   });
   settingStateInput.addEventListener("blur", () => {
-    settingStateInput.value = normalizeUsState(settingStateInput.value);
+    settingStateInput.value = normalizeLocationState(
+      settings.country,
+      settingStateInput.value,
+    );
   });
   settingDefaultCityInput.addEventListener("blur", () => {
     settingDefaultCityInput.value = toTitleCase(settingDefaultCityInput.value);
@@ -3590,11 +4286,14 @@ const initializeApp = async () => {
       return;
     }
     const street = normalizeStreetName(streetAddressInput.value);
-    const city = document.getElementById("contact-city-select").value;
-    const state = normalizeUsState(contactStateInput.value);
+    const city = document.getElementById("contact-city-select").value.trim();
+    const state = normalizeLocationState(
+      contactCountrySelect.value,
+      contactStateInput.value,
+    );
     streetAddressInput.value = street;
     contactStateInput.value = state;
-    if ((!street && !city) || city === "__ADD_NEW__") {
+    if ((!street && !city) || city === "+ Add New City...") {
       setLocationStatus(
         "Enter a street address or choose a city before looking up its location.",
       );
@@ -3602,9 +4301,10 @@ const initializeApp = async () => {
     }
 
     clearAddressMatches();
-    const query = [street, city, state, "USA"].filter(Boolean).join(", ");
+    const country = contactCountrySelect.value || settings.country;
+    const query = [street, city, state, country].filter(Boolean).join(", ");
     const cityQuery = city
-      ? [city, state, "USA"].filter(Boolean).join(", ")
+      ? [city, state, country].filter(Boolean).join(", ")
       : "";
     btnFindAddress.disabled = true;
     setLocationStatus("Looking up the entered address...");
@@ -3657,7 +4357,7 @@ const initializeApp = async () => {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         const streetResults = getUniqueStreetMatches(
           await lookup(
-            [streetOnly, city, state, "USA"].filter(Boolean).join(", "),
+            [streetOnly, city, state, country].filter(Boolean).join(", "),
           ),
         );
         if (streetResults.length > 1) {
@@ -3725,8 +4425,11 @@ const initializeApp = async () => {
     const crossStreet = document
       .getElementById("contact-cross-street")
       .value.trim();
-    const city = document.getElementById("contact-city-select").value;
-    const state = normalizeUsState(contactStateInput.value);
+    const city = document.getElementById("contact-city-select").value.trim();
+    const state = normalizeLocationState(
+      contactCountrySelect.value,
+      contactStateInput.value,
+    );
     contactStateInput.value = state;
     if (!crossStreet) {
       setLocationStatus("Enter a nearby cross-street or intersection first.");
@@ -3739,7 +4442,14 @@ const initializeApp = async () => {
     try {
       const url = new URL("https://nominatim.openstreetmap.org/search");
       url.search = new URLSearchParams({
-        q: [crossStreet, city, state, "USA"].filter(Boolean).join(", "),
+        q: [
+          crossStreet,
+          city,
+          state,
+          contactCountrySelect.value || settings.country,
+        ]
+          .filter(Boolean)
+          .join(", "),
         format: "jsonv2",
         limit: "1",
       }).toString();
@@ -3843,7 +4553,9 @@ const initializeApp = async () => {
     for (const input of inputs) {
       let changed;
       if (input.id === "setting-state") {
-        changed = normalizeUsState(input.value) !== settings.state;
+        changed =
+          normalizeLocationState(settings.country, input.value) !==
+          settings.state;
       } else if (input.id === "setting-default-city") {
         changed = toTitleCase(input.value) !== settings.defaultCity;
       } else if (input.closest("#me-form")) {
@@ -4052,7 +4764,6 @@ const initializeApp = async () => {
     contactInfoSection.open = true;
     contactVisitsSection.open = false;
     modal.style.display = "flex";
-    newCityContainer.style.display = "none";
     // The map must be visible while it is created or resized.
     pinPanelOpen = true;
     updatePinUi();
@@ -4106,6 +4817,8 @@ const initializeApp = async () => {
 
   btnOpenModal.addEventListener("click", async () => {
     contactForm.reset();
+    lastCommittedContactCity = "";
+    pendingContactCitySave = Promise.resolve(true);
     setLocationStatus("");
     clearAddressMatches();
     crossStreetSearch.hidden = true;
@@ -4118,9 +4831,13 @@ const initializeApp = async () => {
         button.disabled = true;
       },
     );
-      settings.defaultCity || settings.cities[0];
+    contactCountrySelect.value = settings.me?.country || settings.country;
+    contactCountrySelect.dataset.selectedCountry = contactCountrySelect.value;
+    contactStateInput.value = "";
+    citySelect.value = "";
+    lastCommittedContactCity = "";
+    updateContactLocationFields();
     dropdownHelpers.populateContactRegionArea("", "");
-    document.getElementById("contact-state").value = settings.state;
     document.getElementById("contact-lat").value = "";
     document.getElementById("contact-lng").value = "";
     document.getElementById("new-log-timestamp").value = toLocalDateTimeString(
@@ -4231,16 +4948,24 @@ const initializeApp = async () => {
   // Save Contact Handler
   contactForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!(await pendingContactCitySave)) return;
+    if (!(await commitContactCity())) return;
     const id = document.getElementById("contact-id").value;
     const firstName = document.getElementById("contact-firstname").value.trim();
     const lastName = document.getElementById("contact-lastname").value.trim();
     const email = document.getElementById("contact-email").value.trim();
     const phone = phoneInput.value.trim();
     const street = normalizeStreetName(streetAddressInput.value);
-    const city = document.getElementById("contact-city-select").value;
+    const city = document.getElementById("contact-city-select").value.trim();
     const region = contactRegionSelect.value;
     const area = contactAreaSelect.value;
-    const state = normalizeUsState(contactStateInput.value);
+    const country = normalizeCountry(contactCountrySelect.value);
+    const state = normalizeLocationState(country, contactStateInput.value);
+    if (!country) {
+      alert("Choose a country before saving this contact.");
+      contactCountrySelect.focus();
+      return;
+    }
     streetAddressInput.value = street;
     contactStateInput.value = state;
     const lat = document.getElementById("contact-lat").value.trim();
@@ -4257,8 +4982,8 @@ const initializeApp = async () => {
       phoneInput.focus();
       return;
     }
-    if (city === "__ADD_NEW__") {
-      alert("Add or choose a city, or leave City blank, before saving.");
+    if (city === "+ Add New City...") {
+      alert("Enter a city name, choose a saved city, or leave City blank.");
       return;
     }
     if (
@@ -4300,7 +5025,9 @@ const initializeApp = async () => {
       Boolean(newNoteText) ||
       document.getElementById("new-log-timestamp").dataset.touched === "1";
 
-    const fullAddress = [street, city, state].filter(Boolean).join(", ");
+    const fullAddress = [street, city, state, country]
+      .filter(Boolean)
+      .join(", ");
 
     let targetId = id;
 
@@ -4313,6 +5040,7 @@ const initializeApp = async () => {
         contact.phone = phone;
         contact.address = fullAddress;
         contact.streetAddress = street;
+        contact.country = country;
         contact.city = city;
         contact.state = state;
         contact.region = region;
@@ -4363,6 +5091,7 @@ const initializeApp = async () => {
         phone,
         address: fullAddress,
         streetAddress: street,
+        country,
         city,
         region,
         state,
@@ -4655,12 +5384,13 @@ const initializeApp = async () => {
       "Settings",
       new Date().toLocaleDateString(),
       `<section class="print-location-group">
-        <p>Default state: ${escapeHtml(settings.state || "Not set")}</p>
+        <p>Default country: ${escapeHtml(settings.country || "Not set")}</p>
+        <p>Default state / province: ${escapeHtml(settings.state || "Not set")}</p>
         <p>Default city: ${escapeHtml(settings.defaultCity || "Not set")}</p>
         ${
           settings.me && (settings.me.name || settings.me.street || settings.me.city)
             ? `<p>Your details: ${escapeHtml(
-                [settings.me.name, settings.me.street, settings.me.city, settings.me.state]
+                [settings.me.name, settings.me.street, settings.me.city, settings.me.state, settings.me.country]
                   .filter(Boolean)
                   .join(", "),
               )}</p>`
@@ -4723,12 +5453,39 @@ const initializeApp = async () => {
   // Prints the same numbered list the map pins use, then any contacts
   // that have no pin.
   const printMapList = (detail) => {
-    const pinned = visibleContacts.filter((c) => c.lat && c.lng);
-    const unpinned = visibleContacts.filter((c) => !(c.lat && c.lng));
-    const entry = (contact, number) => {
+    const precisePins = visibleContacts.filter(hasContactCoordinates);
+    const approximateCityPins = new Map();
+    visibleContacts.forEach((contact) => {
+      if (hasContactCoordinates(contact) || !contact.city) return;
+      const query = getCityPinQuery(contact);
+      if (!cityPinCoordinates.get(query)) return;
+      if (!approximateCityPins.has(query)) {
+        approximateCityPins.set(query, {
+          city: contact.city,
+          state: normalizeLocationState(
+            contact.country || settings.country,
+            contact.state || settings.state,
+          ),
+          country: contact.country || settings.country,
+          contacts: [],
+        });
+      }
+      approximateCityPins.get(query).contacts.push(contact);
+    });
+    const approximateContacts = new Set(
+      [...approximateCityPins.values()].flatMap((group) => group.contacts),
+    );
+    const unpinned = visibleContacts.filter(
+      (contact) =>
+        !hasContactCoordinates(contact) && !approximateContacts.has(contact),
+    );
+    const entry = (contact, number, approximateCity = "") => {
       const name = `${contact.firstName} ${contact.lastName}`.trim();
       const address =
         normalizeStreetName(getStreetAddress(contact)) ||
+        (approximateCity
+          ? `Approximate city location: ${approximateCity}`
+          : "") ||
         "No street address recorded";
       const latestNote = getSortedVisitNotes(contact)[0];
       return `
@@ -4745,10 +5502,25 @@ const initializeApp = async () => {
           }
         </article>`;
     };
+    let nextCityPinNumber = precisePins.length + 1;
+    const cityPinContent = [...approximateCityPins.values()]
+      .map((group) => {
+        const number = nextCityPinNumber++;
+        const cityLabel = [group.city, group.state, group.country]
+          .filter(Boolean)
+          .join(", ");
+        return group.contacts
+        .map((contact) => entry(contact, number, cityLabel))
+        .join("");
+      })
+      .join("");
+    const pinCount = precisePins.length + approximateCityPins.size;
     const content = `
       <section class="print-location-group">
         <h2>Map pins</h2>
-        ${pinned.map((c, i) => entry(c, i + 1)).join("") || "<p>No pins.</p>"}
+        ${precisePins.map((contact, index) => entry(contact, index + 1)).join("")}
+        ${cityPinContent}
+        ${pinCount ? "" : "<p>No pins.</p>"}
       </section>
       ${
         unpinned.length
@@ -4757,7 +5529,7 @@ const initializeApp = async () => {
       }`;
     printContent(
       "Map Contacts",
-      `${pinned.length} pin${pinned.length === 1 ? "" : "s"} • ${new Date().toLocaleDateString()}`,
+      `${pinCount} map location${pinCount === 1 ? "" : "s"} • ${new Date().toLocaleDateString()}`,
       content,
     );
   };
@@ -4852,7 +5624,9 @@ const initializeApp = async () => {
     const streetAddress =
       normalizeStreetName(getStreetAddress(contact)) ||
       "No street address recorded";
-    const cityState = [contact.city, contact.state].filter(Boolean).join(", ");
+    const cityState = [contact.city, contact.state, contact.country]
+      .filter(Boolean)
+      .join(", ");
     const location = getContactLocationSummary(contact);
     const notesMarkup = selectedNotes.length
       ? selectedNotes
@@ -4893,21 +5667,54 @@ const initializeApp = async () => {
   // Render Leaflet Map Markers with Dynamic Color-Coded Pins
   const renderMapMarkers = () => {
     if (!map) return;
+    const renderGeneration = ++cityPinRenderGeneration;
     mapMarkers.forEach((marker) => map.removeLayer(marker));
     mapMarkers = [];
+    mapContactPoints = [];
     if (homeMarker) {
       map.removeLayer(homeMarker);
       homeMarker = null;
     }
 
-    let validMarkers = [];
+    const exactPoints = [];
     let pinNumber = 0;
+    const cityGroups = new Map();
+    const mapStatus = document.getElementById("map-location-status");
+    const contactActions = (contact) => {
+      const navigationUrl = getNavigationUrl(contact);
+      return `
+        <div class="map-popup-actions">
+          <button type="button" onclick="editContact(${contact.id})">Edit Contact</button>
+          ${
+            navigationUrl
+              ? `<a class="map-popup-directions" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer">Get Directions</a>`
+              : '<span aria-hidden="true"></span>'
+          }
+        </div>`;
+    };
+    const contactDetails = (contact, number, approximate = false) => {
+      const status = getContactStatus(contact);
+      return `
+        <section class="map-popup-contact">
+          <strong>${number}. ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</strong><br>
+          ${escapeHtml(getFormattedContactAddress(contact))}<br>
+          ${contact.phone ? `Phone: ${escapeHtml(contact.phone)}<br>` : ""}
+          ${contact.email ? `Email: ${escapeHtml(contact.email)}<br>` : ""}
+          Location: ${escapeHtml(getContactLocationSummary(contact))}<br>
+          Days Since Contact: ${status.days} (${status.label})<br>
+          ${approximate ? "<em>Approximate city location</em><br>" : ""}
+          ${contactActions(contact)}
+          ${approximate ? "" : "<small>Drag this pin to move it. The new location saves automatically.</small>"}
+        </section>`;
+    };
 
     visibleContacts.forEach((contact) => {
-      if (contact.lat && contact.lng) {
+      const lat = Number(contact.lat);
+      const lng = Number(contact.lng);
+      if (hasContactCoordinates(contact)) {
         pinNumber += 1;
-        const latNum = parseFloat(contact.lat);
-        const lngNum = parseFloat(contact.lng);
+        const latNum = lat;
+        const lngNum = lng;
         const status = getContactStatus(contact);
 
         const svgIcon = L.divIcon({
@@ -4921,21 +5728,7 @@ const initializeApp = async () => {
           icon: svgIcon,
           draggable: true,
         }).addTo(map);
-        const navigationUrl = getNavigationUrl(contact);
-        const popupContent = `
-                    <div>
-                        <b>${pinNumber}. ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</b><br>
-                        ${escapeHtml(getFormattedContactAddress(contact))}<br>
-                        ${contact.phone ? `Phone: ${escapeHtml(contact.phone)}<br>` : ""}
-                        ${contact.email ? `Email: ${escapeHtml(contact.email)}<br>` : ""}
-                        Location: ${escapeHtml(getContactLocationSummary(contact))}<br>
-                        Days Since Contact: ${status.days} (${status.label})<br><br>
-                        ${navigationUrl ? `<a class="navigate-map-link" href="${escapeHtml(navigationUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}" title="Navigate to ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2" fill="currentColor"/><path d="M6 16V9a4 4 0 0 1 4-4h8m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></a><br><br>` : ""}
-                        Drag this pin to move it. The new location saves automatically.<br><br>
-                        <button onclick="editContact(${contact.id})" style="background: #004080; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;">✏️ Edit Details</button>
-                    </div>
-                `;
-        marker.bindPopup(popupContent);
+        marker.bindPopup(contactDetails(contact, pinNumber));
         marker.on("dragend", async () => {
           const previousCoordinates = { lat: contact.lat, lng: contact.lng };
           const previousCenter = map.getCenter();
@@ -4943,6 +5736,12 @@ const initializeApp = async () => {
           const movedTo = marker.getLatLng();
           contact.lat = movedTo.lat.toFixed(6);
           contact.lng = movedTo.lng.toFixed(6);
+          const pointIndex = mapContactPoints.findIndex(
+            (point) => point[0] === latNum && point[1] === lngNum,
+          );
+          if (pointIndex !== -1) {
+            mapContactPoints[pointIndex] = [movedTo.lat, movedTo.lng];
+          }
           const status = document.getElementById("map-location-status");
           status.textContent = "Saving moved pin...";
           if (await saveContacts()) {
@@ -4951,6 +5750,7 @@ const initializeApp = async () => {
           } else {
             contact.lat = previousCoordinates.lat;
             contact.lng = previousCoordinates.lng;
+            if (pointIndex !== -1) mapContactPoints[pointIndex] = [latNum, lngNum];
             renderMapMarkers();
             map.setView(previousCenter, previousZoom);
             status.textContent =
@@ -4959,11 +5759,25 @@ const initializeApp = async () => {
         });
 
         mapMarkers.push(marker);
-        validMarkers.push([latNum, lngNum]);
+        exactPoints.push([latNum, lngNum]);
+      } else if (contact.city && contact.city.trim()) {
+        const query = getCityPinQuery(contact);
+        if (!cityGroups.has(query)) {
+          cityGroups.set(query, {
+            city: contact.city.trim(),
+            state: normalizeLocationState(
+              contact.country || settings.country,
+              contact.state || settings.state,
+            ),
+            country: contact.country || settings.country,
+            contacts: [],
+          });
+        }
+        cityGroups.get(query).contacts.push(contact);
       }
     });
 
-    const fitPoints = [...validMarkers];
+    mapContactPoints = [...exactPoints];
     const home = getHomePoint();
     if (home) {
       const me = settings.me;
@@ -4979,7 +5793,9 @@ const initializeApp = async () => {
       }).addTo(map);
       homeMarker.bindPopup(
         `<b>${escapeHtml(me.name || "My home")}</b><br>${escapeHtml(
-          [me.street, me.city, me.state].filter(Boolean).join(", "),
+          [me.street, me.city, me.state, me.country]
+            .filter(Boolean)
+            .join(", "),
         )}<br><br>Drag this pin to move it. The new location saves automatically.`,
       );
       homeMarker.on("dragend", async () => {
@@ -4993,40 +5809,94 @@ const initializeApp = async () => {
           showStorageError("save your home pin", error);
         }
       });
-      fitPoints.push(home);
     }
 
-    if (fitPoints.length > 0) {
-      const mapIsVisible = map.getContainer().offsetWidth > 0;
-      if (!mapIsVisible) {
-        // Fit again when the Map page opens.
-      } else if (fitPoints.length === 1) {
-        map.setView(fitPoints[0], 16);
-      } else {
-        map.fitBounds(L.latLngBounds(fitPoints), {
-          padding: [50, 50],
-          animate: false,
-        });
-      }
-    }
-
-    if (validMarkers.length > 0) {
+    fitMapToContactPoints();
+    if (exactPoints.length > 0) {
       lastDefaultCityCenterQuery = null;
-      const contactsWithoutPins = visibleContacts.length - validMarkers.length;
-      document.getElementById("map-location-status").textContent =
-        contactsWithoutPins > 0
-          ? `Showing ${validMarkers.length} map pin${validMarkers.length === 1 ? "" : "s"}; ${contactsWithoutPins} matching contact${contactsWithoutPins === 1 ? " has" : "s have"} no saved coordinates.`
-          : `Showing ${validMarkers.length} map pin${validMarkers.length === 1 ? "" : "s"}. Drag a pin to move it; changes save automatically.`;
-    } else if (visibleContacts.length > 0) {
-      document.getElementById("map-location-status").textContent =
-        `${visibleContacts.length} matching contact${visibleContacts.length === 1 ? " has" : "s have"} no saved map coordinates, so there are no pins to show. Open a contact and choose Find Address or City Pin to set one.`;
-    } else {
-      document.getElementById("map-location-status").textContent =
+      mapStatus.textContent = `Showing ${exactPoints.length} contact pin${exactPoints.length === 1 ? "" : "s"} with saved coordinates. Drag a pin to move it; changes save automatically.`;
+    }
+
+    if (cityGroups.size > 0) {
+      const cityContactsCount = [...cityGroups.values()].reduce(
+        (count, group) => count + group.contacts.length,
+        0,
+      );
+      mapStatus.textContent = `Locating ${cityGroups.size} approximate city location${cityGroups.size === 1 ? "" : "s"} for ${cityContactsCount} contact${cityContactsCount === 1 ? "" : "s"}...`;
+      const locatedCityPoints = [];
+      let locatedCityContacts = 0;
+      let failedCityContacts = 0;
+      const renderCityPins = async () => {
+        for (const [query, group] of cityGroups) {
+          if (renderGeneration !== cityPinRenderGeneration) return;
+          let location;
+          try {
+            location = await lookupCityPinCoordinates(query);
+          } catch (error) {
+            console.error(`Unable to locate contact city "${query}":`, error);
+            failedCityContacts += group.contacts.length;
+            continue;
+          }
+          if (!location) continue;
+
+          pinNumber += 1;
+          locatedCityContacts += group.contacts.length;
+          locatedCityPoints.push(location);
+          const firstStatus = getContactStatus(group.contacts[0]);
+          const cityIcon = L.divIcon({
+            className: "custom-map-pin",
+            html: `<div style="background-color: ${firstStatus.color};">${pinNumber}</div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+          });
+          const marker = L.marker(location, { icon: cityIcon }).addTo(map);
+          const cityLabel = [group.city, group.state, group.country]
+            .filter(Boolean)
+            .join(", ");
+          marker.bindPopup(`
+            <div>
+              <strong>Approximate city location: ${escapeHtml(cityLabel)}</strong>
+              ${group.contacts
+                .map((contact) => contactDetails(contact, pinNumber, true))
+                .join("")}
+            </div>
+          `);
+          mapMarkers.push(marker);
+        }
+        if (renderGeneration !== cityPinRenderGeneration) return;
+
+        mapContactPoints = [...exactPoints, ...locatedCityPoints];
+        fitMapToContactPoints();
+        const locatedCityPins = locatedCityPoints.length;
+        const unlocatedContacts =
+          visibleContacts.length - exactPoints.length - locatedCityContacts;
+        const pinCount = exactPoints.length + locatedCityPins;
+        if (pinCount > 0) {
+          lastDefaultCityCenterQuery = null;
+          mapStatus.textContent =
+            `${exactPoints.length} contact pin${exactPoints.length === 1 ? "" : "s"} with saved coordinates and ${locatedCityPins} approximate city pin${locatedCityPins === 1 ? "" : "s"} shown for ${locatedCityContacts} city-only contact${locatedCityContacts === 1 ? "" : "s"}.` +
+            (unlocatedContacts > 0
+              ? ` ${unlocatedContacts} contact${unlocatedContacts === 1 ? " has" : "s have"} no mappable city.`
+              : "");
+        } else {
+          mapStatus.textContent =
+            `No city-only contacts could be located.${failedCityContacts ? " Check your connection and try opening the Map again." : ""}`;
+        }
+        if (mapMarkers.length === 0 && !homeMarker) {
+          centerMapOnDefaultCity();
+        }
+      };
+      if (currentViewId === "map-view") renderCityPins();
+    } else if (visibleContacts.length > 0 && exactPoints.length === 0) {
+      mapStatus.textContent =
+        `${visibleContacts.length} matching contact${visibleContacts.length === 1 ? " has" : "s have"} no saved coordinates or city. Add a city or use Find Address or City Pin to locate a contact.`;
+    } else if (visibleContacts.length === 0) {
+      mapStatus.textContent =
         "No matching contacts to show. Change the search or filters, or add map coordinates to a contact.";
     }
 
     if (currentViewId === "map-view" && mapMarkers.length === 0 && !homeMarker) {
-      centerMapOnDefaultCity();
+      if (cityGroups.size === 0) centerMapOnDefaultCity();
     }
   };
 
@@ -5083,13 +5953,20 @@ const initializeApp = async () => {
     document.getElementById("contact-address").value = normalizeStreetName(
       getStreetAddress(contact),
     );
+    contactCountrySelect.value =
+      contact.country || settings.me?.country || settings.country;
+    contactCountrySelect.dataset.selectedCountry = contactCountrySelect.value;
+    document.getElementById("contact-state").value = normalizeLocationState(
+      contactCountrySelect.value,
+      contact.state || settings.me?.state || settings.state,
+    );
     document.getElementById("contact-city-select").value = contact.city || "";
+    lastCommittedContactCity = contact.city || "";
+    pendingContactCitySave = Promise.resolve(true);
+    updateContactLocationFields();
     dropdownHelpers.populateContactRegionArea(
       contact.region || "",
       contact.area || "",
-    );
-    document.getElementById("contact-state").value = normalizeUsState(
-      contact.state || settings.state,
     );
     document.getElementById("contact-lat").value = contact.lat || "";
     document.getElementById("contact-lng").value = contact.lng || "";
@@ -5821,11 +6698,13 @@ const initializeApp = async () => {
     settings = restored.settings;
     contacts = restored.contacts;
     resetContactSignatures();
-    settings.state = normalizeUsState(settings.state);
+    settings.country = normalizeCountry(settings.country);
+    settings.state = normalizeLocationState(settings.country, settings.state);
+    populateCountryOptions();
     populateMeForm();
     document.getElementById("setting-state").value = settings.state;
     document.getElementById("setting-default-city").value =
-      settings.defaultCity || "Newcastle";
+      settings.defaultCity || "";
     populateDropdowns();
     renderContacts();
     updatePassphraseSection();
