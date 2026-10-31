@@ -7543,9 +7543,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   installBanner.hidden = dismissed;
   document.getElementById("setup-next-steps-notice").hidden = !setupPending;
-  if (setupPending) {
-    document.getElementById("defaults-section").open = true;
-  }
 
   const goToView = (viewId) => {
     const navButton = Array.from(
