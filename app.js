@@ -2106,6 +2106,29 @@ const initializeApp = async () => {
   document.getElementById("me-city").addEventListener("input", () => {
     dropdownHelpers.populateMeRegionArea("", "");
   });
+  document.getElementById("me-city").addEventListener("change", async () => {
+    const meCity = document.getElementById("me-city");
+    const entered = toTitleCase(meCity.value.trim());
+    if (!entered) return;
+    const existing = settings.cities.find(
+      (city) => city.toLowerCase() === entered.toLowerCase(),
+    );
+    if (existing) {
+      meCity.value = existing;
+    } else {
+      addCity(entered);
+      try {
+        await saveSettings();
+      } catch (error) {
+        rollbackNewCity(entered);
+        showStorageError("save city", error);
+        return;
+      }
+      populateDropdowns();
+      meCity.value = entered;
+    }
+    dropdownHelpers.populateMeRegionArea("", "");
+  });
   let pendingContactCitySave = Promise.resolve(true);
   let lastCommittedContactCity = "";
   const newContactRegionContainer = document.getElementById(
