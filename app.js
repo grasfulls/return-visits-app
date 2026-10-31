@@ -4092,7 +4092,7 @@ const initializeApp = async () => {
     const tracking = settings.timeTracking;
     timeToggleButton.hidden = !tracking.enabled;
     timeToggleButton.classList.toggle("running", Boolean(tracking.runningSince));
-    timeToggleButton.textContent = tracking.runningSince ? "Stop" : "Start";
+    timeToggleButton.textContent = tracking.runningSince ? "Stop Time" : "Start Time";
     timeToggleButton.setAttribute(
       "aria-label",
       tracking.runningSince
