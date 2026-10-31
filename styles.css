@@ -1493,17 +1493,22 @@ textarea {
 }
 
 .time-toggle {
-    min-height: 64px;
+    margin-left: auto;
+    min-width: 88px;
     border: none;
-    border-radius: 12px;
-    background: #2e9e4f;
+    border-radius: 6px;
+    background: #c62828;
     color: white;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
 }
 
+.time-toggle[hidden] {
+    display: none;
+}
+
 .time-toggle.running {
-    background: #c62828;
+    background: #2e9e4f;
 }
 
 .time-today-label {

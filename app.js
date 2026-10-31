@@ -4088,13 +4088,23 @@ const initializeApp = async () => {
   const timeEntryForm = document.getElementById("time-entry-form");
   let editingTimeEntryId = null;
 
+  const updateTimeToggle = () => {
+    const tracking = settings.timeTracking;
+    timeToggleButton.hidden = !tracking.enabled;
+    timeToggleButton.classList.toggle("running", Boolean(tracking.runningSince));
+    timeToggleButton.textContent = tracking.runningSince ? "Stop" : "Start";
+    timeToggleButton.setAttribute(
+      "aria-label",
+      tracking.runningSince
+        ? "Stop timer. Time is being counted."
+        : "Start timer. Time is not being counted.",
+    );
+  };
+
   const renderTimeSummary = () => {
     const tracking = settings.timeTracking;
     const totals = getTimeTotals();
-    timeToggleButton.classList.toggle("running", Boolean(tracking.runningSince));
-    timeToggleButton.textContent = tracking.runningSince
-      ? "Stop — time is being counted"
-      : "Start — time is not being counted";
+    updateTimeToggle();
     document.getElementById("time-today").textContent = formatClock(totals.today);
     const renderGoal = (prefix, shown, done, goal, label) => {
       document.getElementById(`time-${prefix}-summary`).hidden = !shown;
@@ -4279,6 +4289,7 @@ const initializeApp = async () => {
     monthlyCheckbox.checked = tracking.showMonthly;
     yearlyCheckbox.checked = tracking.showYearly;
     timeOptions.hidden = !tracking.enabled;
+    updateTimeToggle();
   };
   trackTimeCheckbox.addEventListener("change", async () => {
     const previous = JSON.parse(JSON.stringify(settings.timeTracking));
@@ -4316,6 +4327,66 @@ const initializeApp = async () => {
   });
   syncTimeSettingsForm();
   resetTimeEntryForm();
+
+  // A web app can't intercept being closed, so ask when it is reopened.
+  const TIME_SEEN_KEY = "return_visits_time_last_seen";
+  let checkingTimer = false;
+  const markTimerSeen = () => {
+    try {
+      if (settings.timeTracking.runningSince) {
+        localStorage.setItem(TIME_SEEN_KEY, String(Date.now()));
+      }
+    } catch (error) {
+      console.error("Unable to save the timer heartbeat:", error);
+    }
+  };
+  const checkRunningTimer = async () => {
+    const tracking = settings.timeTracking;
+    if (checkingTimer || !tracking.runningSince) return;
+    let lastSeen = 0;
+    try {
+      lastSeen = Number(localStorage.getItem(TIME_SEEN_KEY)) || 0;
+    } catch (error) {
+      console.error("Unable to read the timer heartbeat:", error);
+    }
+    const startedAt = Date.parse(tracking.runningSince);
+    if (!lastSeen || lastSeen <= startedAt || Date.now() - lastSeen < 2 * 60 * 1000) {
+      markTimerSeen();
+      return;
+    }
+    checkingTimer = true;
+    const keep = confirm(
+      `Your timer is still running. You were last in the app at ${new Date(lastSeen).toLocaleString()}.\n\nOK = Keep time going.\nCancel = Stop the timer at that time.`,
+    );
+    if (keep) {
+      markTimerSeen();
+    } else {
+      const previous = JSON.parse(JSON.stringify(tracking));
+      splitByDay(startedAt, lastSeen).forEach((part) => {
+        const seconds = Math.round(part.seconds);
+        if (seconds > 0) {
+          tracking.entries.push({
+            id: newTimeEntryId(),
+            date: part.date,
+            seconds,
+            note: "Timer",
+          });
+        }
+      });
+      tracking.runningSince = null;
+      await saveTimeTracking(previous);
+      renderBottomNav();
+      renderTimeView();
+    }
+    checkingTimer = false;
+  };
+  window.setInterval(markTimerSeen, 15000);
+  window.addEventListener("pagehide", markTimerSeen);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") markTimerSeen();
+    else checkRunningTimer();
+  });
+  window.setTimeout(checkRunningTimer, 800);
   window.setInterval(() => {
     if (currentViewId === "time-view" && settings.timeTracking.enabled) {
       renderTimeSummary();
