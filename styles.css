@@ -843,6 +843,10 @@ textarea {
     border-left: 6px solid #28a745;
 }
 
+.contact-number {
+    color: #004080;
+}
+
 .contact-record-id {
     color: #6c757d;
     font-size: 0.75rem;

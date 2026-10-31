@@ -5235,7 +5235,7 @@ const initializeApp = async () => {
     visibleContacts = [...filtered];
     updatePrintVisibleButton();
     if (map) renderMapMarkers();
-    filtered.forEach((contact) => {
+    filtered.forEach((contact, cardIndex) => {
       const card = document.createElement("div");
       const status = getContactStatus(contact);
       const navigationUrl = getNavigationUrl(contact);
@@ -5275,7 +5275,7 @@ const initializeApp = async () => {
         : "";
 
       card.innerHTML = `
-                <strong>${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</strong><br>
+                <strong><span class="contact-number" title="Matches the number on the map pin">${cardIndex + 1}.</span> ${escapeHtml(contact.firstName)} ${escapeHtml(contact.lastName)}</strong><br>
                 <small class="contact-record-id">Contact ID: ${escapeHtml(contact.id)}</small><br>
                 <small>${escapeHtml(getFormattedContactAddress(contact) || "No address provided")} (${escapeHtml(getContactLocationSummary(contact))})</small><br>
                 ${contact.phone ? `<small>Phone: ${escapeHtml(contact.phone)}</small><br>` : ""}
@@ -5700,7 +5700,6 @@ const initializeApp = async () => {
     }
 
     const exactPoints = [];
-    let pinNumber = 0;
     const cityGroups = new Map();
     const mapStatus = document.getElementById("map-location-status");
     const contactActions = (contact) => {
@@ -5731,18 +5730,18 @@ const initializeApp = async () => {
         </section>`;
     };
 
-    visibleContacts.forEach((contact) => {
+    visibleContacts.forEach((contact, contactIndex) => {
       const lat = Number(contact.lat);
       const lng = Number(contact.lng);
+      const contactNumber = contactIndex + 1;
       if (hasContactCoordinates(contact)) {
-        pinNumber += 1;
         const latNum = lat;
         const lngNum = lng;
         const status = getContactStatus(contact);
 
         const svgIcon = L.divIcon({
           className: "custom-map-pin",
-          html: `<div style="background-color: ${status.color};">${pinNumber}</div>`,
+          html: `<div style="background-color: ${status.color};">${contactNumber}</div>`,
           iconSize: [28, 28],
           iconAnchor: [14, 14],
         });
@@ -5751,7 +5750,7 @@ const initializeApp = async () => {
           icon: svgIcon,
           draggable: true,
         }).addTo(map);
-        marker.bindPopup(contactDetails(contact, pinNumber));
+        marker.bindPopup(contactDetails(contact, contactNumber));
         marker.on("dragend", async () => {
           const previousCoordinates = { lat: contact.lat, lng: contact.lng };
           const previousCenter = map.getCenter();
@@ -5796,7 +5795,7 @@ const initializeApp = async () => {
             contacts: [],
           });
         }
-        cityGroups.get(query).contacts.push(contact);
+        cityGroups.get(query).contacts.push({ contact, number: contactNumber });
       }
     });
 
@@ -5862,13 +5861,13 @@ const initializeApp = async () => {
           }
           if (!location) continue;
 
-          pinNumber += 1;
           locatedCityContacts += group.contacts.length;
           locatedCityPoints.push(location);
-          const firstStatus = getContactStatus(group.contacts[0]);
+          const firstStatus = getContactStatus(group.contacts[0].contact);
+          const pinLabel = `${group.contacts[0].number}${group.contacts.length > 1 ? "+" : ""}`;
           const cityIcon = L.divIcon({
             className: "custom-map-pin",
-            html: `<div style="background-color: ${firstStatus.color};">${pinNumber}</div>`,
+            html: `<div style="background-color: ${firstStatus.color};">${pinLabel}</div>`,
             iconSize: [28, 28],
             iconAnchor: [14, 14],
           });
@@ -5880,7 +5879,7 @@ const initializeApp = async () => {
             <div>
               <strong>Approximate city location: ${escapeHtml(cityLabel)}</strong>
               ${group.contacts
-                .map((contact) => contactDetails(contact, pinNumber, true))
+                .map(({ contact, number }) => contactDetails(contact, number, true))
                 .join("")}
             </div>
           `);
