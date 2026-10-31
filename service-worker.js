@@ -1,4 +1,4 @@
-const CACHE_NAME = "return-visits-shell-v100";
+const CACHE_NAME = "return-visits-shell-v101";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -12,9 +12,9 @@ const APP_SHELL = [
   "./dropbox.js",
   "./merge.js",
   "./manifest.webmanifest",
-  "./icons/icon-180.png",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
+  "./icons/icon-180.png?v=2",
+  "./icons/icon-192.png?v=2",
+  "./icons/icon-512.png?v=2",
 ];
 
 self.addEventListener("install", (event) => {
