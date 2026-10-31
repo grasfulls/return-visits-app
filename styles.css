@@ -1474,6 +1474,81 @@ textarea {
     line-height: 1;
 }
 
+.nav-timer-dot {
+    position: absolute;
+    top: -4px;
+    right: -6px;
+    width: 12px;
+    height: 12px;
+    border: 2px solid white;
+    border-radius: 50%;
+    background: #2e9e4f;
+}
+
+.time-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+}
+
+.time-toggle {
+    min-height: 64px;
+    border: none;
+    border-radius: 12px;
+    background: #2e9e4f;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.time-toggle.running {
+    background: #c62828;
+}
+
+.time-today-label {
+    margin: 0;
+    text-align: center;
+    color: #6c757d;
+}
+
+.time-today {
+    margin: 0;
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.time-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.time-summary progress {
+    width: 100%;
+    height: 14px;
+}
+
+.time-note {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+.time-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.time-entry span {
+    flex: 1;
+}
+
 .nav-update-badge {
     position: absolute;
     top: -7px;

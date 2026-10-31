@@ -117,6 +117,27 @@
     );
     settings.deletedContacts = tombstones;
 
+    const localTime = localSettings.timeTracking || {};
+    const remoteTime = remoteSettings.timeTracking || {};
+    const baseTime = base.timeTracking || {};
+    if (baseTime.enabled) {
+      const deleted = unionBy(
+        [localTime.deleted, remoteTime.deleted],
+        (id) => String(id),
+      );
+      const gone = new Set(deleted.map(String));
+      const baseIsLocal = base === localSettings;
+      settings.timeTracking = {
+        ...baseTime,
+        entries: unionBy(
+          baseIsLocal
+            ? [localTime.entries, remoteTime.entries]
+            : [remoteTime.entries, localTime.entries],
+          (entry) => String(entry.id),
+        ).filter((entry) => !gone.has(String(entry.id))),
+        deleted,
+      };
+    }
     return { settings, contacts: kept };
   };
 

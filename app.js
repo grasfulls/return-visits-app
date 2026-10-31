@@ -16,7 +16,7 @@ const MIN_PASSPHRASE_LENGTH = 12;
 
 // Bump on any change to the stored data shape, and add a migration in
 // normalizeRegionData. Version 3 added country to settings and contacts.
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const EPOCH_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 
 class NewerDataVersionError extends Error {
@@ -919,6 +919,42 @@ const getContactLastActivity = (contact) => {
     .pop();
 };
 
+const normalizeTimeTracking = (value) => {
+  const source = value && typeof value === "object" ? value : {};
+  const enabled = source.enabled === true;
+  const runningSince =
+    enabled &&
+    typeof source.runningSince === "string" &&
+    !Number.isNaN(Date.parse(source.runningSince))
+      ? source.runningSince
+      : null;
+  const entries = enabled && Array.isArray(source.entries) ? source.entries : [];
+  return {
+    enabled,
+    showMonthly: source.showMonthly !== false,
+    showYearly: source.showYearly !== false,
+    runningSince,
+    entries: entries
+      .filter(
+        (entry) =>
+          entry &&
+          entry.id !== undefined &&
+          /^\d{4}-\d{2}-\d{2}$/.test(entry.date || "") &&
+          Number(entry.seconds) > 0,
+      )
+      .map((entry) => ({
+        id: String(entry.id),
+        date: entry.date,
+        seconds: Math.round(Number(entry.seconds)),
+        note: typeof entry.note === "string" ? entry.note : "",
+      })),
+    deleted:
+      enabled && Array.isArray(source.deleted)
+        ? source.deleted.filter((id) => typeof id === "string")
+        : [],
+  };
+};
+
 const normalizeRegionData = (settings, contacts) => {
   if ((Number(settings.schemaVersion) || 1) > SCHEMA_VERSION) {
     throw new NewerDataVersionError();
@@ -1073,6 +1109,7 @@ const normalizeRegionData = (settings, contacts) => {
   });
 
   normalizedSettings.schemaVersion = SCHEMA_VERSION;
+  normalizedSettings.timeTracking = normalizeTimeTracking(settings.timeTracking);
   normalizedSettings.country = defaultCountry;
   normalizedSettings.countries = countries;
   if (normalizedSettings.me) {
@@ -1601,6 +1638,7 @@ const initializeApp = async () => {
   let settings = savedSettings;
   settings.country = normalizeCountry(settings.country);
   settings.state = normalizeLocationState(settings.country, settings.state);
+  settings.timeTracking = normalizeTimeTracking(settings.timeTracking);
   const saveSettings = () =>
     encryptStoredValue(database, "settings", settings, encryptionKey).then(
       (result) => {
@@ -3831,6 +3869,7 @@ const initializeApp = async () => {
   const navButtonsConfig = [
     { id: "contacts-view", icon: "👥" },
     { id: "map-view", icon: "📍", pinLabel: "Map" },
+    { id: "time-view", icon: "⏱️" },
     { id: "settings-view", icon: "⚙️" },
   ];
 
@@ -3878,6 +3917,7 @@ const initializeApp = async () => {
     const names = {
       "contacts-view": "Contacts",
       "map-view": "Map",
+      "time-view": "Time",
       "settings-view": "Settings",
     };
     const contactModal = document.getElementById("contact-modal");
@@ -3894,6 +3934,7 @@ const initializeApp = async () => {
     const pageNames = {
       "contacts-view": "Contacts",
       "map-view": "Map",
+      "time-view": "Time",
       "settings-view": "Settings",
     };
     document.title = `Nice Return Visits - ${pageNames[currentViewId] || "Contacts"}`;
@@ -3916,7 +3957,9 @@ const initializeApp = async () => {
       navContainer.appendChild(btn);
     });
     updatePrintVisibleButton();
+    const timeTracking = settings.timeTracking;
     navButtonsConfig.forEach((btnConfig) => {
+      if (btnConfig.id === "time-view" && !timeTracking.enabled) return;
       if (btnConfig.id !== currentViewId) {
         const btn = document.createElement("button");
         btn.className = "nav-btn";
@@ -3933,6 +3976,14 @@ const initializeApp = async () => {
         }
         btn.appendChild(icon);
         btn.title = btnConfig.id.replace("-view", "");
+        if (btnConfig.id === "time-view" && timeTracking.runningSince) {
+          btn.title = "Time — timer running";
+          btn.setAttribute("aria-label", "Time, timer running");
+          const dot = document.createElement("span");
+          dot.className = "nav-timer-dot";
+          dot.setAttribute("aria-hidden", "true");
+          icon.appendChild(dot);
+        }
         if (btnConfig.id === "settings-view" && appUpdateAvailable) {
           btn.title = "Settings — app update available";
           btn.setAttribute("aria-label", "Settings, app update available");
@@ -3961,6 +4012,8 @@ const initializeApp = async () => {
             appUpdatePromptHandler?.();
           }
 
+          if (currentViewId === "time-view") renderTimeView();
+
           if (currentViewId === "map-view") {
             if (!map) {
               initMap();
@@ -3978,6 +4031,296 @@ const initializeApp = async () => {
     });
   };
   renderBottomNav();
+
+  // ---- Time in Service ----
+  const MONTHLY_GOAL_SECONDS = 50 * 3600;
+  const YEARLY_GOAL_SECONDS = 600 * 3600;
+  const pad2 = (number) => String(number).padStart(2, "0");
+  const toDateKey = (date) =>
+    `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  const formatHours = (seconds) => {
+    const whole = Math.max(0, Math.floor(seconds));
+    return `${Math.floor(whole / 3600)}:${pad2(Math.floor((whole % 3600) / 60))}`;
+  };
+  const formatClock = (seconds) => {
+    const whole = Math.max(0, Math.floor(seconds));
+    return `${formatHours(whole)}:${pad2(whole % 60)}`;
+  };
+  const splitByDay = (startMs, endMs) => {
+    const parts = [];
+    let cursor = startMs;
+    while (cursor < endMs) {
+      const day = new Date(cursor);
+      const nextMidnight = new Date(
+        day.getFullYear(),
+        day.getMonth(),
+        day.getDate() + 1,
+      ).getTime();
+      const stop = Math.min(nextMidnight, endMs);
+      parts.push({ date: toDateKey(day), seconds: (stop - cursor) / 1000 });
+      cursor = stop;
+    }
+    return parts;
+  };
+  const getTimeTotals = () => {
+    const tracking = settings.timeTracking;
+    const now = new Date();
+    const todayKey = toDateKey(now);
+    const monthPrefix = todayKey.slice(0, 7);
+    const serviceYearStart =
+      now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+    const yearFrom = `${serviceYearStart}-09-01`;
+    const yearTo = `${serviceYearStart + 1}-09-01`;
+    const running = tracking.runningSince
+      ? splitByDay(Date.parse(tracking.runningSince), now.getTime())
+      : [];
+    const totals = { today: 0, month: 0, year: 0, serviceYearStart, now };
+    [...tracking.entries, ...running].forEach((entry) => {
+      if (entry.date === todayKey) totals.today += entry.seconds;
+      if (entry.date.startsWith(monthPrefix)) totals.month += entry.seconds;
+      if (entry.date >= yearFrom && entry.date < yearTo) {
+        totals.year += entry.seconds;
+      }
+    });
+    return totals;
+  };
+  const timeToggleButton = document.getElementById("btn-time-toggle");
+  const timeEntryForm = document.getElementById("time-entry-form");
+  let editingTimeEntryId = null;
+
+  const renderTimeSummary = () => {
+    const tracking = settings.timeTracking;
+    const totals = getTimeTotals();
+    timeToggleButton.classList.toggle("running", Boolean(tracking.runningSince));
+    timeToggleButton.textContent = tracking.runningSince
+      ? "Stop — time is being counted"
+      : "Start — time is not being counted";
+    document.getElementById("time-today").textContent = formatClock(totals.today);
+    const renderGoal = (prefix, shown, done, goal, label) => {
+      document.getElementById(`time-${prefix}-summary`).hidden = !shown;
+      document.getElementById(`time-${prefix}-label`).textContent = label;
+      document.getElementById(`time-${prefix}-text`).textContent =
+        `${formatHours(done)} of ${goal / 3600} hrs • ${formatHours(Math.max(0, goal - done))} to go`;
+      document.getElementById(`time-${prefix}-bar`).value = Math.min(
+        100,
+        (done / goal) * 100,
+      );
+    };
+    renderGoal(
+      "month",
+      tracking.showMonthly,
+      totals.month,
+      MONTHLY_GOAL_SECONDS,
+      totals.now.toLocaleString(undefined, { month: "long", year: "numeric" }),
+    );
+    renderGoal(
+      "year",
+      tracking.showYearly,
+      totals.year,
+      YEARLY_GOAL_SECONDS,
+      `Service year ${totals.serviceYearStart}–${totals.serviceYearStart + 1}`,
+    );
+  };
+
+  const renderTimeEntries = () => {
+    const list = document.getElementById("time-entries");
+    const entries = [...settings.timeTracking.entries]
+      .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+      .slice(0, 60);
+    list.innerHTML = "";
+    if (!entries.length) {
+      list.innerHTML = "<p>No time recorded yet.</p>";
+      return;
+    }
+    entries.forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = "time-entry";
+      const [year, month, day] = entry.date.split("-").map(Number);
+      const label = new Date(year, month - 1, day).toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const text = document.createElement("span");
+      text.textContent = `${label} — ${formatHours(entry.seconds)}${entry.note ? ` — ${entry.note}` : ""}`;
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "btn-icon";
+      edit.textContent = "✏️";
+      edit.title = "Edit this time";
+      edit.addEventListener("click", () => startEditingTimeEntry(entry.id));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn-icon delete";
+      remove.textContent = "🗑️";
+      remove.title = "Delete this time";
+      remove.addEventListener("click", () => deleteTimeEntry(entry.id));
+      row.append(text, edit, remove);
+      list.appendChild(row);
+    });
+  };
+
+  const resetTimeEntryForm = () => {
+    editingTimeEntryId = null;
+    timeEntryForm.reset();
+    const today = toDateKey(new Date());
+    document.getElementById("time-entry-date").value = today;
+    document.getElementById("time-entry-date").max = today;
+    document.getElementById("btn-time-entry-save").textContent = "Add Time";
+    document.getElementById("btn-time-entry-cancel").hidden = true;
+  };
+
+  const renderTimeView = () => {
+    renderTimeSummary();
+    renderTimeEntries();
+  };
+
+  const saveTimeTracking = async (previous) => {
+    try {
+      await saveSettings();
+      return true;
+    } catch (error) {
+      settings.timeTracking = normalizeTimeTracking(previous);
+      showStorageError("save time in service", error);
+      return false;
+    }
+  };
+
+  const newTimeEntryId = () =>
+    `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  timeToggleButton.addEventListener("click", async () => {
+    const tracking = settings.timeTracking;
+    const previous = JSON.parse(JSON.stringify(tracking));
+    if (tracking.runningSince) {
+      splitByDay(Date.parse(tracking.runningSince), Date.now()).forEach((part) => {
+        const seconds = Math.round(part.seconds);
+        if (seconds > 0) {
+          tracking.entries.push({
+            id: newTimeEntryId(),
+            date: part.date,
+            seconds,
+            note: "Timer",
+          });
+        }
+      });
+      tracking.runningSince = null;
+    } else {
+      tracking.runningSince = new Date().toISOString();
+    }
+    await saveTimeTracking(previous);
+    renderBottomNav();
+    renderTimeView();
+  });
+
+  timeEntryForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const date = document.getElementById("time-entry-date").value;
+    const hours = Number(document.getElementById("time-entry-hours").value) || 0;
+    const minutes = Number(document.getElementById("time-entry-minutes").value) || 0;
+    const note = document.getElementById("time-entry-note").value.trim();
+    const seconds = Math.round(hours * 3600 + minutes * 60);
+    if (!date || date > toDateKey(new Date())) {
+      alert("Choose a date that is today or earlier.");
+      return;
+    }
+    if (hours < 0 || minutes < 0 || minutes > 59 || seconds <= 0 || hours > 24) {
+      alert("Enter hours (up to 24) and minutes (0–59) greater than zero.");
+      return;
+    }
+    const tracking = settings.timeTracking;
+    const previous = JSON.parse(JSON.stringify(tracking));
+    const existing = tracking.entries.find((entry) => entry.id === editingTimeEntryId);
+    if (existing) {
+      Object.assign(existing, { date, seconds, note });
+    } else {
+      tracking.entries.push({ id: newTimeEntryId(), date, seconds, note });
+    }
+    if (await saveTimeTracking(previous)) resetTimeEntryForm();
+    renderTimeView();
+  });
+
+  document
+    .getElementById("btn-time-entry-cancel")
+    .addEventListener("click", resetTimeEntryForm);
+
+  const startEditingTimeEntry = (id) => {
+    const entry = settings.timeTracking.entries.find((item) => item.id === id);
+    if (!entry) return;
+    editingTimeEntryId = id;
+    document.getElementById("time-entry-date").value = entry.date;
+    document.getElementById("time-entry-hours").value = Math.floor(entry.seconds / 3600);
+    document.getElementById("time-entry-minutes").value = Math.floor((entry.seconds % 3600) / 60);
+    document.getElementById("time-entry-note").value = entry.note;
+    document.getElementById("btn-time-entry-save").textContent = "Save Changes";
+    document.getElementById("btn-time-entry-cancel").hidden = false;
+    timeEntryForm.scrollIntoView({ block: "center" });
+  };
+
+  const deleteTimeEntry = async (id) => {
+    if (!confirm("Delete this time entry?")) return;
+    const tracking = settings.timeTracking;
+    const previous = JSON.parse(JSON.stringify(tracking));
+    tracking.entries = tracking.entries.filter((entry) => entry.id !== id);
+    tracking.deleted.push(id);
+    if (editingTimeEntryId === id) resetTimeEntryForm();
+    await saveTimeTracking(previous);
+    renderTimeView();
+  };
+
+  const trackTimeCheckbox = document.getElementById("setting-time-tracking");
+  const timeOptions = document.getElementById("time-tracking-options");
+  const monthlyCheckbox = document.getElementById("setting-time-monthly");
+  const yearlyCheckbox = document.getElementById("setting-time-yearly");
+  const syncTimeSettingsForm = () => {
+    const tracking = settings.timeTracking;
+    trackTimeCheckbox.checked = tracking.enabled;
+    monthlyCheckbox.checked = tracking.showMonthly;
+    yearlyCheckbox.checked = tracking.showYearly;
+    timeOptions.hidden = !tracking.enabled;
+  };
+  trackTimeCheckbox.addEventListener("change", async () => {
+    const previous = JSON.parse(JSON.stringify(settings.timeTracking));
+    if (trackTimeCheckbox.checked) {
+      settings.timeTracking.enabled = true;
+    } else {
+      if (
+        !confirm(
+          "Turning off Track Time in Service erases all the time you have recorded, including this month's and this service year's totals. This cannot be undone unless you have a backup. Turn it off?",
+        )
+      ) {
+        trackTimeCheckbox.checked = true;
+        return;
+      }
+      settings.timeTracking = normalizeTimeTracking({
+        showMonthly: previous.showMonthly,
+        showYearly: previous.showYearly,
+      });
+      resetTimeEntryForm();
+    }
+    await saveTimeTracking(previous);
+    syncTimeSettingsForm();
+    renderBottomNav();
+  });
+  [
+    [monthlyCheckbox, "showMonthly"],
+    [yearlyCheckbox, "showYearly"],
+  ].forEach(([checkbox, key]) => {
+    checkbox.addEventListener("change", async () => {
+      const previous = JSON.parse(JSON.stringify(settings.timeTracking));
+      settings.timeTracking[key] = checkbox.checked;
+      await saveTimeTracking(previous);
+      syncTimeSettingsForm();
+    });
+  });
+  syncTimeSettingsForm();
+  resetTimeEntryForm();
+  window.setInterval(() => {
+    if (currentViewId === "time-view" && settings.timeTracking.enabled) {
+      renderTimeSummary();
+    }
+  }, 1000);
 
   const saveContacts = async () => {
     try {

@@ -250,6 +250,45 @@
           <p id="map-user-location-status" role="status" aria-live="polite"></p>
         </div>
 
+        <!-- Time in Service View -->
+        <div id="time-view" class="view">
+          <div class="time-container">
+            <h2>Time in Service</h2>
+            <button type="button" id="btn-time-toggle" class="time-toggle"></button>
+            <p class="time-today-label">Today</p>
+            <p id="time-today" class="time-today" role="timer">0:00:00</p>
+            <div id="time-month-summary" class="time-summary">
+              <strong id="time-month-label"></strong>
+              <span id="time-month-text"></span>
+              <progress id="time-month-bar" max="100" value="0"></progress>
+            </div>
+            <div id="time-year-summary" class="time-summary">
+              <strong id="time-year-label"></strong>
+              <span id="time-year-text"></span>
+              <progress id="time-year-bar" max="100" value="0"></progress>
+            </div>
+            <p class="time-note">
+              Today's time starts over at midnight. Month and service-year
+              totals are calculated from your entries.
+            </p>
+            <h3>Add or edit time</h3>
+            <form id="time-entry-form">
+              <label for="time-entry-date">Date</label>
+              <input type="date" id="time-entry-date" required />
+              <label for="time-entry-hours">Hours</label>
+              <input type="number" id="time-entry-hours" min="0" max="24" step="1" inputmode="numeric" />
+              <label for="time-entry-minutes">Minutes</label>
+              <input type="number" id="time-entry-minutes" min="0" max="59" step="1" inputmode="numeric" />
+              <label for="time-entry-note">Note (optional)</label>
+              <input type="text" id="time-entry-note" maxlength="100" />
+              <button type="submit" id="btn-time-entry-save">Add Time</button>
+              <button type="button" id="btn-time-entry-cancel" hidden>Cancel</button>
+            </form>
+            <h3>Time entries</h3>
+            <div id="time-entries"></div>
+          </div>
+        </div>
+
         <!-- Settings View -->
         <div id="settings-view" class="view">
           <div class="settings-container">
@@ -472,6 +511,28 @@
                 confirm. Locations follow City → Region → Area; each level is optional
                 on a contact.
               </small>
+            </details>
+            <details class="settings-section" id="time-tracking-section">
+              <summary>Time in Service</summary>
+              <label class="checkbox-row">
+                <input type="checkbox" id="setting-time-tracking" />
+                Track Time in Service
+              </label>
+              <small>
+                Adds a Time button to the bottom bar with a Start/Stop timer and
+                manual entry. Turning this off erases all recorded time.
+              </small>
+              <div id="time-tracking-options" hidden>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="setting-time-monthly" />
+                  Show hours to go each month (goal: 50 hours)
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="setting-time-yearly" />
+                  Show hours to go for the service year (goal: 600 hours)
+                </label>
+                <small>The service year runs September 1 to August 31.</small>
+              </div>
             </details>
             <details class="settings-section">
               <summary>Keep Your Data Safe</summary>
